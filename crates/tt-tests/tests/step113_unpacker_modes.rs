@@ -24,10 +24,10 @@
 //!    `unpacker_transpose_swaps_row_and_column_low_nibbles`;
 //! 3. `silicon_transpose_is_a_pure_permutation_of_the_plain_src_path`, last.
 #![cfg_attr(not(feature = "silicon"), allow(unused_imports, dead_code))]
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::cfg::generated::thcon;
-use tt_isa::isa::generated::encode;
-use tt_isa::tile::{L1Format, TileImage};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::cfg::generated::thcon;
+use tensix_isa::isa::generated::encode;
+use tensix_isa::tile::{L1Format, TileImage};
 use tt_kernels::datapath::{
     config_program, flat_descriptor, pack_tile_from_dst, set_adc_x, set_adc_x_unpack,
     src_thread_config, state_id, thread_config, tile_base_units, unpack_config, unpack_instruction,
@@ -266,7 +266,7 @@ fn run_src_block_on(dev: &mut harness::Dev<'_>, bits: &[u32], transpose: bool) -
         unpack_src_config(&mut words, Unpacker::SrcA, descriptor, STAGE, TF32);
     }
     words
-        .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+        .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
         .unwrap();
     unpack.extend(config_program(&words));
     unpack.push(set_adc_x(Unpacker::SrcA, 0, 255));
@@ -362,8 +362,8 @@ fn ttsim_refuses_transpose_to_dst() {
     assert!(run(false), "UnpackToDst without transpose is the control");
     assert!(!run(true), "unpack_to_dst cannot be used with haloize");
     assert_eq!(
-        tt_isa::unpacker::stage_transpose(&mut ConfigWords::new(), true),
-        Err(tt_isa::unpacker::UnpackModeError::TransposeToDst)
+        tensix_isa::unpacker::stage_transpose(&mut ConfigWords::new(), true),
+        Err(tensix_isa::unpacker::UnpackModeError::TransposeToDst)
     );
 }
 
@@ -376,7 +376,7 @@ fn silicon_probe_transpose_isolated() {
     let mut words = ConfigWords::new();
     unpack_src_transposed_config(&mut words, flat_descriptor(256), STAGE, TF32).unwrap();
     words
-        .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+        .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
         .unwrap();
     unpack.extend(config_program(&words));
     unpack.push(set_adc_x(Unpacker::SrcA, 0, 255));

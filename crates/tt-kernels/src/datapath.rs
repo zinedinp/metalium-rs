@@ -9,18 +9,18 @@
 //! It configures **one flat run**, not a tiled 32x32 image: `XDim` datums in one
 //! row of one plane. That is enough to exercise the datapath and the numerics, and
 //! it keeps the address arithmetic small enough to check against the specification
-//! by hand. Driving a real `tt_layout::Layout` through it is Phase 6 work, and it
+//! by hand. Driving a real `tensix_layout::Layout` through it is Phase 6 work, and it
 //! is where the `Z`-plane-to-face convention finally gets settled.
 //!
 //! Everything from `WormholeB0/.../Packers/` is `UNVERIFIED`: that directory has no
 //! Blackhole counterpart. Blackhole's own `PACR.md` is self-labelled "basic".
 
-use tt_isa::backend::ConfigWords;
-use tt_isa::backend::ThreadConfigEntry;
-use tt_isa::cfg::generated::{alu, global, pack0, thcon, thread, unpack1};
-use tt_isa::isa::generated::{defs, encode};
-use tt_isa::isa::Instruction;
-use tt_isa::tile::{L1Format, TileDescriptor, TileImage};
+use tensix_isa::backend::ConfigWords;
+use tensix_isa::backend::ThreadConfigEntry;
+use tensix_isa::cfg::generated::{alu, global, pack0, thcon, thread, unpack1};
+use tensix_isa::isa::generated::{defs, encode};
+use tensix_isa::isa::Instruction;
+use tensix_isa::tile::{L1Format, TileDescriptor, TileImage};
 
 /// Where the input tile image is staged, and where the packer writes.
 ///
@@ -511,8 +511,8 @@ pub fn pack_instruction(read_intf_sel: u32, last: bool) -> Instruction {
 pub fn release_semaphores() -> Vec<Instruction> {
     (0..8)
         .map(|i| {
-            let sem = tt_isa::sync::Semaphore::new(i).expect("eight semaphores");
-            tt_isa::sync::init(sem, 1, 2).expect("four-bit fields")
+            let sem = tensix_isa::sync::Semaphore::new(i).expect("eight semaphores");
+            tensix_isa::sync::init(sem, 1, 2).expect("four-bit fields")
         })
         .collect()
 }
@@ -549,8 +549,8 @@ pub fn src_feeder() -> Vec<Instruction> {
             p.push(unpack_src_instruction(u, true));
         }
     }
-    p.push(tt_isa::backend::wait_for_unpacker0(tt_isa::backend::Before::EVERYTHING).unwrap());
-    p.push(tt_isa::backend::wait_for_unpacker1(tt_isa::backend::Before::EVERYTHING).unwrap());
+    p.push(tensix_isa::backend::wait_for_unpacker0(tensix_isa::backend::Before::EVERYTHING).unwrap());
+    p.push(tensix_isa::backend::wait_for_unpacker1(tensix_isa::backend::Before::EVERYTHING).unwrap());
     p
 }
 
@@ -568,13 +568,13 @@ pub fn src_feeder() -> Vec<Instruction> {
 /// **Silicon only.** ttsim refuses `SETC16` to some entries at any value
 /// (`SRCB_SET_Base`, divergence row 36), and has nothing to reset.
 pub fn thread_state_reset() -> Vec<Instruction> {
-    let entries: std::collections::BTreeSet<u16> = tt_isa::cfg::generated::ALL_THREAD_CONFIG_FIELDS
+    let entries: std::collections::BTreeSet<u16> = tensix_isa::cfg::generated::ALL_THREAD_CONFIG_FIELDS
         .iter()
         .map(|(_, f)| f.addr32())
         .collect();
     // `Config` first: it is shared, and tt-metal (or an earlier gate) may have
     // left any of it set (`backend::reset_config`).
-    let mut p: Vec<Instruction> = tt_isa::backend::reset_config(SCRATCH_GPR).unwrap().to_vec();
+    let mut p: Vec<Instruction> = tensix_isa::backend::reset_config(SCRATCH_GPR).unwrap().to_vec();
     p.extend(
         entries
             .into_iter()
@@ -634,9 +634,9 @@ pub fn state_id() -> Instruction {
 /// instruction's `AddrMod` selects. Blackhole has eight entries and a three-bit
 /// `AddrMod` to reach them (divergence row 42).
 pub struct AddrModEntry {
-    pub src_a_incr: tt_isa::cfg::ThreadConfigField,
-    pub src_b_incr: tt_isa::cfg::ThreadConfigField,
-    pub dst_incr: tt_isa::cfg::ThreadConfigField,
+    pub src_a_incr: tensix_isa::cfg::ThreadConfigField,
+    pub src_b_incr: tensix_isa::cfg::ThreadConfigField,
+    pub dst_incr: tensix_isa::cfg::ThreadConfigField,
 }
 
 pub fn addr_mod_entry(entry: usize) -> AddrModEntry {
@@ -680,7 +680,7 @@ pub fn addr_mod_entry(entry: usize) -> AddrModEntry {
 
 /// A `SETC16` giving one `ThreadConfig` field `value`, every other field of its
 /// word zero.
-pub fn thread_entry(field: tt_isa::cfg::ThreadConfigField, value: u16) -> Instruction {
+pub fn thread_entry(field: tensix_isa::cfg::ThreadConfigField, value: u16) -> Instruction {
     ThreadConfigEntry::zeroed(field.addr32())
         .set(field, value)
         .unwrap()
@@ -690,7 +690,7 @@ pub fn thread_entry(field: tt_isa::cfg::ThreadConfigField, value: u16) -> Instru
 
 /// The instructions that write `words` into `Config`, sized to fit.
 pub fn config_program(words: &ConfigWords) -> Vec<Instruction> {
-    let mut buf = vec![tt_isa::sfpu::nop(); words.program_len()];
+    let mut buf = vec![tensix_isa::sfpu::nop(); words.program_len()];
     let n = words.program(SCRATCH_GPR, &mut buf).unwrap();
     buf.truncate(n);
     buf
@@ -711,7 +711,7 @@ pub fn dst_round_trip_roles(
     kernel: &[Instruction],
     read_intf_sel: u32,
 ) -> [Vec<Instruction>; 3] {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
 
     let mut unpack = thread_config();
     let mut words = ConfigWords::new();
@@ -777,10 +777,10 @@ pub const fn dst_address(row: u32) -> u32 {
 }
 
 /// A tile image's descriptor for a whole-tile unpack into `Dst`: its 1024
-/// datums as one flat run. The image is `tt_layout`'s face order, so the flat
+/// datums as one flat run. The image is `tensix_layout`'s face order, so the flat
 /// run lays the four faces down `Dst` one after another -- `Dst` row `16f + r`
 /// is face `f`'s row `r` -- which is the order the packer writes back and the
-/// SFPU's row groups walk (`tt_isa::sfpu::program`).
+/// SFPU's row groups walk (`tensix_isa::sfpu::program`).
 pub fn tile_descriptor() -> TileDescriptor {
     flat_descriptor(TILE_DATUMS)
 }
@@ -805,7 +805,7 @@ pub fn unpack_tile_to_dst(l1: u64, row: u32) -> Vec<Instruction> {
 /// (`UNPACR_Regular.md`: `XPos = 0`), so the run is reached by moving the base
 /// instead: the unpacker reads from `(Base_address + 1) * 16`, one header on.
 pub fn unpack_datums_to_dst(l1: u64, first: u32, count: u32, row: u32) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     assert!(first % 4 == 0 && count > 0 && first + count <= TILE_DATUMS);
     let mut p = vec![backend::wait_for_unpacker0(Before::CONFIG).unwrap()];
     let mut words = ConfigWords::new();
@@ -843,7 +843,7 @@ pub fn unpack_datums_to_dst_gpr(
     count: u32,
     row: u32,
 ) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     assert!(count > 0 && count <= TILE_DATUMS);
     let mut p = vec![backend::wait_for_unpacker0(Before::CONFIG).unwrap()];
     if let Some(stride) = step {
@@ -875,7 +875,7 @@ pub fn unpack_datums_to_dst_gpr(
 /// `1792793167`); tt-metal's Blackhole LLK puts the same wait between its GPR
 /// writes and the `WRCFG`s that read them (`STALLWAIT(STALL_CFG, THCON)`).
 pub fn gpr_settled() -> Instruction {
-    use tt_isa::backend::{self, block, cond};
+    use tensix_isa::backend::{self, block, cond};
     backend::stallwait(block::CONFIG, cond::SCALAR_OUTSTANDING).unwrap()
 }
 
@@ -902,7 +902,7 @@ pub fn pack_tile_from_dst_gpr_as(
     row: u32,
     out: L1Format,
 ) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     let mut p = vec![backend::wait_for_packer(Before::CONFIG).unwrap()];
     if let Some(stride) = step {
         p.push(encode::adddmareg(dest_gpr, stride, dest_gpr).unwrap());
@@ -924,7 +924,7 @@ pub fn pack_tile_from_dst_gpr_as(
             p.push(backend::write_word(SCRATCH_GPR, addr32).unwrap());
         }
     }
-    p.push(tt_isa::sfpu::nop());
+    p.push(tensix_isa::sfpu::nop());
     p.push(
         backend::stallwait(
             backend::block::PACKER | backend::block::CONFIG,
@@ -948,7 +948,7 @@ pub fn pack_tile_from_dst(l1_dest: u64, row: u32) -> Vec<Instruction> {
 
 /// [`pack_tile_from_dst`] writing `out` to L1 ([`pack_tile_from_dst_gpr_as`]).
 pub fn pack_tile_from_dst_as(l1_dest: u64, row: u32, out: L1Format) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     let mut p = vec![backend::wait_for_packer(Before::CONFIG).unwrap()];
     let mut words = ConfigWords::new();
     pack_config(&mut words, l1_dest);
@@ -1002,9 +1002,9 @@ pub fn bf16_chunk_config(words: &mut ConfigWords, l1: u64) {
 
 /// Unpack the chunk of a BF16 tile image at `l1` ([`bf16_chunk_config`]; `l1` is the slot's start
 /// plus 256 bytes a chunk, the header stepped over as for a whole tile) into `SrcA`, handing the
-/// bank to the Matrix Unit: `unpack` is the `UNPACR` [`tt_isa::matrix::Banks::unpack_a`] gave.
+/// bank to the Matrix Unit: `unpack` is the `UNPACR` [`tensix_isa::matrix::Banks::unpack_a`] gave.
 pub fn unpack_src_chunk(l1: u64, unpack: Instruction) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     let mut p = vec![backend::wait_for_unpacker0(Before::CONFIG).unwrap()];
     let mut words = ConfigWords::new();
     words
@@ -1023,7 +1023,7 @@ pub fn unpack_src_chunk_gpr(
     cur_gpr: u32,
     unpack: Instruction,
 ) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     let mut p = vec![backend::wait_for_unpacker0(Before::CONFIG).unwrap()];
     for &(result, right, left) in adds {
         p.push(encode::adddmareg(result, right, left).unwrap());
@@ -1035,7 +1035,7 @@ pub fn unpack_src_chunk_gpr(
 }
 
 fn src_chunk_tail(unpack: Instruction) -> Vec<Instruction> {
-    use tt_isa::backend;
+    use tensix_isa::backend;
     vec![
         backend::stallwait(
             backend::block::UNPACKER | backend::block::CONFIG,
@@ -1047,7 +1047,7 @@ fn src_chunk_tail(unpack: Instruction) -> Vec<Instruction> {
     ]
 }
 
-/// The optional packer stages of [`tt_isa::packer`], staged together with
+/// The optional packer stages of [`tensix_isa::packer`], staged together with
 /// the shared `Config` words they live in.
 ///
 /// [`pack_config`] leaves the stages as `Config`'s reset state (ReLU off,
@@ -1056,8 +1056,8 @@ fn src_chunk_tail(unpack: Instruction) -> Vec<Instruction> {
 /// Wormhole-only pages): the gate is `step112_packer_relu_edge`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct PackStages {
-    pub relu: tt_isa::packer::PackerRelu,
-    pub edge: tt_isa::packer::EdgeMasking,
+    pub relu: tensix_isa::packer::PackerRelu,
+    pub edge: tensix_isa::packer::EdgeMasking,
     /// `ALU_ACC_CTRL_Zero_Flag_disabled_src`, which shares `Config` word 2 with
     /// ReLU, so staging ReLU must say what it should be.
     pub zero_flag_disabled_src: bool,
@@ -1069,13 +1069,13 @@ pub struct PackStages {
 impl PackStages {
     /// Both stages off: what a whole-word write must restore after a gate.
     pub const OFF: Self = Self {
-        relu: tt_isa::packer::PackerRelu::OFF,
-        edge: tt_isa::packer::EdgeMasking::OFF,
+        relu: tensix_isa::packer::PackerRelu::OFF,
+        edge: tensix_isa::packer::EdgeMasking::OFF,
         zero_flag_disabled_src: false,
         exhaustive: false,
     };
 
-    pub fn apply(&self, words: &mut ConfigWords) -> Result<(), tt_isa::packer::PackModeError> {
+    pub fn apply(&self, words: &mut ConfigWords) -> Result<(), tensix_isa::packer::PackModeError> {
         self.relu.apply(words, self.zero_flag_disabled_src)?;
         if self.exhaustive {
             self.edge.apply_all(words)
@@ -1091,8 +1091,8 @@ pub fn pack_tile_from_dst_staged(
     l1_dest: u64,
     row: u32,
     stages: &PackStages,
-) -> Result<Vec<Instruction>, tt_isa::packer::PackModeError> {
-    use tt_isa::backend::{self, Before};
+) -> Result<Vec<Instruction>, tensix_isa::packer::PackModeError> {
+    use tensix_isa::backend::{self, Before};
     let mut p = vec![backend::wait_for_packer(Before::CONFIG).unwrap()];
     let mut words = ConfigWords::new();
     pack_config(&mut words, l1_dest);
@@ -1183,7 +1183,7 @@ pub fn pack_bf16_dst16_config(words: &mut ConfigWords, l1_dest: u64) {
 /// [`pack_tile_from_dst`] for BF16 in `Dst16b`: `Dst` rows `row..row + 64` to
 /// `l1_dest` as 1024 BF16 datums, no header.
 pub fn pack_bf16_tile_from_dst16(l1_dest: u64, row: u32) -> Vec<Instruction> {
-    use tt_isa::backend::{self, Before};
+    use tensix_isa::backend::{self, Before};
     let mut p = vec![backend::wait_for_packer(Before::CONFIG).unwrap()];
     let mut words = ConfigWords::new();
     pack_bf16_dst16_config(&mut words, l1_dest);
@@ -1204,7 +1204,7 @@ pub fn pack_bf16_tile_from_dst16(l1_dest: u64, row: u32) -> Vec<Instruction> {
 
 // ---- unpacker input modes: tileize and transpose (M3, D5) --------------------
 //
-// `tt_isa::unpacker` has the checked field staging; these are the program
+// `tensix_isa::unpacker` has the checked field staging; these are the program
 // builders `step113_unpacker_modes` gates. Both are UNVERIFIED on Blackhole
 // silicon. ttsim models both (tileize with Blackhole's 32-datum input rows;
 // transpose on unpacker 0 into `SrcA`) and refuses transpose with
@@ -1218,9 +1218,9 @@ pub fn unpack_tileize_config(
     descriptor: TileDescriptor,
     l1_base: u64,
     row_stride_bytes: u32,
-) -> Result<(), tt_isa::unpacker::UnpackModeError> {
+) -> Result<(), tensix_isa::unpacker::UnpackModeError> {
     unpack_config(words, descriptor, l1_base);
-    tt_isa::unpacker::stage_tileize(words, row_stride_bytes, 32)
+    tensix_isa::unpacker::stage_tileize(words, row_stride_bytes, 32)
 }
 
 /// Unpacker 0 into `SrcA` ([`unpack_src_config`]) with transpose staged:
@@ -1230,7 +1230,7 @@ pub fn unpack_src_transposed_config(
     descriptor: TileDescriptor,
     l1_base: u64,
     out: u32,
-) -> Result<(), tt_isa::unpacker::UnpackModeError> {
+) -> Result<(), tensix_isa::unpacker::UnpackModeError> {
     unpack_src_config(words, Unpacker::SrcA, descriptor, l1_base, out);
-    tt_isa::unpacker::stage_transpose(words, false)
+    tensix_isa::unpacker::stage_transpose(words, false)
 }

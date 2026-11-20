@@ -1610,7 +1610,7 @@ fn expanded(tensor: &TtTensor, shape: burn_backend::Shape, op: &str) -> TtTensor
     }
     // A trailing axis of one repeated `cols` times: [rows, 1] -> [1, rows] -> [cols, rows] ->
     // [rows, cols]. The middle two are one tile row `rows / 32` tiles wide, and a record names at
-    // most `MAX_EXTENT` column tiles (`tt_isa::dm::record::TensorRef::decode`): past that the
+    // most `MAX_EXTENT` column tiles (`tensix_isa::dm::record::TensorRef::decode`): past that the
     // copy was refused (`RANGE`, a nearest upsampling of `[1, 384, 64, 64]`, roadmap W1's
     // defect 5). So the rows go in chunks of at most `EXPAND_CHUNK_ROWS`, joined by one gather.
     let chunks: Vec<_> = indices
@@ -1661,7 +1661,7 @@ fn expanded(tensor: &TtTensor, shape: burn_backend::Shape, op: &str) -> TtTensor
 }
 
 /// The rows [`expanded`] repeats along a trailing axis at once: `[1, rows]` must be at most
-/// `tt_isa::dm::record::MAX_EXTENT` (65,536) tiles wide; a power of two well inside it.
+/// `tensix_isa::dm::record::MAX_EXTENT` (65,536) tiles wide; a power of two well inside it.
 const EXPAND_CHUNK_ROWS: usize = 1 << 20;
 
 /// A device result that reads `parent`'s slots, keeping it alive: a view of the contents
@@ -4865,7 +4865,7 @@ pub mod module {
             (DType::F32, DType::F32) => match (block_float(key), block_float(value)) {
                 (None, None) => Elem::F32,
                 (Some(k), Some(v)) if k == v => {
-                    Elem::Packed(tt_isa::format::TileFormat::new(k.l1_format()))
+                    Elem::Packed(tensix_isa::format::TileFormat::new(k.l1_format()))
                 }
                 _ => return None,
             },

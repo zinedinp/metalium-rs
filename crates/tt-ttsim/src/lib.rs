@@ -35,7 +35,7 @@ pub use transport::LibTtsim;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tt_isa::noc::ChipId;
+use tensix_isa::noc::ChipId;
 use tt_ttsim_sys::{Lib, LoadError};
 
 /// Set once `Simulator::open` has succeeded. Never cleared: `libttsim_init` has no

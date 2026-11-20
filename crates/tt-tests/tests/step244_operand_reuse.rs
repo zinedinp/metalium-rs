@@ -10,7 +10,7 @@
 //!   operand transposed, at HiFi4 and LoFi, over signed zeros, subnormals, infinities and NaNs,
 //!   with one holder a group and with two, `A` shared alone or with `B`, and with units left
 //!   idle by `B`'s equal groups: the copies move bytes only.
-//! - **Each unit leaves its credit words at zero** (`tt_isa::dm::CREDITS`), so a trace of a shared
+//! - **Each unit leaves its credit words at zero** (`tensix_isa::dm::CREDITS`), so a trace of a shared
 //!   product replays as the eager product, again and again.
 //! - **The negative control:** copies of either operand that read 16 bytes past their strip
 //!   change the product.
@@ -25,7 +25,7 @@
 //! (`tile_op::reuse::tests`) interleaves the units at random and catches a holder that does not
 //! wait for its copies; silicon runs the same products with real concurrency.
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{credit_word, CREDIT_WORDS};
+use tensix_isa::dm::{credit_word, CREDIT_WORDS};
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{BlockStream, DramTensor, Reuse};
@@ -364,7 +364,7 @@ fn a_shared_product_refused_on_one_unit_queues_nothing() {
             let _ = s.release_trace(t);
         }
         assert_eq!(s.probe_recoveries(), recovered, "nothing was recovered");
-        s.limit_unit_program_cache(3, tt_isa::l1::PROGRAM_CACHE.len())
+        s.limit_unit_program_cache(3, tensix_isa::l1::PROGRAM_CACHE.len())
             .unwrap();
         s.set_operand_reuse(Reuse::Off).unwrap();
         s.replay(id).unwrap();
@@ -582,7 +582,7 @@ fn every_tile_h1_product_is_the_unshared_one() {
             for (u, &t) in tiles.iter().enumerate() {
                 let reasons: Vec<u32> = (0..5)
                     .map(|a| {
-                        d.read32(&w, t, tt_isa::dataflow::WAIT_REASON + 4 * a)
+                        d.read32(&w, t, tensix_isa::dataflow::WAIT_REASON + 4 * a)
                             .unwrap()
                     })
                     .collect();

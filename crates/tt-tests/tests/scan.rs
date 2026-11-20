@@ -18,7 +18,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_ttsim::{fork_scope, Simulator};
 
 #[test]

@@ -1,5 +1,5 @@
 //! Explicit Src conversion + transpose; raw copies retain their own contract.
-use tt_isa::tile::{bf16_to_fp32, fp32_to_bf16_truncate, fp32_to_tf32};
+use tensix_isa::tile::{bf16_to_fp32, fp32_to_bf16_truncate, fp32_to_tf32};
 use tt_kernels::{
     matmul::SrcRoute,
     session::{Session, TileChoice},

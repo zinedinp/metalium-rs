@@ -12,8 +12,8 @@
 //! nothing in the Tensix rows under translation (`NoC/Coordinates.md:35-42`).
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dram::{Dram, CHANNEL_BYTES, PORTS};
-use tt_isa::noc::niu::Niu;
+use tensix_isa::dram::{Dram, CHANNEL_BYTES, PORTS};
+use tensix_isa::noc::niu::Niu;
 use tt_tests::harness::{in_device, Dev};
 
 fn grid(dev: &mut Dev<'_>) -> Dram {

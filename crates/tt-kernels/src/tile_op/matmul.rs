@@ -7,9 +7,9 @@
 //! How the product is cut is its [`Schedule`], chosen before the description is built (the cost
 //! models in `tensor`), and always one of the bit-equivalent options under the default contract.
 
-use tt_isa::dm::record::TensorRef;
-use tt_isa::dm::{TILE_DATA, TILE_SLOT};
-use tt_isa::format::TileFormat;
+use tensix_isa::dm::record::TensorRef;
+use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
+use tensix_isa::format::TileFormat;
 
 use std::ops::Range;
 use std::sync::{Arc, OnceLock};
@@ -180,7 +180,7 @@ struct Mma {
     packed: bool,
     /// A one-row product's `B` laid by column (`tensor::Layout::ByColumn`), taken into L1 by
     /// column: tile `(kk, j)` at `b_at + (j * kt + kk) * slot`, each column one run read in large
-    /// pieces (`tt_isa::dm::record::REF_L1_BY_COLUMN`, which the gathers carry where this does).
+    /// pieces (`tensix_isa::dm::record::REF_L1_BY_COLUMN`, which the gathers carry where this does).
     /// The pairs name the same tiles in the same order, so the sum is the same.
     b_by_column: bool,
     kt: usize,

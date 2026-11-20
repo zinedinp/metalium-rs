@@ -19,8 +19,8 @@
 #![cfg(not(feature = "silicon"))]
 
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::noc::{grid, Noc0, NocCoord};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::noc::{grid, Noc0, NocCoord};
+use tensix_isa::tensix::{self, Core};
 use tt_ttsim::{fork_scope, Simulator};
 
 type Dev<'a> = Device<tt_ttsim::LibTtsim<'a>>;

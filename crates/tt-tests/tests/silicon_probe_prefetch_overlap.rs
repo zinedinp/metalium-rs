@@ -26,7 +26,7 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::TILE_SLOT;
+use tensix_isa::dm::TILE_SLOT;
 use tt_kernels::kind;
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{DramTensor, Eltwise};
@@ -112,7 +112,7 @@ fn weights_stream_into_idle_units_under_small_ops() {
             let tiles = idle.len() * per_unit;
             let cols = tiles.div_ceil(64) * 32;
             let w = s.upload(&floats(2, 2048 * cols), 2048, cols).unwrap();
-            let at = tt_isa::l1::DATA.end - per_unit as u64 * TILE_SLOT;
+            let at = tensix_isa::l1::DATA.end - per_unit as u64 * TILE_SLOT;
             let bytes = (tiles as u64 * TILE_SLOT) as f64;
             for ops in [8usize, 32] {
                 let mut times = [Vec::new(), Vec::new(), Vec::new()];

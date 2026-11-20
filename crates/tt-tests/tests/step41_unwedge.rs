@@ -67,9 +67,9 @@ fn with_session(f: impl FnOnce(&mut Session<tt_kmd::Kmd>)) {
 
 /// A math role of one `MVMUL` and nothing to feed it.
 fn starved() -> Kernel<'static> {
-    static MVMUL: std::sync::OnceLock<Vec<tt_isa::isa::Instruction>> = std::sync::OnceLock::new();
+    static MVMUL: std::sync::OnceLock<Vec<tensix_isa::isa::Instruction>> = std::sync::OnceLock::new();
     let mvmul = MVMUL.get_or_init(|| {
-        vec![tt_isa::isa::generated::encode::Mvmul::ZERO
+        vec![tensix_isa::isa::generated::encode::Mvmul::ZERO
             .encode()
             .unwrap()]
     });
@@ -137,7 +137,7 @@ fn a_starved_mvmul_wedges_the_tile_and_the_feeder_releases_it() {
         match restart_roles(dev, tile, &images) {
             Err(RunError::Wedged { roles, .. }) => {
                 assert!(
-                    roles.contains(&tt_isa::tensix::Core::T1),
+                    roles.contains(&tensix_isa::tensix::Core::T1),
                     "the math role: {roles:?}"
                 )
             }

@@ -29,7 +29,7 @@
 //!
 //! BFP2 runs on silicon only (ttsim refuses its `Src` format); BF16 tiles are made on the host on
 //! ttsim (it refuses the packer's BF16 narrowing).
-use tt_isa::format::TileFormat;
+use tensix_isa::format::TileFormat;
 use tt_kernels::bfp::BfpFormat;
 use tt_kernels::matmul::{set_pair_order, Fidelity, PairOrder, SrcRoute};
 use tt_kernels::session::{Session, Spread, TileChoice};

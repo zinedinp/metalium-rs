@@ -10,7 +10,7 @@
 //! hold the cores and report a failure, leaving the Tensix thread parked.
 //!
 //! A blocking program is therefore only ever run as a [`GuardedProgram`], which
-//! has three parts (`tt_isa::mailbox::guard`):
+//! has three parts (`tensix_isa::mailbox::guard`):
 //!
 //! * **a role-side deadline.** The role firmware polls a completion word that
 //!   the program's own last instructions store, for a bounded number of polls,
@@ -28,12 +28,12 @@
 //! thread's instruction FIFO is never filled by the runner's own pushes (a push
 //! into a full FIFO stalls the core with no timeout). A mutex a thread holds
 //! can only be released by that thread, so a [`GuardedProgram`] must release
-//! every mutex it takes ([`tt_isa::sync::mutex::check_scope`]); a program parked
+//! every mutex it takes ([`tensix_isa::sync::mutex::check_scope`]); a program parked
 //! *while holding* a mutex is let go by posting the semaphore it waits on.
 //!
 //! What this cannot do: free a thread parked on something the host cannot
 //! satisfy -- an `ATGETM` of an index that does not exist (those cannot be
-//! built: [`tt_isa::sync::mutex::Mutex`]) or an `ATCAS` whose compare value the host
+//! built: [`tensix_isa::sync::mutex::Mutex`]) or an `ATCAS` whose compare value the host
 //! never writes. The grace period then expires, the role reports
 //! `guard::ABANDONED`, and the tile must be treated as wedged.
 
@@ -44,15 +44,15 @@ use std::time::{Duration, Instant};
 use tt_device::core_control::{WaitError, CYCLES_PER_POLL};
 use tt_device::tlb::WindowKind;
 use tt_device::{Device, Transport, TransportError};
-use tt_isa::backend::{self, Before};
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox::guard::{self, Guard, PollMode};
-use tt_isa::mailbox::role::Mailbox;
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::{NocCoord, NocId};
-use tt_isa::scalar::atomic::{self as atomic, AtomicError, Region16};
-use tt_isa::scalar::{self, OffsetHalf, OffsetIncrement, TransferWidth};
-use tt_isa::sync::{self, Semaphore};
+use tensix_isa::backend::{self, Before};
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox::guard::{self, Guard, PollMode};
+use tensix_isa::mailbox::role::Mailbox;
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::{NocCoord, NocId};
+use tensix_isa::scalar::atomic::{self as atomic, AtomicError, Region16};
+use tensix_isa::scalar::{self, OffsetHalf, OffsetIncrement, TransferWidth};
+use tensix_isa::sync::{self, Semaphore};
 
 /// Why a guarded run could not be built or did not finish.
 #[derive(Debug)]
@@ -222,7 +222,7 @@ impl GuardedProgram {
     /// post down again.
     ///
     /// Refused: a body that holds a mutex at its end or takes one twice
-    /// ([`tt_isa::sync::mutex::check_scope`]); one that names `complete`; one too
+    /// ([`tensix_isa::sync::mutex::check_scope`]); one that names `complete`; one too
     /// long for `guard::MAX_WORDS` with the epilogue; or a bad thread.
     pub fn new(
         thread: usize,
@@ -235,7 +235,7 @@ impl GuardedProgram {
                 "thread {thread} is not 0..3"
             )));
         }
-        tt_isa::sync::mutex::check_scope(body)
+        tensix_isa::sync::mutex::check_scope(body)
             .map_err(|e| AtomicsError::Refused(format!("mutex scope: {e:?}")))?;
         if let Some(bad) = body.iter().find(|i| touches_semaphore(**i, complete)) {
             return Err(AtomicsError::Refused(format!(
@@ -385,7 +385,7 @@ impl Budget {
 pub struct Launch<N: NocId> {
     tile: NocCoord<N>,
     window: tt_device::Window,
-    cores: Vec<tt_isa::tensix::Core>,
+    cores: Vec<tensix_isa::tensix::Core>,
     read_back: Vec<(u64, usize)>,
 }
 
@@ -420,7 +420,7 @@ pub fn start<T: Transport, N: NocId>(
         }
     }
     // The production role images (`tt_firmware_images::ROLES`, in the role slots
-    // of `tt_isa::l1::roles`) leave guarded runs out to keep their slots small: a
+    // of `tensix_isa::l1::roles`) leave guarded runs out to keep their slots small: a
     // guarded program on one would run unguarded, with nothing to bound a parked
     // thread. Only the guarded images (`GUARDED_ROLES`, at the cores' default
     // reset PCs) run them.
@@ -431,7 +431,7 @@ pub fn start<T: Transport, N: NocId>(
     if guarded
         && images
             .iter()
-            .any(|(_, _, at)| tt_isa::l1::roles::BASE.contains(at))
+            .any(|(_, _, at)| tensix_isa::l1::roles::BASE.contains(at))
     {
         return Err(AtomicsError::Refused(
             "a guarded program needs the guarded role images (tt_firmware_images::GUARDED_ROLES); \
@@ -482,7 +482,7 @@ pub fn start<T: Transport, N: NocId>(
     for (index, &(value, max)) in initial.iter().enumerate() {
         let sem = Semaphore::new(index as u8).expect("below the semaphore count");
         setup.push(
-            tt_isa::sync::init(sem, value, max)
+            tensix_isa::sync::init(sem, value, max)
                 .map_err(|e| AtomicsError::Refused(format!("semaphore init: {e:?}")))?,
         );
     }
@@ -672,7 +672,7 @@ impl<N: NocId> Launch<N> {
         value: u32,
         budget: Budget,
     ) -> Result<(), AtomicsError> {
-        if addr % 4 != 0 || !tt_isa::l1::DATA.contains(addr, 4) {
+        if addr % 4 != 0 || !tensix_isa::l1::DATA.contains(addr, 4) {
             return Err(AtomicsError::Refused(format!(
                 "poke address {addr:#x} is not a word of the data arena"
             )));
@@ -760,7 +760,7 @@ impl<N: NocId> Launch<N> {
     }
 }
 
-impl Launch<tt_isa::noc::Noc0> {
+impl Launch<tensix_isa::noc::Noc0> {
     /// [`Launch::abort`], then the repository's recovery for a tile whose Tensix
     /// threads a failed run left parked (`session::reset_thread_state`): the role
     /// cores post every semaphore a thread may wait on from the RISC-V side and
@@ -809,7 +809,7 @@ pub fn drain() -> Instruction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::sync::mutex::{self, Mutex};
+    use tensix_isa::sync::mutex::{self, Mutex};
 
     fn spec() -> GuardSpec {
         GuardSpec::new(100, 100).unwrap()

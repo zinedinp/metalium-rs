@@ -12,7 +12,7 @@ fn main() {
     build_sfpu_models(&out_dir);
 }
 
-/// The C functions of the Vector Unit's pages that `tt_isa::numerics::sfpu`
+/// The C functions of the Vector Unit's pages that `tensix_isa::numerics::sfpu`
 /// ports, extracted from the pinned tree: `(page, a line the block holds)`.
 /// Each block is a page's "Supporting definitions", self-contained C -- or C++
 /// where a page reaches for `std::bit_cast`, which is why they are compiled as
@@ -87,7 +87,7 @@ fn build_sfpu_models(out_dir: &Path) {
 /// Compile the specification's own FMA model and link it into the test binary.
 ///
 /// The tolerance policy is "never a guessed epsilon", and for multiply-add the
-/// documented model is `Miscellaneous/FMA/fma.c`. `tt_isa::numerics::fma_bh` is a
+/// documented model is `Miscellaneous/FMA/fma.c`. `tensix_isa::numerics::fma_bh` is a
 /// hand port of it, which is the kind of transcription this workspace otherwise
 /// generates its way out of -- so the port is checked against the C itself rather
 /// than against a copy of the C's answers.

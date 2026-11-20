@@ -1,6 +1,6 @@
 //! Diagnostics behind the `MOVDBGA2D` / `MOVA2D` increment-1 `AddrMod` finding
 //! (`hardware-coverage.md`, `MOVDBGA2D`), which is now explained and encoded in
-//! `tt_isa::matrix::debug::model`; kept as the evidence. **These assert nothing.**
+//! `tensix_isa::matrix::debug::model`; kept as the evidence. **These assert nothing.**
 //! Each silicon test runs a handful of tiny programs and prints what the hardware
 //! did, decoded as "row r holds source row s", so the evidence can be read without
 //! a model.
@@ -47,7 +47,7 @@
 #![cfg_attr(not(feature = "silicon"), allow(dead_code))]
 mod matrix_debug_support;
 use matrix_debug_support::{a_bits, eight, entry1, one, rows16};
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before},
     isa::{generated::encode, Instruction},
     matrix::debug::{

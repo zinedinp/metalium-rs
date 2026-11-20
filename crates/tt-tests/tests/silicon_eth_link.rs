@@ -13,7 +13,7 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_tests::backend::{open_card, scrub};
 use tt_tests::harness::{assert_on_silicon, Dev};
 use tt_ttsim::fork_scope;
@@ -150,7 +150,7 @@ fn host_driven_tt_link_card1_to_card0_x13() {
 /// grid from the chip's own ARC. E0 is left running throughout; the link must
 /// still be Up afterwards.
 fn e1_heartbeat(x: u8) {
-    use tt_isa::mailbox::{offset, status};
+    use tensix_isa::mailbox::{offset, status};
     two_cards(|a, _| {
         let w = a.alloc_window(WindowKind::TwoMib).unwrap();
         let grid = a.ethernet_grid(&w).unwrap();
@@ -184,7 +184,7 @@ fn e1_heartbeat(x: u8) {
         let after = a.eth_link_state(&w, t).unwrap();
         println!(
             "MEASURE x={x} after: {after:?}, soft_reset={:#x}",
-            a.read32(&w, t.coord(), tt_isa::eth::SOFT_RESET_0).unwrap()
+            a.read32(&w, t.coord(), tensix_isa::eth::SOFT_RESET_0).unwrap()
         );
         assert_eq!(before.port, after.port, "the port changed state");
     });

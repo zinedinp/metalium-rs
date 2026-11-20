@@ -2,7 +2,7 @@
 //!
 //! A kernel is three instruction streams, one per Tensix thread, split the way
 //! tt-metal's LLK splits them: thread 0 unpacks, thread 1 does the math, thread
-//! 2 packs ([`runtime`]). The streams are built here from `tt_isa`'s encoders
+//! 2 packs ([`runtime`]). The streams are built here from `tensix_isa`'s encoders
 //! ([`datapath`], [`matmul`]); the role firmware on each baby RISC-V pushes
 //! them word for word and knows nothing about what they do.
 //!

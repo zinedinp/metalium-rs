@@ -12,7 +12,7 @@
 //!
 //! Controls: the weight's own FP32 values, which BFP storage rounds, give a different product;
 //! a transposed packed weight and any route but TF32's are refused.
-use tt_isa::format::{SrcType, TileFormat};
+use tensix_isa::format::{SrcType, TileFormat};
 use tt_kernels::bfp::BfpFormat;
 use tt_kernels::matmul::{set_pair_order, Fidelity, PairOrder, SrcRoute};
 use tt_kernels::session::{Session, Spread, TileChoice};

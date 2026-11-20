@@ -16,7 +16,7 @@
 #![cfg(not(feature = "silicon"))]
 
 use tt_device::{tlb::WindowKind, Bar, Device, Transport, Window};
-use tt_isa::noc::{grid, ChipId, Noc0, NocCoord};
+use tensix_isa::noc::{grid, ChipId, Noc0, NocCoord};
 use tt_ttsim::{chip_bar_base, chip_bdf, fork_scope, Simulator};
 
 type Dev<'a> = Device<tt_ttsim::LibTtsim<'a>>;

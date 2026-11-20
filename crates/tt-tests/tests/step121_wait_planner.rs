@@ -1,6 +1,6 @@
 //! Phase 10 gate (P9): the hazard checker over the real kernel builders.
 //!
-//! `tt_isa::hazard` states why each hand-placed `STALLWAIT` exists as a table and
+//! `tensix_isa::hazard` states why each hand-placed `STALLWAIT` exists as a table and
 //! checks a thread's instruction stream against it. This gate runs it over every
 //! role program the public builders emit -- matmul at every route and fidelity,
 //! every SFPU element-wise kind (with its broadcast forms), reductions, scans --
@@ -16,11 +16,11 @@
 
 use std::collections::BTreeMap;
 
-use tt_isa::backend::{self, block, cond, Before};
-use tt_isa::hazard::{self, Finding, Kind, Unit};
-use tt_isa::isa::generated::ALL;
-use tt_isa::isa::Instruction;
-use tt_isa::tile::L1Format;
+use tensix_isa::backend::{self, block, cond, Before};
+use tensix_isa::hazard::{self, Finding, Kind, Unit};
+use tensix_isa::isa::generated::ALL;
+use tensix_isa::isa::Instruction;
+use tensix_isa::tile::L1Format;
 use tt_kernels::code::Code;
 use tt_kernels::loops::frontend_stream;
 use tt_kernels::matmul::{self, Fidelity, LiveRows, MatmulSemaphores, OutputTile, SrcRoute};
@@ -570,9 +570,9 @@ fn a_multiply_add_followed_by_a_case_stalling_misses_needs_its_nop() {
 fn an_unpacker_write_read_by_sfpload_in_one_thread_needs_its_wait() {
     // The race the first silicon run of the elementwise gate hit: a wait for
     // unpacker 0 that blocks only the unpackers lets the SFPLOADs go ahead.
-    use tt_isa::isa::generated::encode;
+    use tensix_isa::isa::generated::encode;
     let unpacr = tt_kernels::datapath::unpack_instruction();
-    let load = tt_isa::sfpu::load(0, 0, 0, 0).unwrap();
+    let load = tensix_isa::sfpu::load(0, 0, 0, 0).unwrap();
     let weak = [
         unpacr,
         backend::wait_for_unpacker0(Before::UNPACKER).unwrap(),

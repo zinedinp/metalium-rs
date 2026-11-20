@@ -11,7 +11,7 @@
 //! signs, run across K reloads, and are compared bit for bit.
 //!
 //! Negative control: BFP8 at one phase, below what its `SrcA` operand needs, must differ.
-use tt_isa::format::{SrcType, TileFormat};
+use tensix_isa::format::{SrcType, TileFormat};
 use tt_kernels::{
     bfp::BfpFormat,
     matmul::Fidelity,

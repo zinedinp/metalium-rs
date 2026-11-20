@@ -17,7 +17,7 @@
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
-use tt_isa::dataflow::{Endpoint, Stream};
+use tensix_isa::dataflow::{Endpoint, Stream};
 
 use crate::channel::{self, Channel, End, Graph, Kind, Page};
 use crate::tensor::{Result, TensorError};

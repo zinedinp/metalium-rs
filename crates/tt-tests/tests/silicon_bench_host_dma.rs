@@ -1,4 +1,4 @@
-//! How fast the card moves host memory itself (`tt_isa::dm::op::HOST_READ`,
+//! How fast the card moves host memory itself (`tensix_isa::dm::op::HOST_READ`,
 //! `HOST_WRITE`), against the host's own copies through a BAR, which this
 //! machine's VM passthrough leaves uncached (`docs/learnings/ttsim-divergence.md` row
 //! M): 1 to 32 tiles each streaming 16 KiB requests between their L1 and
@@ -13,8 +13,8 @@ use std::time::Instant;
 
 use tt_device::tlb::WindowKind;
 use tt_device::Transport;
-use tt_isa::dm::op;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::op;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::DataMover;
 use tt_tests::backend::tensix_grid;
 use tt_tests::bench::{on_card, report_rate, Stats, REPS};

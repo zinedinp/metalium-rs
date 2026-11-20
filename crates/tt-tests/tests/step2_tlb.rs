@@ -15,8 +15,8 @@
 //! [`Tensix`] and why nothing in this file mentions a tile count.
 
 use tt_device::{tlb::WindowKind, Window};
-use tt_isa::noc::grid::Tensix;
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::grid::Tensix;
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_tests::harness::{in_device, tensix_grid};
 
 /// A Tensix coordinate this chip actually has.
@@ -113,7 +113,7 @@ fn transfer_split_across_a_window_boundary_is_contiguous_on_the_device() {
 
         // L1 is 1536 KiB; write the last 8 bytes of it and read them back in two
         // halves through differently-aligned accesses.
-        let top = tt_isa::noc::grid::TENSIX_L1_SIZE - 8;
+        let top = tensix_isa::noc::grid::TENSIX_L1_SIZE - 8;
         let data = pattern(8, 0x1234);
         dev.write(&w, tile, top, &data).unwrap();
 
@@ -177,7 +177,7 @@ fn l1_ends_where_the_specification_says() {
         let grid = tensix_grid(dev);
         let w = dev.alloc_window(WindowKind::TwoMib).unwrap();
         let tile = tensix(&grid, 3, 2);
-        let last = tt_isa::noc::grid::TENSIX_L1_SIZE - 4;
+        let last = tensix_isa::noc::grid::TENSIX_L1_SIZE - 4;
         dev.write32(&w, tile, last, 0xFEED_FACE).unwrap();
         assert_eq!(dev.read32(&w, tile, last).unwrap(), 0xFEED_FACE);
     });

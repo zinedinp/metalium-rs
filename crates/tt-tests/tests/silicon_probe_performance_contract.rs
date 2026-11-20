@@ -45,7 +45,7 @@
 //! `cargo xtask bench --device 1 --filter silicon_probe_performance_contract`.
 #![cfg(feature = "silicon")]
 
-use tt_isa::format::TileFormat;
+use tensix_isa::format::TileFormat;
 use tt_kernels::bfp::BfpFormat;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, Spread, TileChoice};

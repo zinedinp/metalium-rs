@@ -19,9 +19,9 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{op, Mover};
-use tt_isa::dram::PORTS;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{op, Mover};
+use tensix_isa::dram::PORTS;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::DataMover;
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -173,7 +173,7 @@ fn every_way_a_read_travels_lands_the_oracles_bytes() {
 #[cfg(feature = "fast-reads")]
 #[test]
 fn a_consistent_but_wrong_entry_is_a_mismatch() {
-    use tt_isa::dm::encoded;
+    use tensix_isa::dm::encoded;
     in_device(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let w4 = d.alloc_window(WindowKind::FourGib).unwrap();

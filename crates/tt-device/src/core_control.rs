@@ -5,9 +5,9 @@
 //! (`BabyRISCV/README.md:106`). That NoC visibility is the only reason a host can
 //! start a core at all.
 
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::{NocCoord, NocId};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::{NocCoord, NocId};
+use tensix_isa::tensix::{self, Core};
 
 use crate::device::Window;
 use crate::{Device, Result, Transport, TransportError};
@@ -194,7 +194,7 @@ impl<T: Transport> Device<T> {
     }
 
     /// Load `image` at `load_address` and start RISCV NC on it through a
-    /// jump at NC's default reset PC (`tt_isa::dm::nc::stub`), leaving the
+    /// jump at NC's default reset PC (`tensix_isa::dm::nc::stub`), leaving the
     /// reset-PC override off.
     ///
     /// Not [`Device::load_and_start`], which points the override at the image:
@@ -212,7 +212,7 @@ impl<T: Transport> Device<T> {
     ) -> Result<()> {
         let core = Core::NC;
         let stub_at = core.default_reset_pc() as u64;
-        if load_address + image.len() as u64 > tensix::L1_SIZE || load_address < tt_isa::dm::LIST {
+        if load_address + image.len() as u64 > tensix::L1_SIZE || load_address < tensix_isa::dm::LIST {
             return Err(TransportError::OutOfBounds {
                 bar: crate::Bar::Bar0,
                 offset: load_address,
@@ -221,7 +221,7 @@ impl<T: Transport> Device<T> {
         }
         self.set_core_reset(window, tile, core, true)?;
         self.write(window, tile, load_address, image)?;
-        let stub = tt_isa::dm::nc::stub(load_address);
+        let stub = tensix_isa::dm::nc::stub(load_address);
         self.write32(window, tile, stub_at, stub[0])?;
         self.write32(window, tile, stub_at + 4, stub[1])?;
         if !self.transport().is_simulated() {
@@ -505,7 +505,7 @@ impl<T: Transport> Device<T> {
     }
 
     /// [`Device::wait_for_status`] against an arbitrary status word and its panic
-    /// code: for the role mailboxes (`tt_isa::mailbox::role`), one per core.
+    /// code: for the role mailboxes (`tensix_isa::mailbox::role`), one per core.
     pub fn wait_for_mailbox<N: NocId>(
         &mut self,
         window: &Window,

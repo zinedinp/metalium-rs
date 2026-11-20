@@ -28,7 +28,7 @@
 
 mod noc_support;
 
-use tt_isa::noc::niu;
+use tensix_isa::noc::niu;
 
 // ---------------------------------------------------------------------------
 // The model: the page.
@@ -307,9 +307,9 @@ fn register_offsets_match_the_vendored_memory_map() {
 
 #[allow(unused_imports)]
 use noc_support::{read_bytes, run_probe, unicast, write_bytes, Res};
-use tt_isa::noc::atomic::{AtomicOp, AtomicRequest};
-use tt_isa::noc::niu::{Endpoint, TxnId};
-use tt_isa::noc::probe;
+use tensix_isa::noc::atomic::{AtomicOp, AtomicRequest};
+use tensix_isa::noc::niu::{Endpoint, TxnId};
+use tensix_isa::noc::probe;
 use tt_tests::harness::{self, Dev};
 
 const DATA: u64 = probe::DATA;
@@ -473,8 +473,8 @@ mod silicon {
     /// NoC-hang class: run only after `silicon_noc_multicast_minimal_probe`.
     #[test]
     fn silicon_niu_rtz_is_not_a_multicast_completion() {
-        use tt_isa::noc::grid::Tensix;
-        use tt_isa::noc::multicast::{MulticastWrite, Rect};
+        use tensix_isa::noc::grid::Tensix;
+        use tensix_isa::noc::multicast::{MulticastWrite, Rect};
         harness::assert_on_silicon();
         harness::in_device(|dev| {
             let me = harness::tensix_tile();
@@ -493,7 +493,7 @@ mod silicon {
                 .registers(
                     (me.x(), me.y()),
                     TxnId::new(2).unwrap(),
-                    tt_isa::noc::niu::Niu::Noc0,
+                    tensix_isa::noc::niu::Niu::Noc0,
                 )
                 .unwrap();
             let req = noc_support::multicast(

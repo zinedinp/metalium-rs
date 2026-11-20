@@ -48,8 +48,8 @@ use super::kernel::{A_ROW, OUT_ROW};
 use super::ops::kind_sfpu;
 use super::{Cond, ConfigLReg, Format, LReg, Program};
 use crate::code::Code;
-use tt_isa::isa::generated::defs;
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::generated::defs;
+use tensix_isa::isa::Instruction;
 
 /// Whether a transcendental runs its full-accuracy program or the fast
 /// approximate one. `Precise` is the default.

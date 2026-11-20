@@ -101,7 +101,7 @@ fn resident_matrix_arithmetic_and_rhs_broadcasts() {
 
 #[test]
 fn packed_bf16_and_fidelity_phases_match_an_independent_oracle() {
-    use tt_isa::numerics::{elw_reference, MatrixEltwiseOp as Op};
+    use tensix_isa::numerics::{elw_reference, MatrixEltwiseOp as Op};
     use tt_kernels::matrix_eltwise::{SrcBroadcast, SrcPrecision};
     with_session(2, |s| {
         let (rows, cols) = (37, 65);
@@ -790,7 +790,7 @@ fn poisoned_ragged_lanes_never_modify_parent_storage_or_claims() {
                                 || tile % source_cols.div_ceil(32) * 32 + c >= source_cols
                             {
                                 let at =
-                                    16 + tt_isa::dm::face_index(r, c) * if packed { 2 } else { 4 };
+                                    16 + tensix_isa::dm::face_index(r, c) * if packed { 2 } else { 4 };
                                 if packed {
                                     bytes[at..at + 2].copy_from_slice(&0x7fc1u16.to_le_bytes());
                                 } else {

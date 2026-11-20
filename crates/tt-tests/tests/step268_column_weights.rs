@@ -92,7 +92,7 @@ impl Stored {
         match self {
             Stored::Bf16 => SrcRoute::TF32_WITH_BF16_B,
             Stored::Bfp8 => {
-                SrcRoute::tf32_with_b(tt_isa::format::TileFormat::new(BfpFormat::Bfp8.l1_format()))
+                SrcRoute::tf32_with_b(tensix_isa::format::TileFormat::new(BfpFormat::Bfp8.l1_format()))
             }
         }
     }

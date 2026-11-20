@@ -21,7 +21,7 @@ burn.workspace = true
 burn-store.workspace = true
 burn-tt.workspace = true
 # The BFP decoders the device's unpacker is modelled by, for the host reference of a quantised model.
-tt-isa.workspace = true
+tensix-isa.workspace = true
 # The host-resident embedding table (`host_embed`): the checkpoint mapped, its rows widened in
 # parallel.
 memmap2.workspace = true

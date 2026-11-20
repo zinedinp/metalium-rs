@@ -129,7 +129,7 @@ fn program_bytes<T: tt_device::Transport>(s: &mut Session<T>, ops: Ops<T>) -> u6
 /// movers.
 fn alternate<T: tt_device::Transport>(s: &mut Session<T>) -> (Vec<bool>, u64, u64) {
     let (pa, pb) = (program_bytes(s, ops_a), program_bytes(s, ops_b));
-    let full = tt_isa::l1::PROGRAM_CACHE.len();
+    let full = tensix_isa::l1::PROGRAM_CACHE.len();
     // Room for the larger trace and a little: programs the two share (an unary op's unpack and
     // pack roles are the same words) are stored once, so half the smaller would still hold both.
     let cache = (pa.max(pb) + 1024).next_multiple_of(16);

@@ -18,8 +18,8 @@
 
 use std::collections::BTreeMap;
 
-use tt_isa::cfg::generated::{thcon, ALL_THREAD_CONFIG_FIELDS};
-use tt_isa::isa::Instruction;
+use tensix_isa::cfg::generated::{thcon, ALL_THREAD_CONFIG_FIELDS};
+use tensix_isa::isa::Instruction;
 
 /// One `MVMUL`'s term in a `Dst` block.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -165,7 +165,7 @@ impl Machine {
                 let (m, cond) = (op(i, "SemaphoreMask"), op(i, "ConditionMask"));
                 let wait = selected(m).any(|s| {
                     cond & 1 == 1 && self.sems[s] == 0
-                        || cond & 2 == 2 && self.sems[s] >= tt_isa::sync::MAX_VALUE
+                        || cond & 2 == 2 && self.sems[s] >= tensix_isa::sync::MAX_VALUE
                 });
                 Some(!wait)
             }
@@ -177,7 +177,7 @@ impl Machine {
             }
             "SEMPOST" => {
                 for s in selected(op(i, "SemaphoreMask")) {
-                    self.sems[s] = (self.sems[s] + 1).min(tt_isa::sync::MAX_VALUE);
+                    self.sems[s] = (self.sems[s] + 1).min(tensix_isa::sync::MAX_VALUE);
                 }
                 Some(true)
             }
@@ -215,7 +215,7 @@ impl Machine {
             }
             "PACR_BH" => {
                 let offset =
-                    self.cfg(tt_isa::cfg::generated::global::DEST_TARGET_REG_CFG_PACK_SEC0_Offset);
+                    self.cfg(tensix_isa::cfg::generated::global::DEST_TARGET_REG_CFG_PACK_SEC0_Offset);
                 let mask = op(i, "ReadIntfSel");
                 for k in 0..4 {
                     if mask >> k & 1 == 1 {
@@ -247,7 +247,7 @@ impl Machine {
         true
     }
 
-    fn cfg(&self, f: tt_isa::cfg::ConfigField) -> u32 {
+    fn cfg(&self, f: tensix_isa::cfg::ConfigField) -> u32 {
         f.extract(self.config.get(&f.addr32()).copied().unwrap_or(0))
     }
 
@@ -737,7 +737,7 @@ mod tests {
     use super::super::*;
     use super::*;
     use crate::loops::{frontend_stream, lower_with};
-    use tt_isa::cfg::generated::thread;
+    use tensix_isa::cfg::generated::thread;
 
     const FIDELITIES: [Fidelity; 4] = [
         Fidelity::Lo,
@@ -751,7 +751,7 @@ mod tests {
     /// Output tiles over `pairs` pairs each: evenly spaced (the GPR-stepped loop), in runs (a
     /// packed `A`'s shape), or scattered (retargeted every pair).
     fn outputs(shape: &str, n: usize, pairs: usize) -> Vec<OutputTile> {
-        use tt_isa::dm::TILE_SLOT;
+        use tensix_isa::dm::TILE_SLOT;
         let a0 = 0x2_0000u64;
         let b0 = 0x4_0000u64;
         (0..n)
@@ -938,7 +938,7 @@ mod tests {
     }
 
     /// What `silicon_probe_pair_cost`'s products' math roles push and whether they take the fused
-    /// form (`session::fused_form`: a fused form, `tt_isa::ttinsn::validate`, and at least
+    /// form (`session::fused_form`: a fused form, `tensix_isa::ttinsn::validate`, and at least
     /// `FUSE_MIN_WORDS` pushed), for each order, `B` format and fidelity: printed (`--nocapture`).
     #[test]
     #[ignore = "a report: cargo test -p tt-kernels --lib fused_forms_of_the_pair_cost_products -- --ignored --nocapture"]
@@ -982,7 +982,7 @@ mod tests {
                             let fused = math.fused().ok();
                             let pushed = fused
                                 .as_ref()
-                                .and_then(|f| tt_isa::ttinsn::validate(f).ok());
+                                .and_then(|f| tensix_isa::ttinsn::validate(f).ok());
                             line += &format!(
                                 " chunk {c}: {} words pushed, {} stored, fused {}",
                                 math.expand().len(),
@@ -1005,7 +1005,7 @@ mod tests {
     /// `k'` reversed in every pair: each `A` face `(fi, k)` and `B` face `(k, fj)` unpacked as
     /// `k`'s other, by rewriting the `Z` each face unpack names.
     fn k_reversed(unpack: &[Instruction], b_transposed: bool) -> Vec<Instruction> {
-        use tt_isa::isa::generated::encode;
+        use tensix_isa::isa::generated::encode;
         unpack
             .iter()
             .map(|&i| {
@@ -1077,7 +1077,7 @@ mod tests {
             .map(|&i| {
                 if i.def().mnemonic() == "SETC16" && op(i, "CfgIndex") == u32::from(ab1.addr32()) {
                     let v = ab1.insert(op(i, "NewValue") as u16, 0);
-                    tt_isa::backend::set_thread_entry(ab1.addr32(), v).unwrap()
+                    tensix_isa::backend::set_thread_entry(ab1.addr32(), v).unwrap()
                 } else {
                     i
                 }

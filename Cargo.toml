@@ -1,12 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/tt-isa",
     "crates/tt-ttsim-sys",
     "crates/tt-ttsim",
     "crates/tt-device",
     "crates/tt-kmd",
-    "crates/tt-layout",
     "crates/tt-kernels",
     "crates/tt-firmware-images",
     "crates/burn-tt",
@@ -26,12 +24,12 @@ rust-version = "1.85"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-tt-isa = { path = "crates/tt-isa" }
+tensix-isa = { version = "0.1.0", path = "../tensix-isa/crates/tensix-isa" }
 tt-ttsim-sys = { path = "crates/tt-ttsim-sys" }
 tt-ttsim = { path = "crates/tt-ttsim" }
 tt-device = { path = "crates/tt-device" }
 tt-kmd = { path = "crates/tt-kmd" }
-tt-layout = { path = "crates/tt-layout" }
+tensix-layout = { version = "0.1.0", path = "../tensix-isa/crates/tensix-layout" }
 tt-kernels = { path = "crates/tt-kernels" }
 tt-firmware-images = { path = "crates/tt-firmware-images" }
 burn-tt = { path = "crates/burn-tt" }

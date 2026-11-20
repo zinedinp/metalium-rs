@@ -54,7 +54,7 @@ const LINE_ROUNDS: u32 = 8;
 fn clock() -> u32 {
     // SAFETY: the tile's wall clock, a read-only debug register every baby
     // core reaches (`BabyRISCV/README.md`, memory map).
-    unsafe { core::ptr::read_volatile(tt_isa::tensix::timestamper::WALL_CLOCK_L as *const u32) }
+    unsafe { core::ptr::read_volatile(tensix_isa::tensix::timestamper::WALL_CLOCK_L as *const u32) }
 }
 
 /// Cycles for `rounds` rounds of calls at `first + i * step` for `i < n` (descending if `down`),
@@ -128,4 +128,4 @@ pub extern "Rust" fn firmware_main() -> ! {
 /// Rows written, each `[a, b, cycles]`: the ways test's `[k, n, ..]`, then the line test's
 /// `[footprint | descending << 31, step, ..]`.
 const ROWS: u32 = KS.len() as u32 * MOST + (FOOTPRINTS.len() * STEPS.len() * 2) as u32;
-const _: () = assert!(ROWS as u64 * 12 <= tt_isa::mailbox::ICACHE_ALIAS_BYTES);
+const _: () = assert!(ROWS as u64 * 12 <= tensix_isa::mailbox::ICACHE_ALIAS_BYTES);

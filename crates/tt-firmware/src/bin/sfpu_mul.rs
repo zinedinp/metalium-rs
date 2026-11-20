@@ -13,11 +13,11 @@
 use tt_firmware::cfg::write_config_field;
 use tt_firmware::tensix::{push, read_dst32, wait_for_coprocessor};
 use tt_firmware::{fail, finish, l1_read32, publish, spin};
-use tt_isa::backend;
-use tt_isa::cfg::ConfigBank;
-use tt_isa::mailbox::{self, panic_code};
-use tt_isa::sfpu::{self, dst32_address, store_format};
-use tt_isa::tensix::{RiscvT1, TensixThread, Thread1};
+use tensix_isa::backend;
+use tensix_isa::cfg::ConfigBank;
+use tensix_isa::mailbox::{self, panic_code};
+use tensix_isa::sfpu::{self, dst32_address, store_format};
+use tensix_isa::tensix::{RiscvT1, TensixThread, Thread1};
 
 /// Which core this image is loaded onto, and which Tensix thread it therefore
 /// drives.
@@ -25,7 +25,7 @@ use tt_isa::tensix::{RiscvT1, TensixThread, Thread1};
 /// These are the *only* place that fact is written down on the device side. Core
 /// identity cannot be probed -- `mhartid` reads zero on every core -- so it is a
 /// build-time fact, and making it a type means the push path cannot reach a buffer
-/// that would hang this core (`tt_isa::tensix::PushesTo`).
+/// that would hang this core (`tensix_isa::tensix::PushesTo`).
 ///
 /// T1 because it is the only core whose RISC-V view of `Dst` ttsim models
 /// (`ttsim-divergence.md`, row 12). The host must agree: see `step4_tensix.rs`.

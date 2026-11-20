@@ -38,7 +38,7 @@
 use super::{refuse_local_ram_aperture, refuse_non_l1};
 use crate::{Device, Window};
 use crate::{Result, Transport, TransportError};
-use tt_isa::noc::{NocCoord, NocId};
+use tensix_isa::noc::{NocCoord, NocId};
 
 /// The dword that holds the last byte of `[address, address + len)`.
 fn last_word(address: u64, len: usize) -> u64 {
@@ -218,7 +218,7 @@ mod tests {
     use super::*;
     use crate::tlb::WindowKind;
 
-    fn tile() -> NocCoord<tt_isa::noc::Noc0> {
+    fn tile() -> NocCoord<tensix_isa::noc::Noc0> {
         c(3, 4)
     }
 
@@ -292,7 +292,7 @@ mod tests {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let before = d.traffic();
         // The ARC tile, a Tensix register, and a range crossing the end of L1.
-        let end = tt_isa::tensix::L1_SIZE - 2;
+        let end = tensix_isa::tensix::L1_SIZE - 2;
         for (coord, addr) in [(c(8, 0), 0x1000), (tile(), 0xFFB1_21B0), (tile(), end)] {
             let e = d.l1_write_fenced(&w, coord, addr, &[0; 4]).unwrap_err();
             assert!(matches!(e, TransportError::Hazard { .. }), "{e}");

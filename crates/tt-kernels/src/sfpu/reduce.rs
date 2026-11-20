@@ -37,10 +37,10 @@
 //! the data are not added at all -- adding `+0.0` would turn a `-0.0` sum
 //! positive -- and there is no finishing fold.
 
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::dm::TILE_SLOT;
-use tt_isa::isa::Instruction;
-use tt_isa::sync::{self, Semaphore, Unit};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::dm::TILE_SLOT;
+use tensix_isa::isa::Instruction;
+use tensix_isa::sync::{self, Semaphore, Unit};
 
 use super::kernel::{A_ROW, OUT_ROW};
 use super::{Cond, Format, LReg, LoopPolicy, Program};
@@ -489,7 +489,7 @@ pub fn plan_layout(outputs: usize, per: usize) -> Result<Layout, PlanError> {
 pub fn plan_layout_in(
     outputs: usize,
     per: usize,
-    arena: tt_isa::l1::Region,
+    arena: tensix_isa::l1::Region,
 ) -> Result<Layout, PlanError> {
     let req = std::sync::Arc::new(requirements(outputs, per));
     let plan = req.plan(arena)?;
@@ -504,7 +504,7 @@ pub fn plan_layout_in(
 /// outputs' slots, and the four semaphores ([`Layout::placed`] reads them back).
 pub fn requirements(outputs: usize, per: usize) -> Requirements {
     let mut req = Requirements::new(1);
-    let align = tt_isa::dram::ALIGN;
+    let align = tensix_isa::dram::ALIGN;
     req.scratch(
         "reduce inputs",
         (outputs * per) as u64 * TILE_SLOT,
@@ -625,7 +625,7 @@ pub fn roles_at(
 
         pack.extend(sync::take(s.computed, Before::PACKER));
         pack.extend(pack_tile_from_dst(
-            slot(layout.out_at, k) + tt_isa::dm::TILE_DATA,
+            slot(layout.out_at, k) + tensix_isa::dm::TILE_DATA,
             OUT_ROW,
         ));
         pack.extend(sync::post_after(Unit::Packer, s.packed));
@@ -687,8 +687,8 @@ fn roles_looped(
         pack_dest_units, pack_tile_from_dst_gpr, tile_base_units, unpack_datums_to_dst_gpr,
         TILE_DATUMS,
     };
-    use tt_isa::backend::set_gpr;
-    use tt_isa::isa::generated::encode;
+    use tensix_isa::backend::set_gpr;
+    use tensix_isa::isa::generated::encode;
     let (outputs, per) = (layout.outputs, inputs.len());
     // A first input, a middle of at least one, a last.
     if per < 3 || inputs[1..per - 1].iter().any(|p| *p != inputs[1]) {
@@ -809,7 +809,7 @@ fn roles_looped(
     set(
         &mut pack,
         OUT_GPR,
-        pack_dest_units(layout.out_at + tt_isa::dm::TILE_DATA) - slot,
+        pack_dest_units(layout.out_at + tensix_isa::dm::TILE_DATA) - slot,
     );
     let output_block = pack.len() as u32;
     pack.extend(sync::take(s.computed, Before::PACKER));
@@ -839,7 +839,7 @@ fn roles_looped(
 /// The middle inputs of [`roles_looped`]'s output, `per - 2`, as the counts of
 /// sibling loops each within what one loop counts (`mailbox::loops`).
 fn middle_counts(per: usize) -> Vec<u32> {
-    let most = 1 << tt_isa::mailbox::loops::COUNT_BITS;
+    let most = 1 << tensix_isa::mailbox::loops::COUNT_BITS;
     let mut left = per as u32 - 2;
     let mut counts = Vec::new();
     while left > 0 {
@@ -879,7 +879,7 @@ pub fn plan_chunk_layout(outputs: usize) -> Result<ChunkLayout, PlanError> {
 /// the four semaphores ([`ChunkLayout::placed`] reads them back).
 pub fn chunk_requirements(outputs: usize) -> Requirements {
     let mut req = Requirements::new(1);
-    let align = tt_isa::dram::ALIGN;
+    let align = tensix_isa::dram::ALIGN;
     req.scratch("sum prior", outputs as u64 * TILE_SLOT, align, 0..1);
     req.scratch(
         "reduce inputs",
@@ -970,7 +970,7 @@ pub fn continuation_roles(
 /// result is `[rows, 1]` for [`Axis::Cols`], `[1, cols]` for [`Axis::Rows`].
 pub fn reference(op: ReduceOp, axis: Axis, a: &[f32], rows: usize, cols: usize) -> Vec<f32> {
     use super::interp::Vector;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     let (rt, ct) = (rows.div_ceil(32), cols.div_ceil(32));
     let (outs, per, valid) = match axis {
         Axis::Cols => (rt, ct, (cols % 32) as u32),
@@ -1149,7 +1149,7 @@ mod tests {
         assert!(roles_looped(&layout, &inputs, &fin, &input).is_some());
         let backwards = |_: usize, n: usize| layout.in_at + (3 - n) as u64 * TILE_SLOT;
         assert!(roles_looped(&layout, &inputs, &fin, &backwards).is_none());
-        inputs[2].push(tt_isa::sfpu::nop());
+        inputs[2].push(tensix_isa::sfpu::nop());
         assert!(roles_looped(&layout, &inputs, &fin, &input).is_none());
     }
 
@@ -1245,7 +1245,7 @@ mod row_limited_lengths {
             let (inputs, fin) = math_programs_rows(ReduceOp::Max, nt, 32, rows);
             roles(&layout, &inputs, &fin)
                 .iter()
-                .any(|p| p.len() > tt_isa::mailbox::PROGRAM_MAX as usize)
+                .any(|p| p.len() > tensix_isa::mailbox::PROGRAM_MAX as usize)
         };
         for rows in 1..=32 {
             assert!(!over(32, rows), "32 tiles at {rows} rows");

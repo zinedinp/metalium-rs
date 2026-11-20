@@ -16,10 +16,10 @@
 // the silicon build.
 #![cfg_attr(feature = "silicon", allow(dead_code, unused_imports))]
 
-use tt_isa::backend;
-use tt_isa::cfg::generated::{ALL_CONFIG_FIELDS, ALL_THREAD_CONFIG_FIELDS};
-use tt_isa::isa::Instruction;
-use tt_isa::sfpu;
+use tensix_isa::backend;
+use tensix_isa::cfg::generated::{ALL_CONFIG_FIELDS, ALL_THREAD_CONFIG_FIELDS};
+use tensix_isa::isa::Instruction;
+use tensix_isa::sfpu;
 use tt_tests::harness::{self, survives, Run};
 
 const SCRATCH_GPR: u32 = 8;
@@ -122,10 +122,10 @@ fn map_the_src_path_configuration_surface() {
 // bit pattern of the TF32 value. That is what makes a `Src` datum readable at all.
 // ---------------------------------------------------------------------------
 
-use tt_isa::backend::ConfigWords;
-use tt_isa::cfg::generated::alu;
-use tt_isa::isa::generated::encode;
-use tt_isa::tile::{bf16_to_fp32, fp32_to_bf16_truncate, fp32_to_tf32, L1Format, TileImage};
+use tensix_isa::backend::ConfigWords;
+use tensix_isa::cfg::generated::alu;
+use tensix_isa::isa::generated::encode;
+use tensix_isa::tile::{bf16_to_fp32, fp32_to_bf16_truncate, fp32_to_tf32, L1Format, TileImage};
 use tt_tests::datapath::{
     flat_descriptor, set_adc_x, src_thread_config, unpack_src_config, unpack_src_instruction,
     Unpacker, SCRATCH_GPR as GPR, STAGE,
@@ -348,7 +348,7 @@ fn fp32_into_src_is_refused() {
 /// run's data the second time: the first `UNPACR` flipped the unpacker onto bank
 /// 1, `MOVA2D` does not flip the Matrix Unit's bank, so the second unpack writes
 /// bank 1 while the move reads bank 0 again. That is the bank-ownership hazard
-/// `tt_isa::matrix` exists to make unrepresentable, found here by accident.
+/// `tensix_isa::matrix` exists to make unrepresentable, found here by accident.
 #[test]
 fn a_corrupted_datum_moves_exactly_one_src_element() {
     let bits = operand_bits();

@@ -4,8 +4,8 @@
 //! tile used to hold exactly one per role, rewritten whenever consecutive
 //! kernels differed -- which, for the blocks of one matmul, they do at every
 //! ragged edge. [`ProgramCache`] keeps any number of programs resident in
-//! `tt_isa::l1::PROGRAM_CACHE`, and a `KERNEL` list entry names which one each
-//! role runs (`tt_isa::dm::op::KERNEL`), so a block of a shape the tile has
+//! `tensix_isa::l1::PROGRAM_CACHE`, and a `KERNEL` list entry names which one each
+//! role runs (`tensix_isa::dm::op::KERNEL`), so a block of a shape the tile has
 //! seen costs no upload and no new list.
 //!
 //! The host wrote every byte of the region, so it knows exactly what is there;
@@ -36,7 +36,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-use tt_isa::l1::Region;
+use tensix_isa::l1::Region;
 
 /// What a cache has done, for a gate or a profile.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -277,12 +277,12 @@ pub struct ProgramCache {
 
 /// Is a role program of `words` words cached on a tile, rather than run from
 /// its fixed slot? The admission rule of a cache over
-/// `tt_isa::l1::PROGRAM_CACHE`, known before any cache exists.
+/// `tensix_isa::l1::PROGRAM_CACHE`, known before any cache exists.
 pub fn admitted(words: usize) -> bool {
-    words > 0 && words as u64 * 4 <= tt_isa::l1::PROGRAM_CACHE.len() / 2
+    words > 0 && words as u64 * 4 <= tensix_isa::l1::PROGRAM_CACHE.len() / 2
 }
 
-/// Programs start on 16-byte boundaries (`tt_isa::dm::Entry::decode` refuses
+/// Programs start on 16-byte boundaries (`tensix_isa::dm::Entry::decode` refuses
 /// anything else).
 const ALIGN: u64 = 16;
 
@@ -295,7 +295,7 @@ pub fn hash(words: &[u32]) -> u64 {
 }
 
 impl ProgramCache {
-    /// An empty cache over `region` (`tt_isa::l1::PROGRAM_CACHE` on a tile).
+    /// An empty cache over `region` (`tensix_isa::l1::PROGRAM_CACHE` on a tile).
     pub fn new(region: Region) -> Self {
         let base = region.base.next_multiple_of(ALIGN);
         ProgramCache {
@@ -954,7 +954,7 @@ mod tests {
 
     #[test]
     fn clearing_for_room_keeps_held_programs() {
-        let mut c = ProgramCache::new(tt_isa::l1::PROGRAM_CACHE);
+        let mut c = ProgramCache::new(tensix_isa::l1::PROGRAM_CACHE);
         let Ok(Placed::Upload(a)) = c.place(&[1, 2, 3]) else {
             panic!("a first program is uploaded")
         };
@@ -970,7 +970,7 @@ mod tests {
 
     #[test]
     fn a_release_after_a_clear_leaves_the_new_hold_alone() {
-        let mut c = ProgramCache::new(tt_isa::l1::PROGRAM_CACHE);
+        let mut c = ProgramCache::new(tensix_isa::l1::PROGRAM_CACHE);
         let Ok(Placed::Upload(old)) = c.place(&[1, 2, 3]) else {
             panic!("a first program is uploaded")
         };

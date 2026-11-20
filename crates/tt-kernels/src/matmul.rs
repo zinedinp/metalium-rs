@@ -6,12 +6,12 @@
 //! the tile and multi-tile gates build on the same configuration rather than on
 //! a copy of it.
 
-use tt_isa::backend::ConfigWords;
-use tt_isa::cfg::generated::{alu, thread};
-use tt_isa::format::{Src, SrcType, TileFormat};
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::tile::{L1Format, TileImage};
+use tensix_isa::backend::ConfigWords;
+use tensix_isa::cfg::generated::{alu, thread};
+use tensix_isa::format::{Src, SrcType, TileFormat};
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::tile::{L1Format, TileImage};
 
 use crate::datapath::{
     config_program, flat_descriptor, src_thread_config, state_id, thread_entry, unpack_src_config,
@@ -143,12 +143,12 @@ pub const MATH_AM_GROUP: u32 = 3;
 pub const MATH_AM_FI: u32 = 4;
 
 fn math_addr_mods() -> Vec<Instruction> {
-    use tt_isa::backend::ThreadConfigEntry as E;
+    use tensix_isa::backend::ThreadConfigEntry as E;
     let ab = |srcb_incr: u16,
               srcb_clear: u16,
               fields: (
-        tt_isa::cfg::ThreadConfigField,
-        tt_isa::cfg::ThreadConfigField,
+        tensix_isa::cfg::ThreadConfigField,
+        tensix_isa::cfg::ThreadConfigField,
     )| {
         E::zeroed(fields.0.addr32())
             .set(fields.0, srcb_incr)
@@ -163,9 +163,9 @@ fn math_addr_mods() -> Vec<Instruction> {
                cr: u16,
                fclear: u16,
                f: (
-        tt_isa::cfg::ThreadConfigField,
-        tt_isa::cfg::ThreadConfigField,
-        tt_isa::cfg::ThreadConfigField,
+        tensix_isa::cfg::ThreadConfigField,
+        tensix_isa::cfg::ThreadConfigField,
+        tensix_isa::cfg::ThreadConfigField,
     )| {
         E::zeroed(f.0.addr32())
             .set(f.0, incr)
@@ -233,12 +233,12 @@ fn math_addr_mods() -> Vec<Instruction> {
 // --- Whole tiles --------------------------------------------------------------
 
 use crate::loops::Item;
-use tt_isa::backend::{self, Before};
-use tt_isa::cfg::generated::thcon;
-use tt_isa::frontend::mop::MopConfig;
-use tt_isa::matrix::{Banks, Loaded};
-use tt_isa::sync::{self, Semaphore, Unit};
-use tt_isa::tile::TileDescriptor;
+use tensix_isa::backend::{self, Before};
+use tensix_isa::cfg::generated::thcon;
+use tensix_isa::frontend::mop::MopConfig;
+use tensix_isa::matrix::{Banks, Loaded};
+use tensix_isa::sync::{self, Semaphore, Unit};
+use tensix_isa::tile::TileDescriptor;
 
 /// The matmul's names for the two semaphores its math and pack roles hand
 /// `Dst` over with, as its plan assigned them. The semaphores themselves are
@@ -311,7 +311,7 @@ pub struct OutputTile {
     pub out: u64,
 }
 
-/// The unpacker's view of a `tt_layout::Layout::tt_metal_32x32` tile in
+/// The unpacker's view of a `tensix_layout::Layout::tt_metal_32x32` tile in
 /// `format`: four 16x16 faces, one per `Z` plane.
 ///
 /// `ZDim` sits in descriptor word 1, which ttsim models; words 2 and 3 stay
@@ -418,7 +418,7 @@ fn write_bases() -> [Instruction; 4] {
     [
         backend::write_word(A_BASE_GPR, thcon::THCON_SEC1_REG3_Base_address.addr32()).unwrap(),
         backend::write_word(B_BASE_GPR, thcon::THCON_SEC0_REG3_Base_address.addr32()).unwrap(),
-        tt_isa::sfpu::nop(),
+        tensix_isa::sfpu::nop(),
         backend::stallwait(
             backend::block::UNPACKER | backend::block::CONFIG,
             backend::cond::CONFIG_BUSY,
@@ -651,13 +651,13 @@ impl Fidelity {
     }
 
     /// The fewest phases that take every mantissa bit both operands bring into `Src`
-    /// ([`tt_isa::format::full_precision_phases`]): `b` is the operand in `SrcA` (in1),
+    /// ([`tensix_isa::format::full_precision_phases`]): `b` is the operand in `SrcA` (in1),
     /// `a` the one in `SrcB` (in0). `None` where no phase count takes every bit.
     pub const fn full_precision(
         a: (TileFormat, SrcType),
         b: (TileFormat, SrcType),
     ) -> Option<Fidelity> {
-        match tt_isa::format::full_precision_phases(b, a) {
+        match tensix_isa::format::full_precision_phases(b, a) {
             Some(phases) => Fidelity::from_phases(phases),
             None => None,
         }
@@ -910,7 +910,7 @@ impl LiveRows {
 }
 
 /// `outputs` with each pair's `A` tile where a packed `A` ([`crate::tensor::pack_row`]) holds
-/// it: its packed tiles read into the slots from `a_at` (a [`tt_isa::dm::TILE_SLOT`] apart in
+/// it: its packed tiles read into the slots from `a_at` (a [`tensix_isa::dm::TILE_SLOT`] apart in
 /// any format, as `READ_RUN` lays them), the first holding `K` tile `k0 / 32 * 32`, and pair `q`
 /// this block's `K` tile `k0 + q`. The unpacker reads a face as 16 rows of `row_bytes`
 /// ([`SrcRoute::packed_row_bytes`]: 64 in FP32, 32 in BF16) from its base (past a 16-byte
@@ -953,7 +953,7 @@ pub fn packed_a_pairs_from(
                     let tile = (kk / 32 - first) as u64;
                     let r = (kk % 32) as u64;
                     let a = a_at
-                        + tile * tt_isa::dm::TILE_SLOT
+                        + tile * tensix_isa::dm::TILE_SLOT
                         + (r / 16) * 32 * row_bytes
                         + (r % 16) * row_bytes;
                     (a, b)
@@ -990,7 +990,7 @@ pub(crate) fn k_block_layout_with(
         .plan(crate::l1::arena())
         .map_err(|_| crate::runtime::RunError::DoesNotFit {
             what: "a K-block matmul",
-            bytes: (2 * kt + 2) as u64 * tt_isa::dm::TILE_SLOT,
+            bytes: (2 * kt + 2) as u64 * tensix_isa::dm::TILE_SLOT,
             limit: crate::l1::arena().len(),
         })?;
     Ok(k_block_placed(
@@ -1009,7 +1009,7 @@ pub(crate) fn k_block_requirements(
 ) -> crate::l1::Requirements {
     let mut m = matmul_requirements_placed([1, kt, 1], a_slots, false, slots);
     m.req
-        .scratch("matmul prior", tt_isa::dm::TILE_SLOT, 64, 0..1);
+        .scratch("matmul prior", tensix_isa::dm::TILE_SLOT, 64, 0..1);
     m.req.semaphore("matmul cleared", 0, 0..1);
     m.req.semaphore("matmul loaded", 0, 0..1);
     m.req
@@ -1025,7 +1025,7 @@ pub(crate) fn k_block_placed(kt: usize, slots: Slots, l1: &crate::l1::Placed) ->
             pairs: (0..kt)
                 .map(|k| (a_at + k as u64 * slots.a, b_at + k as u64 * slots.b))
                 .collect(),
-            out: l1.addr("matmul out") + tt_isa::dm::TILE_DATA,
+            out: l1.addr("matmul out") + tensix_isa::dm::TILE_DATA,
         }],
         sems: MatmulSemaphores::placed(l1),
         init: l1.semaphore_init(),
@@ -1075,7 +1075,7 @@ impl StreamLayout {
             pairs: (0..kq)
                 .map(|q| (self.a_at, self.b_at[h] + q as u64 * self.b_slot))
                 .collect(),
-            out: self.out[h] + tt_isa::dm::TILE_DATA,
+            out: self.out[h] + tensix_isa::dm::TILE_DATA,
         }];
         let layout = Layout {
             a_at: self.a_at,
@@ -1100,7 +1100,7 @@ pub(crate) fn k_stream_layout(
     a_slots: usize,
     b_slot: u64,
 ) -> Result<StreamLayout, crate::runtime::RunError> {
-    use tt_isa::dm::TILE_SLOT;
+    use tensix_isa::dm::TILE_SLOT;
     let req = std::sync::Arc::new(k_stream_requirements(kq, a_slots, b_slot));
     let plan = req
         .plan(crate::l1::arena())
@@ -1123,14 +1123,14 @@ pub(crate) fn k_stream_requirements(
     b_slot: u64,
 ) -> crate::l1::Requirements {
     use crate::l1::{Endpoint, Requirements};
-    use tt_isa::dm::TILE_SLOT;
+    use tensix_isa::dm::TILE_SLOT;
     let mut req = Requirements::new(1);
     let mut ring = |name, page: u64, pages: usize, from, to| {
         req.cb(
             name,
             page,
             pages as u32,
-            tt_isa::dram::ALIGN,
+            tensix_isa::dram::ALIGN,
             from,
             to,
             0..1,
@@ -1213,7 +1213,7 @@ impl BlockStreamLayout {
     /// Output tile `(i, j)` of a block `cols` wide: its slot in set `h`, header included, row-major
     /// as `record::SCATTER` writes a block out.
     pub fn out_slot(&self, h: usize, cols: usize, i: usize, j: usize) -> u64 {
-        self.out[h] + (i * cols + j) as u64 * tt_isa::dm::TILE_SLOT
+        self.out[h] + (i * cols + j) as u64 * tensix_isa::dm::TILE_SLOT
     }
 
     /// Chunk `c` of a block of `rows x cols` output tiles, its `count` `K` tiles, as the
@@ -1221,7 +1221,7 @@ impl BlockStreamLayout {
     /// slots, `B` tile `(kk, j)` at `b_at` plus [`BlockStreamLayout::b_index`]): its layout, its
     /// outputs row-major, and their priors when it continues.
     pub fn chunk(&self, c: usize, [rows, count, cols]: [usize; 3]) -> (Layout, Option<Vec<u64>>) {
-        use tt_isa::dm::TILE_DATA;
+        use tensix_isa::dm::TILE_DATA;
         let [mb, kq, nb] = self.tiles;
         assert!(
             (1..=mb).contains(&rows) && (1..=kq).contains(&count) && (1..=nb).contains(&cols),
@@ -1292,14 +1292,14 @@ pub(crate) fn block_stream_requirements(
     slots: Slots,
 ) -> crate::l1::Requirements {
     use crate::l1::{Endpoint, Requirements};
-    use tt_isa::dm::TILE_SLOT;
+    use tensix_isa::dm::TILE_SLOT;
     let mut req = Requirements::new(1);
     let mut ring = |name, page: u64, pages: usize, from, to| {
         req.cb(
             name,
             page,
             pages as u32,
-            tt_isa::dram::ALIGN,
+            tensix_isa::dram::ALIGN,
             from,
             to,
             0..1,
@@ -1349,7 +1349,7 @@ impl BlockStreamLayout {
 /// The bytes of a [`block_stream_layout`]'s slots: two halves of `A` and `B` and two output sets.
 pub(crate) fn block_stream_bytes([mb, kq, nb]: [usize; 3], slots: Slots) -> u64 {
     2 * ((kq * mb) as u64 * slots.a
-        + (mb * nb) as u64 * tt_isa::dm::TILE_SLOT
+        + (mb * nb) as u64 * tensix_isa::dm::TILE_SLOT
         + (kq * nb) as u64 * slots.b)
 }
 
@@ -1416,7 +1416,7 @@ pub(crate) fn block_stream_kernel_looped(
 ) -> Option<crate::code::LoopedRoles> {
     use crate::code::Loop;
     use crate::datapath::{pack_dest_units, tile_base_units as units};
-    use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+    use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
     let h = c % 2;
     let continuing = c > 0;
     let (a_at, b_at) = (layout.a_at[h], layout.b_at[h]);
@@ -1559,11 +1559,11 @@ pub(crate) fn block_stream_kernel_looped(
     pack.push(
         backend::write_word(
             OUT_GPR,
-            tt_isa::cfg::generated::thcon::THCON_SEC0_REG1_L1_Dest_addr.addr32(),
+            tensix_isa::cfg::generated::thcon::THCON_SEC0_REG1_L1_Dest_addr.addr32(),
         )
         .unwrap(),
     );
-    pack.push(tt_isa::sfpu::nop());
+    pack.push(tensix_isa::sfpu::nop());
     pack.push(
         backend::stallwait(
             backend::block::PACKER | backend::block::CONFIG,
@@ -1676,7 +1676,7 @@ pub(crate) fn block_stream_kernel_subblocked(
 ) -> Option<crate::code::LoopedRoles> {
     use crate::code::Loop;
     use crate::datapath::{pack_dest_units, tile_base_units as units};
-    use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+    use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
     assert_eq!(plan.cols(), cols, "a row plan of the block's columns");
     let fmts = route.src_formats();
     if pair_order().resolve(fmts) != PairOrder::Tiles {
@@ -1726,7 +1726,7 @@ pub(crate) fn block_stream_kernel_subblocked(
     else {
         panic!("the tiles order's pair is a reset, its unit and a release")
     };
-    let (release_a, _) = tt_isa::matrix::Banks::after_reset()
+    let (release_a, _) = tensix_isa::matrix::Banks::after_reset()
         .unpack_a(encode::UnpacrRegular::ZERO)
         .and_then(|(_, b)| b.release_a())
         .unwrap();
@@ -1835,7 +1835,7 @@ pub(crate) fn block_stream_kernel_subblocked(
                                 thcon::THCON_SEC0_REG3_Base_address.addr32(),
                             )
                             .unwrap(),
-                            tt_isa::sfpu::nop(),
+                            tensix_isa::sfpu::nop(),
                             backend::stallwait(
                                 backend::block::UNPACKER | backend::block::CONFIG,
                                 backend::cond::CONFIG_BUSY,
@@ -1901,7 +1901,7 @@ pub(crate) fn block_stream_kernel_subblocked(
     // Math.
     let offset = |row: u32| {
         crate::datapath::thread_entry(
-            tt_isa::cfg::generated::thread::DEST_TARGET_REG_CFG_MATH_Offset,
+            tensix_isa::cfg::generated::thread::DEST_TARGET_REG_CFG_MATH_Offset,
             row as u16,
         )
     };
@@ -1991,7 +1991,7 @@ pub(crate) fn block_stream_kernel_subblocked(
     let mut pack = config_program(&pw);
     set(&mut pack, SLOT_GPR, slot);
     set(&mut pack, OUT_GPR, pack_dest_units(out0) - slot);
-    let offset_word = tt_isa::cfg::generated::global::DEST_TARGET_REG_CFG_PACK_SEC0_Offset;
+    let offset_word = tensix_isa::cfg::generated::global::DEST_TARGET_REG_CFG_PACK_SEC0_Offset;
     let row_word = |row: u32| {
         let mut w = pw;
         w.set(offset_word, row).unwrap();
@@ -2026,14 +2026,14 @@ pub(crate) fn block_stream_kernel_subblocked(
                 p.push(
                     backend::write_word(
                         OUT_GPR,
-                        tt_isa::cfg::generated::thcon::THCON_SEC0_REG1_L1_Dest_addr.addr32(),
+                        tensix_isa::cfg::generated::thcon::THCON_SEC0_REG1_L1_Dest_addr.addr32(),
                     )
                     .unwrap(),
                 );
                 p.push(
                     backend::write_word(row_gpr(row_of(section, t)), offset_word.addr32()).unwrap(),
                 );
-                p.push(tt_isa::sfpu::nop());
+                p.push(tensix_isa::sfpu::nop());
                 p.push(
                     backend::stallwait(
                         backend::block::PACKER | backend::block::CONFIG,
@@ -2082,7 +2082,7 @@ pub(crate) fn block_stream_kernel_subblocked(
         }
         .stored()
         .is_ok_and(|(words, _)| {
-            words.len() <= tt_isa::mailbox::PROGRAM_MAX as usize
+            words.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize
                 && crate::program_cache::admitted(words.len())
         })
     });
@@ -2430,7 +2430,7 @@ pub fn matmul_items(
 
 /// [`matmul_items`], continuing a K block's accumulator from `reload`'s prior tile when given,
 /// and with each `B` tile the transpose of the tile in its slot when `b_transposed`: unpacker 0
-/// transposes within each face (`Haloize_mode`, [`tt_isa::unpacker::stage_transpose`]) and `B`'s
+/// transposes within each face (`Haloize_mode`, [`tensix_isa::unpacker::stage_transpose`]) and `B`'s
 /// face `(k, fj)` is unpacked from the slot's face `(fj, k)`, so the mover reads the stored tile
 /// as it lies (`record::GATHER_B_UNPACK_TRANSPOSE`). The unpack converts each datum as it does
 /// untransposed, so `SrcA` holds the same values the mover's own transpose would give it. Only
@@ -2659,7 +2659,7 @@ fn pair_code(
         fmts.b_out,
     );
     if b_transposed {
-        tt_isa::unpacker::stage_transpose(&mut words, false).expect("a Src unpack");
+        tensix_isa::unpacker::stage_transpose(&mut words, false).expect("a Src unpack");
     }
     unpack_src_config(
         &mut words,
@@ -2832,9 +2832,9 @@ struct AddrMod {
 impl AddrMod {
     /// Entry `entry`'s two `ThreadConfig` words, every field named.
     fn words(self, entry: u32) -> [Instruction; 2] {
-        use tt_isa::backend::ThreadConfigEntry as E;
+        use tensix_isa::backend::ThreadConfigEntry as E;
         let field = |name: String| {
-            tt_isa::cfg::generated::ALL_THREAD_CONFIG_FIELDS
+            tensix_isa::cfg::generated::ALL_THREAD_CONFIG_FIELDS
                 .iter()
                 .find(|(n, _)| *n == name)
                 .unwrap_or_else(|| panic!("no {name}"))
@@ -3295,13 +3295,13 @@ pub(crate) fn matmul_items_continuing(
             crate::datapath::pack_config(&mut pw, output.out);
             with_throttle_override(&mut pw);
             pw.set(
-                tt_isa::cfg::generated::thcon::THCON_SEC0_REG1_Out_data_format,
+                tensix_isa::cfg::generated::thcon::THCON_SEC0_REG1_Out_data_format,
                 out_format(out),
             )
             .unwrap();
         } else {
             pw.set(
-                tt_isa::cfg::generated::thcon::THCON_SEC0_REG1_L1_Dest_addr,
+                tensix_isa::cfg::generated::thcon::THCON_SEC0_REG1_L1_Dest_addr,
                 crate::datapath::pack_dest_units(output.out),
             )
             .unwrap();
@@ -3330,8 +3330,8 @@ pub fn tilize_f32(
     rows: usize,
     cols: usize,
     format: L1Format,
-) -> (Vec<u8>, tt_layout::Layout) {
-    use tt_layout::{tilize, HostDtype, Layout, TensorView};
+) -> (Vec<u8>, tensix_layout::Layout) {
+    use tensix_layout::{tilize, HostDtype, Layout, TensorView};
     assert_eq!(values.len(), rows * cols);
     let layout = Layout::tt_metal_32x32(format, HostDtype::F32, [1, rows, cols]).unwrap();
     let bytes: Vec<u8> = values.iter().flat_map(|v| v.to_le_bytes()).collect();
@@ -3346,7 +3346,7 @@ pub const TILE_IMAGE_BYTES: usize = 16 + 1024 * 4;
 /// [`tilize_f32`] for FP32 tiles, as one copy pattern: each 32x32 tile, in
 /// row-major tile order, its 16-byte header then four 16x16 faces (top left,
 /// top right, bottom left, bottom right), each row-major; zeros past `rows`
-/// and `cols`. `tt_layout`'s tilizer handles every format element by element,
+/// and `cols`. `tensix_layout`'s tilizer handles every format element by element,
 /// ~18 us a tile on the host -- more than the card's DMA takes to move it
 /// (`silicon_bench_host_dma::session_transfers`). Checked against it
 /// (`fast_tilize_is_tt_layouts`).
@@ -3448,7 +3448,7 @@ fn tilize_serial(
     }
 }
 
-/// The header `tt_layout` gives every FP32 tile.
+/// The header `tensix_layout` gives every FP32 tile.
 fn fp32_tile_header() -> [u8; 16] {
     use std::sync::OnceLock;
     static HEADER: OnceLock<[u8; 16]> = OnceLock::new();
@@ -3542,11 +3542,11 @@ fn detilize_rows(
     }
 }
 
-/// [`detilize_packed`] through `tt_layout`'s detilizer: the oracle the fast
+/// [`detilize_packed`] through `tensix_layout`'s detilizer: the oracle the fast
 /// one is checked against.
 #[cfg(test)]
 fn detilize_packed_generic(packed: &[u8], rows: usize, cols: usize) -> Vec<f32> {
-    use tt_layout::{detilize, HostDtype, Layout, TensorViewMut};
+    use tensix_layout::{detilize, HostDtype, Layout, TensorViewMut};
     let layout = Layout::tt_metal_32x32(L1Format::Fp32, HostDtype::F32, [1, rows, cols]).unwrap();
     let mut images = Vec::with_capacity(layout.total_bytes());
     for tile in packed.chunks_exact(1024 * 4).take(layout.grid_tiles()) {
@@ -3568,16 +3568,16 @@ fn detilize_packed_generic(packed: &[u8], rows: usize, cols: usize) -> Vec<f32> 
 
 /// Where [`stage_matmul`] puts things in L1 on the host-staged path: `A`'s
 /// tiles from here, then `B`'s, then the packed output tiles from
-/// [`MATMUL_OUT`]. The start of the data arena (`tt_isa::l1::DATA`); the
+/// [`MATMUL_OUT`]. The start of the data arena (`tensix_isa::l1::DATA`); the
 /// GDDR path's layout is planned there instead ([`plan_layout_in`] with
 /// [`Staging::Slots`], through `crate::l1`).
-pub const MATMUL_STAGE: u64 = tt_isa::l1::DATA.base;
+pub const MATMUL_STAGE: u64 = tensix_isa::l1::DATA.base;
 /// Where the packed output tiles go on the host-staged path.
 pub const MATMUL_OUT: u64 = 0x8_0000;
-const _: () = assert!(MATMUL_OUT > MATMUL_STAGE && MATMUL_OUT < tt_isa::l1::DATA.end);
+const _: () = assert!(MATMUL_OUT > MATMUL_STAGE && MATMUL_OUT < tensix_isa::l1::DATA.end);
 
 /// A matmul `C[m, n] = A[m, k] @ B[k, n]` laid out for the device: both
-/// operands tiled and padded by `tt_layout`, and the output tiles planned.
+/// operands tiled and padded by `tensix_layout`, and the output tiles planned.
 pub struct StagedMatmul {
     pub m: usize,
     pub n: usize,
@@ -3598,7 +3598,7 @@ impl StagedMatmul {
 
 /// Bytes of one `tt_metal_32x32` tile image in `format`, header included.
 pub fn tile_image_bytes(format: L1Format) -> u64 {
-    tt_layout::Layout::tt_metal_32x32(format, tt_layout::HostDtype::F32, [1, 32, 32])
+    tensix_layout::Layout::tt_metal_32x32(format, tensix_layout::HostDtype::F32, [1, 32, 32])
         .expect("one 32x32 tile is a valid layout")
         .image()
         .total_bytes() as u64
@@ -3662,7 +3662,7 @@ pub enum Staging {
     /// Tile images back to back, as the host tilizes them, and packed output
     /// tiles back to back: [`plan_layout`].
     Host,
-    /// One `tt_isa::dm::TILE_SLOT` per tile, operands and outputs alike, with
+    /// One `tensix_isa::dm::TILE_SLOT` per tile, operands and outputs alike, with
     /// each output's datums at `TILE_DATA` into its slot -- so the data mover
     /// can copy any tile between GDDR and L1 under the C64 rule, and an output
     /// slot is an operand slot. FP32 in L1 only.
@@ -3699,7 +3699,7 @@ pub fn plan_layout_packed_a(
         a_slots,
         staging == Staging::Slots,
         Slots {
-            a: tt_isa::dm::TILE_SLOT,
+            a: tensix_isa::dm::TILE_SLOT,
             b: b_slot,
         },
     )
@@ -3806,7 +3806,7 @@ pub fn matmul_requirements_top_b(tiles: [usize; 3], a_slots: usize, slots: Slots
 /// The bytes of a slot staging's rings: `a_slots` of `A`'s slots, the outputs' FP32 slots, and
 /// `B`'s `kt * nt` tiles its slot apart.
 fn slot_bytes([mt, kt, nt]: [usize; 3], a_slots: usize, slots: Slots) -> u64 {
-    a_slots as u64 * slots.a + (mt * nt) as u64 * tt_isa::dm::TILE_SLOT + (kt * nt) as u64 * slots.b
+    a_slots as u64 * slots.a + (mt * nt) as u64 * tensix_isa::dm::TILE_SLOT + (kt * nt) as u64 * slots.b
 }
 
 pub(crate) fn matmul_requirements_placed(
@@ -3816,7 +3816,7 @@ pub(crate) fn matmul_requirements_placed(
     slots: Slots,
 ) -> MatmulBuffers {
     use crate::l1::{Endpoint, Requirements};
-    use tt_isa::dm::TILE_SLOT;
+    use tensix_isa::dm::TILE_SLOT;
     let mut req = Requirements::new(1);
     let ring = |req: &mut Requirements, name, page: u64, pages: usize, from, to| {
         // C64: a slot is read from GDDR under the 64-byte congruence rule
@@ -3825,7 +3825,7 @@ pub(crate) fn matmul_requirements_placed(
             name,
             page,
             pages as u32,
-            tt_isa::dram::ALIGN,
+            tensix_isa::dram::ALIGN,
             from,
             to,
             0..1,
@@ -3928,7 +3928,7 @@ fn planned_slots(
     let arena = match staging {
         Staging::SlotsHalf => half_arena(),
         // `B` against the ring's end, `A` and the outputs at the arena's start.
-        _ if top_b => tt_isa::l1::Region {
+        _ if top_b => tensix_isa::l1::Region {
             end: crate::l1::ring_end(),
             ..crate::l1::arena()
         },
@@ -3947,14 +3947,14 @@ fn planned_slots(
 fn plan_slots(
     [mt, kt, nt]: [usize; 3],
     in_fmt: L1Format,
-    arena: tt_isa::l1::Region,
+    arena: tensix_isa::l1::Region,
     a_slots: usize,
     top_b: bool,
     slots: Slots,
 ) -> Result<Layout, crate::runtime::RunError> {
     use crate::l1::PlanError;
     use crate::runtime::RunError;
-    use tt_isa::dm::TILE_SLOT;
+    use tensix_isa::dm::TILE_SLOT;
     assert!(
         TileFormat::new(in_fmt).slot_bytes() <= TILE_SLOT,
         "slot staging must fit the operand image"
@@ -3998,7 +3998,7 @@ pub(crate) fn slots_layout(
     slots: Slots,
     l1: &crate::l1::Placed,
 ) -> Layout {
-    use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+    use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
     let (a_at, b_at, out_at) = (
         l1.addr("matmul A"),
         l1.addr("matmul B"),
@@ -4034,7 +4034,7 @@ pub(crate) fn slots_layout(
 /// output tile, row-major, each accumulating its `k / 32` tile pairs in order
 /// ([`plan_layout`]).
 ///
-/// Padding is `tt_layout`'s zero, which is the identity for the accumulation.
+/// Padding is `tensix_layout`'s zero, which is the identity for the accumulation.
 pub fn stage_matmul(
     a: &[f32],
     b: &[f32],
@@ -4193,10 +4193,10 @@ impl SrcRoute {
     /// The route of two operands of edge formats `a` and `b` under the default contract: an FP32
     /// edge through TF32, a packed one moved as is ([`SrcRoute::Edges`]), and two FP32 edges
     /// [`SrcRoute::Tf32FromFp32`]. `None` for a format no gather reads or that is not one family
-    /// with TF32 (`tt_isa::dm::record::GATHER_FORMATS`: FP32, BF16, BFP8/4/2).
+    /// with TF32 (`tensix_isa::dm::record::GATHER_FORMATS`: FP32, BF16, BFP8/4/2).
     pub const fn edges(a: TileFormat, b: TileFormat) -> Option<SrcRoute> {
-        if tt_isa::dm::record::gather_a_format(a.l1()).is_none()
-            || tt_isa::dm::record::gather_b_format(b.l1()).is_none()
+        if tensix_isa::dm::record::gather_a_format(a.l1()).is_none()
+            || tensix_isa::dm::record::gather_b_format(b.l1()).is_none()
         {
             return None;
         }
@@ -4216,7 +4216,7 @@ impl SrcRoute {
     }
 
     /// Whether the kernel's unpacker can transpose this route's `B` as it unpacks it
-    /// (`record::GATHER_B_UNPACK_TRANSPOSE`, [`tt_isa::unpacker::stage_transpose`]): an FP32 `B` on
+    /// (`record::GATHER_B_UNPACK_TRANSPOSE`, [`tensix_isa::unpacker::stage_transpose`]): an FP32 `B` on
     /// the TF32 route, and a BF16 `B` moved to `SrcA` as is, whose faces `Haloize_mode` transposes
     /// as it does an FP32 one's (roadmap W1; gate `step272_transposed_bf16_b`), and a block-float
     /// `B` (BFP8, BFP4, BFP2), decoded into `SrcA` and transposed there alike (a block-float KV
@@ -4245,11 +4245,11 @@ impl SrcRoute {
         }
     }
 
-    /// The slots of a product whose `A` is a packed row: `A`'s a [`tt_isa::dm::TILE_SLOT`] apart
+    /// The slots of a product whose `A` is a packed row: `A`'s a [`tensix_isa::dm::TILE_SLOT`] apart
     /// whatever its format (`READ_RUN` steps by it), `B`'s its own ([`SrcRoute::b_slot`]).
     pub const fn packed_row_slots(self) -> Slots {
         Slots {
-            a: tt_isa::dm::TILE_SLOT,
+            a: tensix_isa::dm::TILE_SLOT,
             b: self.b_slot(),
         }
     }
@@ -4269,22 +4269,22 @@ impl SrcRoute {
     }
 
     /// The bytes a `B` tile takes in a GDDR-staged plan's L1: a packed `B`'s own slot (its format's,
-    /// [`tt_isa::dm::record::gather_b_format`] reads it there), so a ring holds more tiles
-    /// (`docs/completed-plans/bf16-weight-storage.md` A5b); [`tt_isa::dm::TILE_SLOT`] otherwise.
+    /// [`tensix_isa::dm::record::gather_b_format`] reads it there), so a ring holds more tiles
+    /// (`docs/completed-plans/bf16-weight-storage.md` A5b); [`tensix_isa::dm::TILE_SLOT`] otherwise.
     pub const fn b_slot(self) -> u64 {
         match self.packed_b() {
             Some(format) => format.slot_bytes(),
-            None => tt_isa::dm::TILE_SLOT,
+            None => tensix_isa::dm::TILE_SLOT,
         }
     }
 
     /// The bytes an `A` tile takes in a GDDR-staged plan's L1: a packed `A`'s own slot (its
-    /// format's, [`tt_isa::dm::record::gather_a_format`] reads it there), as [`SrcRoute::b_slot`] is
-    /// `B`'s; [`tt_isa::dm::TILE_SLOT`] otherwise.
+    /// format's, [`tensix_isa::dm::record::gather_a_format`] reads it there), as [`SrcRoute::b_slot`] is
+    /// `B`'s; [`tensix_isa::dm::TILE_SLOT`] otherwise.
     pub const fn a_slot(self) -> u64 {
         match self.packed_a() {
             Some(format) => format.slot_bytes(),
-            None => tt_isa::dm::TILE_SLOT,
+            None => tensix_isa::dm::TILE_SLOT,
         }
     }
 
@@ -4341,7 +4341,7 @@ impl SrcRoute {
 
 /// The bytes each operand's tile takes in a GDDR-staged plan's L1 (`A`'s, `B`'s): its format's slot
 /// ([`TileFormat::slot_bytes`]), as a gather reads it there, so a packed operand's ring holds more
-/// tiles. The outputs are FP32 slots ([`tt_isa::dm::TILE_SLOT`]) whatever the operands.
+/// tiles. The outputs are FP32 slots ([`tensix_isa::dm::TILE_SLOT`]) whatever the operands.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Slots {
     pub a: u64,
@@ -4351,13 +4351,13 @@ pub struct Slots {
 impl Slots {
     /// Two FP32 operands.
     pub const FP32: Slots = Slots {
-        a: tt_isa::dm::TILE_SLOT,
-        b: tt_isa::dm::TILE_SLOT,
+        a: tensix_isa::dm::TILE_SLOT,
+        b: tensix_isa::dm::TILE_SLOT,
     };
 }
 
 /// `C[m, n] = A[m, k] @ B[k, n]` for row-major `f32` operands, on the Tensix
-/// tile at `tile`, in one run: tiled and zero-padded by `tt_layout`, multiplied
+/// tile at `tile`, in one run: tiled and zero-padded by `tensix_layout`, multiplied
 /// through `route` at `fidelity`, accumulated in FP32 `Dst`, packed as FP32 and
 /// de-tiled.
 ///
@@ -4367,9 +4367,9 @@ impl Slots {
 /// [`RunError::DoesNotFit`]: crate::runtime::RunError::DoesNotFit
 /// [`RunError::ProgramTooLong`]: crate::runtime::RunError::ProgramTooLong
 #[allow(clippy::too_many_arguments)]
-pub fn matmul<T: tt_device::Transport, N: tt_isa::noc::NocId>(
+pub fn matmul<T: tt_device::Transport, N: tensix_isa::noc::NocId>(
     dev: &mut tt_device::Device<T>,
-    tile: tt_isa::noc::NocCoord<N>,
+    tile: tensix_isa::noc::NocCoord<N>,
     images: &crate::runtime::RoleImages<'_>,
     a: &[f32],
     b: &[f32],
@@ -4531,7 +4531,7 @@ fn chunk_fits_at(
     );
     roles
         .iter()
-        .all(|p| p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize)
+        .all(|p| p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize)
 }
 
 /// The three role programs of a `tiles`-shaped run, built once per process.
@@ -4712,7 +4712,7 @@ pub fn plan_floor(
             && staging != Staging::Host;
         if let (Some(s), true) = (p.as_mut(), ring) {
             let [mc, kc, nc] = s.tiles;
-            let most = (nc as u64 * tt_isa::dm::TILE_SLOT / route.b_slot()) as usize;
+            let most = (nc as u64 * tensix_isa::dm::TILE_SLOT / route.b_slot()) as usize;
             let nt = mkn[2].div_ceil(32).max(1);
             if let Some(wider) = (nc + 1..=most.min(nt))
                 .rev()
@@ -4734,7 +4734,7 @@ pub fn plan_floor(
                 let laid =
                     plan_layout_route(s.tiles, route.formats().0, staging, floor_slot).is_ok();
                 let need = crate::l1::take_planned().need;
-                let base = tt_isa::l1::DATA.base;
+                let base = tensix_isa::l1::DATA.base;
                 match staging {
                     _ if !laid || need <= base => 0,
                     Staging::SlotsHalf => base + 2 * (need - base).next_multiple_of(4096),
@@ -5131,7 +5131,7 @@ mod tests {
     /// 2048, 110,464 bytes of `DATA` left for a region. `plan_in` notes it, hit or miss.
     #[test]
     fn a_plan_stands_down_to_its_floor_and_narrows_below_it() {
-        use tt_isa::{dm::TILE_SLOT, l1::DATA};
+        use tensix_isa::{dm::TILE_SLOT, l1::DATA};
         let (route, fid) = (SrcRoute::Tf32FromFp32, Fidelity::HiFi4);
         let at = |end: u64, mkn: [usize; 3], st: Staging| {
             let was = crate::l1::set_arena_end(end);
@@ -5180,7 +5180,7 @@ mod tests {
     /// same arena. An FP32 `B`'s plans are unchanged.
     #[test]
     fn a_bf16_b_plans_compact_slots() {
-        use tt_isa::dm::{BF16_TILE_SLOT, TILE_SLOT};
+        use tensix_isa::dm::{BF16_TILE_SLOT, TILE_SLOT};
         let fid = Fidelity::HiFi4;
         let (f32_b, bf16_b) = (SrcRoute::Tf32FromFp32, SrcRoute::TF32_WITH_BF16_B);
         assert_eq!(

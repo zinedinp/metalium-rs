@@ -16,7 +16,7 @@
 
 use tt_device::telemetry::TelemetryTable;
 use tt_device::tlb::WindowKind;
-use tt_isa::noc::{niu, Noc0, NocCoord, TileType};
+use tensix_isa::noc::{niu, Noc0, NocCoord, TileType};
 use tt_tests::backend::{open_card, scrub};
 use tt_tests::harness::{assert_on_silicon, Dev};
 use tt_ttsim::fork_scope;

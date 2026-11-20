@@ -6,7 +6,7 @@ use crate::{
     tensor::{DramAlloc, DramTensor, Elem, Pad, Placement, Result, Step, TensorError, Work},
 };
 use std::sync::{Arc, Mutex, OnceLock};
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{alu, thread},
     dm::{op, record},
@@ -14,7 +14,7 @@ use tt_isa::{
     matrix::Banks,
     sync::{self, Unit},
 };
-pub use tt_isa::{matrix::SrcBroadcast, numerics::MatrixEltwiseOp};
+pub use tensix_isa::{matrix::SrcBroadcast, numerics::MatrixEltwiseOp};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum SrcPrecision {
@@ -352,7 +352,7 @@ fn roles(
             let mut pack = vec![datapath::state_id()];
             pack.extend(sync::take(sems.computed, Before::PACKER));
             pack.extend(datapath::pack_tile_from_dst(
-                l.out_at + tt_isa::dm::TILE_DATA,
+                l.out_at + tensix_isa::dm::TILE_DATA,
                 0,
             ));
             pack.extend(sync::post_after(Unit::Packer, sems.free));
@@ -376,11 +376,11 @@ fn chain_rwc(half: u32) -> Instruction {
 
 fn emit_stage(
     p: &mut Vec<Instruction>,
-    mut banks: Banks<tt_isa::matrix::Loaded, tt_isa::matrix::Loaded>,
+    mut banks: Banks<tensix_isa::matrix::Loaded, tensix_isa::matrix::Loaded>,
     op: MatrixEltwiseOp,
     fidelity: Fidelity,
     dst: u32,
-) -> Banks<tt_isa::matrix::Loaded, tt_isa::matrix::Loaded> {
+) -> Banks<tensix_isa::matrix::Loaded, tensix_isa::matrix::Loaded> {
     for _ in 0..if op == MatrixEltwiseOp::Mul {
         fidelity.phases()
     } else {
@@ -493,7 +493,7 @@ mod tests {
     use super::*;
     #[test]
     fn chain_streams_reuse_registers_and_submit_only_two_reads_one_write() {
-        use tt_isa::dram::Dram;
+        use tensix_isa::dram::Dram;
         for first in [
             MatrixEltwiseOp::Add,
             MatrixEltwiseOp::Sub,
@@ -597,7 +597,7 @@ mod tests {
                         .unwrap();
                         assert_eq!(
                             before - alloc.free_bytes(),
-                            work.out.placement.tiles() as u64 * tt_isa::dm::TILE_SLOT
+                            work.out.placement.tiles() as u64 * tensix_isa::dm::TILE_SLOT
                         );
                         for steps in &work.jobs {
                             for tile in steps.chunks_exact(3) {

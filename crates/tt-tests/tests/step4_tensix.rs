@@ -10,9 +10,9 @@
 //! baby RISC-V core has to sit in the middle.
 
 use tt_device::{core_control::WaitError, tlb::WindowKind};
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::{grid, Noc0, NocCoord};
-use tt_isa::tensix::Core;
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::{grid, Noc0, NocCoord};
+use tensix_isa::tensix::Core;
 use tt_tests::firmware;
 use tt_tests::harness::{in_device, tensix_grid, tile, Dev};
 

@@ -1,9 +1,9 @@
-//! Calling fused `.ttinsn` code (`tt_isa::ttinsn`): a role program the host wrote to the program
+//! Calling fused `.ttinsn` code (`tensix_isa::ttinsn`): a role program the host wrote to the program
 //! cache as RISC-V code that pushes its Tensix words by executing them, its length flagged
-//! `tt_isa::ttinsn::FUSED` (`docs/completed-plans/ttinsn-push.md`).
+//! `tensix_isa::ttinsn::FUSED` (`docs/completed-plans/ttinsn-push.md`).
 //!
 //! The build-time instruction gate cannot see code written at run time: the host validated it
-//! (`tt_isa::ttinsn::validate`) and ran it against the program's own expansion before writing it,
+//! (`tensix_isa::ttinsn::validate`) and ran it against the program's own expansion before writing it,
 //! and the runner checks only where it lies (the program cache, aligned) before calling it.
 //!
 //! A core's instruction cache is not coherent with L1: the program cache reuses its addresses for
@@ -12,7 +12,7 @@
 //! (`docs/learnings/silicon-operating-notes.md`, the `.ttinsn` experiment's stale-code control).
 
 use crate::publish;
-use tt_isa::cfg::{generated::global::RISCV_IC_INVALIDATE_InvalidateAll, ConfigBank};
+use tensix_isa::cfg::{generated::global::RISCV_IC_INVALIDATE_InvalidateAll, ConfigBank};
 
 /// Invalidate the instruction caches `mask` names (bit 0 RISCV B, 1 T0, 2 T1, 3 T2, 4 NC), after
 /// code was written to L1 ending at `last_written`: the sequence the page gives -- a read back of

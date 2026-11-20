@@ -21,7 +21,7 @@
 
 use std::time::Instant;
 
-use tt_isa::dm::op;
+use tensix_isa::dm::op;
 use tt_kernels::kind;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::profile::{op_name, DeviceProfile, Event};
@@ -223,7 +223,7 @@ enum Part {
 }
 
 fn class(word: u32) -> Part {
-    use tt_isa::dm::record;
+    use tensix_isa::dm::record;
     match word {
         op::POKE | record::POKE_RUN => Part::Pokes,
         op::KERNEL => Part::SetupKernel,

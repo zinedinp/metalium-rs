@@ -23,9 +23,9 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{self, op, Mover};
-use tt_isa::noc::niu::Niu;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, Mover};
+use tensix_isa::noc::niu::Niu;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::{DataMover, WriteNoc};
 use tt_tests::harness::{in_device, tensix_grid, tile};
 
@@ -48,7 +48,7 @@ const PAIRS: u32 = 6;
 /// Reads land in L1 from here, writes leave from `L1_WRITE`.
 const L1_READ: u32 = 0x2_0000;
 const L1_WRITE: u32 = L1_READ + PAIRS * LEN;
-const _: () = assert!(L1_WRITE as u64 + (PAIRS * LEN) as u64 <= tt_isa::l1::DATA.end);
+const _: () = assert!(L1_WRITE as u64 + (PAIRS * LEN) as u64 <= tensix_isa::l1::DATA.end);
 /// Each tile's 1 MiB to read and 1 MiB to write, per channel.
 const READ_BASE: u64 = 256 << 20;
 const WRITE_BASE: u64 = 512 << 20;

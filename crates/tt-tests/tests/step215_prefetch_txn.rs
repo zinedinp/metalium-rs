@@ -26,8 +26,8 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{self, op, record, TILE_SLOT};
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, record, TILE_SLOT};
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::DataMover;
 use tt_tests::backend::{GATE_TILE, ON_SILICON};
 use tt_tests::harness::{in_device, tile, Dev};

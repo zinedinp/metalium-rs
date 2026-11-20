@@ -22,8 +22,8 @@
 
 use std::fmt::Write as _;
 
-use tt_isa::dram::Dram;
-use tt_isa::format::TileFormat;
+use tensix_isa::dram::Dram;
+use tensix_isa::format::TileFormat;
 
 use crate::kind;
 use crate::matmul::{Fidelity, PairOrder, SrcRoute, ORDER_HERE};
@@ -631,7 +631,7 @@ impl Product {
             Vec::new()
         };
         let busy = if self.busy {
-            vec![Some(tt_isa::l1::DATA.base); self.units]
+            vec![Some(tensix_isa::l1::DATA.base); self.units]
         } else {
             Vec::new()
         };

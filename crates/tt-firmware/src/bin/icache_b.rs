@@ -5,7 +5,7 @@
 
 /// Where the timings go: `[size, straight-line cycles, jump-chain cycles]`
 /// per size, in the probes' own L1 (`mailbox::PROBE_SCRATCH`).
-const RESULTS: u64 = tt_isa::mailbox::icache_results(0);
+const RESULTS: u64 = tensix_isa::mailbox::icache_results(0);
 
 /// Each code block's size.
 const BLOCK: u32 = 8192;

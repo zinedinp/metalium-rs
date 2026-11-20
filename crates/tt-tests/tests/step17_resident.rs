@@ -163,9 +163,9 @@ fn a_failed_kernel_leaves_the_session_usable() {
         let want = reference(s, &a, &b, mkn, Fidelity::HiFi4);
         // Any semaphore will do: math waits on one that starts at zero and
         // that nothing posts.
-        let never = tt_isa::sync::Semaphore::new(0).unwrap();
-        let stuck = tt_isa::sync::take(never, tt_isa::backend::Before::EVERYTHING).to_vec();
-        let nothing: Vec<tt_isa::isa::Instruction> = Vec::new();
+        let never = tensix_isa::sync::Semaphore::new(0).unwrap();
+        let stuck = tensix_isa::sync::take(never, tensix_isa::backend::Before::EVERYTHING).to_vec();
+        let nothing: Vec<tensix_isa::isa::Instruction> = Vec::new();
         let sems = [(never, 0, 1)];
         let k = Kernel {
             dump_rows: 0,

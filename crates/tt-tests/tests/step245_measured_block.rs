@@ -551,7 +551,7 @@ fn a_capture_paused_to_measure_is_the_capture_unpaused() {
 /// op, barrier and other record is the same, on every unit.
 fn same_but_setup(paused: &Recorded, unpaused: &Recorded) {
     const PAUSES: u32 = 1;
-    let kernel = tt_isa::dm::op::KERNEL;
+    let kernel = tensix_isa::dm::op::KERNEL;
     let (ops, units) = paused;
     let (ops_u, units_u) = unpaused;
     assert_eq!(ops.len(), ops_u.len(), "the paused pass recorded other ops");

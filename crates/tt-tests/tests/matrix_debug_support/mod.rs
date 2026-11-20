@@ -3,7 +3,7 @@
 //! one- and eight-row move forms.
 #![allow(dead_code)]
 
-use tt_isa::matrix::debug::{AddrModEntry, AddrModTable, Rows};
+use tensix_isa::matrix::debug::{AddrModEntry, AddrModTable, Rows};
 
 type MatA = [[f32; 16]; 16];
 

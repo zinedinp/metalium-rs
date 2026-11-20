@@ -4,7 +4,7 @@
 //!
 //! `VectorUnit.md` "PRNG": every one of the 32 SFPU lanes owns a 32-bit LFSR,
 //! `state' = (!popcount(state & 0x8020_0003) << 31) | state >> 1`
-//! (`tt_isa::numerics::stochastic::advance`; the XNOR makes all-ones the
+//! (`tensix_isa::numerics::stochastic::advance`; the XNOR makes all-ones the
 //! absorbing state), and `SFPMOV` mode 8 returns the *old* state and advances
 //! only the enabled lanes. Its statistical properties are poor, and the lanes
 //! are **not independent**: they are one sequence read at different times.
@@ -13,9 +13,9 @@
 //!
 //! * A `WRCFG` to `PRNG_SEED_Seed_Val` does not restart silicon's stream. A
 //!   full-width RISC-V store to the same word, a fence and 512 NOP iterations
-//!   does, on both cards (`tt_isa::dataflow::SEED_SETTLE_NOPS`). The role
+//!   does, on both cards (`tensix_isa::dataflow::SEED_SETTLE_NOPS`). The role
 //!   firmware does exactly that for a program that opens with a seed
-//!   directive (`tt_isa::dataflow::seed_directive`).
+//!   directive (`tensix_isa::dataflow::seed_directive`).
 //! * After the restart, **ttsim**'s lane `i` holds `advance^(96 - 2 i)(seed)`
 //!   (fitted here on seeds 0, 1, 0x1234_5678, 0x8000_0000, 0x5555_5555,
 //!   0xaaaa_aaaa: every one exact). So lane `i + 1` is lane `i`'s state two
@@ -56,11 +56,11 @@
 
 use std::sync::Arc;
 use tt_device::Transport;
-use tt_isa::dataflow::seed_directive;
-use tt_isa::dm::record;
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::numerics::stochastic::advance;
+use tensix_isa::dataflow::seed_directive;
+use tensix_isa::dm::record;
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::numerics::stochastic::advance;
 
 use crate::code::Loop;
 use crate::session::Session;
@@ -707,7 +707,7 @@ mod tests {
     fn the_seed_directive_heads_only_the_math_role() {
         let k = Kernel::new(Output::Unit).unwrap();
         let (roles, loops) = k.seeded(0xabcd_1234);
-        assert_eq!(roles[1][0].word(), tt_isa::dataflow::SEED_DIRECTIVE);
+        assert_eq!(roles[1][0].word(), tensix_isa::dataflow::SEED_DIRECTIVE);
         assert_eq!(roles[1][1].word(), 0xabcd_1234);
         assert_eq!(roles[0], k.roles[0]);
         assert_eq!(roles[2], k.roles[2]);
@@ -721,6 +721,6 @@ mod tests {
         }
         .stored()
         .unwrap();
-        assert!(stored.1 & tt_isa::mailbox::loops::LOOPED != 0);
+        assert!(stored.1 & tensix_isa::mailbox::loops::LOOPED != 0);
     }
 }

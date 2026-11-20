@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-use tt_isa::noc::ChipId;
+use tensix_isa::noc::ChipId;
 
 /// A PCIe base address register.
 ///
@@ -234,7 +234,7 @@ pub trait Transport {
     }
 
     /// `len` bytes of host memory the card reads and writes itself, by DMA
-    /// through the PCIe tile (`tt_isa::dm::op::HOST_READ`): pinned memory on
+    /// through the PCIe tile (`tensix_isa::dm::op::HOST_READ`): pinned memory on
     /// silicon, a region the simulator's DMA callbacks serve on ttsim. A
     /// transport without it says so rather than pretending.
     fn host_memory(&mut self, len: usize) -> Result<Box<dyn HostMemory>> {

@@ -6,7 +6,7 @@
 //! form of `step234`, whose BF16 weights are one stored format.
 //!
 //! - **The oracle is independent of the kernels.** The F32 model's matrices are rounded on the host
-//!   by `quant::bfp_round_trip` (the packer's rule and `tt_isa`'s unpacker model). The stored
+//!   by `quant::bfp_round_trip` (the packer's rule and `tensix_isa`'s unpacker model). The stored
 //!   model's matrices, read back, must be exactly those values: the card's compression of values
 //!   it can hold is exact, and its decode is the model's.
 //! - Rounding follows the layout the products read: the model is fused and its head untied first,

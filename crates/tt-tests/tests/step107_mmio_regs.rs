@@ -1,12 +1,12 @@
 //! Restricted Scalar Unit MMIO: `LOADREG`, `STOREREG`, `STOREIND` (MMIO).
 //!
 //! The only addressable words are `SW_INT_PC[28..=31]` of the tile PIC
-//! (`tt_isa::scalar::mmio`). Host tests pin the allowlist, the address arithmetic
+//! (`tensix_isa::scalar::mmio`). Host tests pin the allowlist, the address arithmetic
 //! and every refusal against literal addresses from `PIC.md` and a separate
 //! transcription of the pinned `STOREIND` model. ttsim executes none of these
 //! forms (divergence rows 78-79), so the simulator gate records the refusals with
 //! surviving controls, and the semantic gates are silicon-only.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before},
     isa::generated::encode,
     scalar::mmio::{self as mmio, MmioError, Scratch},
@@ -236,8 +236,8 @@ fn indirect_encoder_checks_registers_and_fields() {
     assert_eq!(i.operand("AddrReg"), Some(6));
     assert_eq!(i.word(), encode::storeind_mmio(14, 3, 8, 6).unwrap().word());
     // Distinct from the L1 variant that shares the opcode.
-    let l1 = tt_isa::scalar::store_indirect_l1(
-        tt_isa::scalar::TransferWidth::Word,
+    let l1 = tensix_isa::scalar::store_indirect_l1(
+        tensix_isa::scalar::TransferWidth::Word,
         half,
         Inc::Bytes16,
         8,
@@ -260,7 +260,7 @@ fn indirect_encoder_checks_registers_and_fields() {
 mod simulator {
     use super::*;
     use tt_device::tlb::WindowKind;
-    use tt_isa::isa::Instruction;
+    use tensix_isa::isa::Instruction;
     use tt_tests::harness::{self, Run};
 
     fn survives_program(p: &[Instruction]) -> bool {
@@ -309,8 +309,8 @@ mod simulator {
         // refusal above is not evidence about the MMIO field only.
         assert!(!survives_program(&drained(
             setup(),
-            tt_isa::scalar::store_indirect_l1(
-                tt_isa::scalar::TransferWidth::Word,
+            tensix_isa::scalar::store_indirect_l1(
+                tensix_isa::scalar::TransferWidth::Word,
                 half,
                 Inc::None,
                 8,
@@ -378,13 +378,13 @@ mod simulator {
 mod silicon {
     use super::*;
     use tt_device::tlb::WindowKind;
-    use tt_isa::{
+    use tensix_isa::{
         isa::Instruction,
         scalar::{self, TransferWidth},
     };
     use tt_tests::harness::{self, Roles, Run};
 
-    const DST: u64 = tt_isa::l1::DATA.base;
+    const DST: u64 = tensix_isa::l1::DATA.base;
     const SENTINEL: u8 = 0xA5;
 
     fn run(dev: &mut harness::Dev<'_>, p: &[Instruction], t: usize) -> Vec<u8> {

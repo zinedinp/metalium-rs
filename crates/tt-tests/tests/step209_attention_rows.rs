@@ -338,7 +338,7 @@ fn a_captured_job_records_the_l1_its_slots_reach() {
             let id = s.end_trace().unwrap();
             let (kt, nt, dvt) = (d / 32, l / 32, d / 32);
             let slots = kt + kt * nt + nt + 2 * nt + 2 + nt * dvt + dvt;
-            let reach = tt_isa::l1::DATA.base + slots as u64 * tt_isa::dm::TILE_SLOT;
+            let reach = tensix_isa::l1::DATA.base + slots as u64 * tensix_isa::dm::TILE_SLOT;
             let top = s
                 .trace_ops(id)
                 .unwrap()

@@ -7,7 +7,7 @@
 //! "traces share programs by hash" means. Run with `--nocapture` for the `MEASURE trace` lines
 //! the performance log quotes.
 
-use tt_isa::dm::{op, record};
+use tensix_isa::dm::{op, record};
 use tt_kernels::kind;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
@@ -174,7 +174,7 @@ fn footprint_of_passes<T: tt_device::Transport>(
         let parts = sec.len() as u64 + 1;
         let packed = fp.stream.entries as u64 * 32 + 64 * parts;
         assert!(
-            fp.gddr_bytes <= packed.next_multiple_of(tt_isa::dm::TILE_SLOT),
+            fp.gddr_bytes <= packed.next_multiple_of(tensix_isa::dm::TILE_SLOT),
             "unit {u}: {} GDDR bytes for {} entries in {} sections",
             fp.gddr_bytes,
             fp.stream.entries,
@@ -189,7 +189,7 @@ fn footprint_of_passes<T: tt_device::Transport>(
         let most = fp.program_bytes + 128 * fp.programs as u64;
         assert!(
             fp.program_store_bytes >= fp.program_bytes
-                && fp.program_store_bytes <= most.next_multiple_of(tt_isa::dm::TILE_SLOT),
+                && fp.program_store_bytes <= most.next_multiple_of(tensix_isa::dm::TILE_SLOT),
             "unit {u}: {} GDDR bytes for {} program bytes in {} programs",
             fp.program_store_bytes,
             fp.program_bytes,
@@ -300,7 +300,7 @@ fn a_pass_of_another_shape_pins_more_programs() {
 )]
 fn a_long_section_pays_chunk_padding_in_entries_and_bytes() {
     with_tiles(1, |s| {
-        let chunk = tt_isa::dm::TRACE_CHUNK_ENTRIES;
+        let chunk = tensix_isa::dm::TRACE_CHUNK_ENTRIES;
         let input = s.upload(&vec![0.5; 2048 * 2048], 2048, 2048).unwrap();
         s.begin_trace().unwrap();
         let out = s

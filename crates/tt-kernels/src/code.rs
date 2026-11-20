@@ -1,6 +1,6 @@
 //! A role program with its block repeats: the instructions as the program
 //! slot holds them, and `(start, len, count)` loops the role runner expands
-//! as it pushes (`tt_isa::mailbox::loops`: a header stored with the program).
+//! as it pushes (`tensix_isa::mailbox::loops`: a header stored with the program).
 //!
 //! How a body too long for the 32-entry replay buffer (`frontend::REPLAY`)
 //! runs without being unrolled into the 8192-word program slot: an SFPU row
@@ -9,8 +9,8 @@
 //! program, flagged in its length -- and what reaches the coprocessor is exactly
 //! [`Code::expand`]'s stream, which is what every model and gate runs.
 
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox::loops;
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox::loops;
 
 /// `ins[start..start + len]` pushed `count` times where it is stored once.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -114,14 +114,14 @@ impl Code {
         Ok((words, n | loops::LOOPED))
     }
 
-    /// The program as fused `.ttinsn` code (`tt_isa::ttinsn`): RISC-V code that pushes
+    /// The program as fused `.ttinsn` code (`tensix_isa::ttinsn`): RISC-V code that pushes
     /// [`Code::expand`]'s stream by executing it, its loops counted loops. Checked three ways
     /// before it is returned: the loops as the runner checks them, the code by
-    /// `tt_isa::ttinsn::validate` (the gate for code written at run time), and its pushes, run
+    /// `tensix_isa::ttinsn::validate` (the gate for code written at run time), and its pushes, run
     /// on the host, against [`Code::expand`] word for word. `Err` for a program with no fused
     /// form (a seed directive, a body past a branch's reach), which the runner pushes instead.
     pub fn fused(&self) -> Result<Vec<u32>, FuseError> {
-        use tt_isa::ttinsn;
+        use tensix_isa::ttinsn;
         check(&self.loops, self.ins.len() as u32).map_err(FuseError::Loops)?;
         let code: Vec<u32> = self.ins.iter().map(|i| i.word()).collect();
         let ls: Vec<(u32, u32, u32)> = self
@@ -151,7 +151,7 @@ impl Code {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FuseError {
     Loops(LoopError),
-    Refused(tt_isa::ttinsn::Refusal),
+    Refused(tensix_isa::ttinsn::Refusal),
     /// The fused code would push other words than the runner: never expected, and refused.
     Differs,
 }
@@ -253,7 +253,7 @@ pub(crate) fn transfers(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::isa::generated::encode;
+    use tensix_isa::isa::generated::encode;
 
     fn ins(n: u32) -> Vec<Instruction> {
         (0..n).map(|k| encode::sfploadi(0, 2, k).unwrap()).collect()
@@ -313,7 +313,7 @@ mod tests {
         let fused = c.fused().unwrap();
         assert_eq!(fused.len(), 8 + 2 * 3 + 1);
         let mut pushed = Vec::new();
-        tt_isa::ttinsn::execute(&fused, |w| pushed.push(w)).unwrap();
+        tensix_isa::ttinsn::execute(&fused, |w| pushed.push(w)).unwrap();
         let want: Vec<u32> = c.expand().iter().map(|i| i.word()).collect();
         assert_eq!(pushed, want);
     }

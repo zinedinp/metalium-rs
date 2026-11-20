@@ -29,7 +29,7 @@
 //! Watched failing: with the tile copy skipped (the table is written), with the
 //! column flag dropped (the wrong words read as indices), with a column of
 //! sixteen indices read as 64 bytes (the rest stale), and, in the record's
-//! unit tests (`tt_isa::dm::record`), with the face row off by one and with
+//! unit tests (`tensix_isa::dm::record`), with the face row off by one and with
 //! the repeated-row check removed.
 
 use tt_kernels::session::{Session, TileChoice};

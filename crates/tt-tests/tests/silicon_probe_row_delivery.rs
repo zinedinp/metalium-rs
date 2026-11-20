@@ -23,7 +23,7 @@
 #![cfg(all(feature = "silicon", feature = "profile"))]
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
 use tt_kernels::profile_mode::ProfileOptions;
 use tt_kernels::residency::RowScheme;
 use tt_kernels::session::{
@@ -85,7 +85,7 @@ fn check(s: &mut Card, scheme: RowScheme, rows: usize, p: usize, r: usize, twin:
         .probe_row_delivery(RowScheme::Gddr, 0..p, 0..r, twin)
         .unwrap();
     for &t in &tiles {
-        let fill = vec![POISON; (tt_isa::l1::DATA.end - layout.dst) as usize];
+        let fill = vec![POISON; (tensix_isa::l1::DATA.end - layout.dst) as usize];
         s.device().l1_write(&w, t, layout.dst, &fill).unwrap();
     }
     let src = src_for(layout, rows, p);

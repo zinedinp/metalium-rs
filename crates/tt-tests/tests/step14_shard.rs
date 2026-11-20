@@ -12,7 +12,7 @@
 use std::path::PathBuf;
 
 use tt_device::Device;
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_kernels::link::Link;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::matmul_on;
@@ -22,7 +22,7 @@ use tt_ttsim::{fork_scope, Simulator};
 const BUDGET: u64 = 4_000_000;
 
 fn at(x: u8, y: u8) -> NocCoord<Noc0> {
-    assert!(tt_isa::noc::grid::is_tensix_geometry(x, y));
+    assert!(tensix_isa::noc::grid::is_tensix_geometry(x, y));
     NocCoord::new(x, y).unwrap()
 }
 

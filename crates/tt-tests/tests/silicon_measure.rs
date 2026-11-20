@@ -26,13 +26,13 @@
 
 #![cfg(feature = "silicon")]
 
-use tt_isa::backend::{self, ConfigWords};
-use tt_isa::cfg::generated::{alu, thcon, unpack0, unpack1};
-use tt_isa::cfg::ConfigField;
-use tt_isa::isa::generated::encode;
-use tt_isa::sfpu;
-use tt_isa::tensix;
-use tt_isa::tile::{L1Format, TileImage};
+use tensix_isa::backend::{self, ConfigWords};
+use tensix_isa::cfg::generated::{alu, thcon, unpack0, unpack1};
+use tensix_isa::cfg::ConfigField;
+use tensix_isa::isa::generated::encode;
+use tensix_isa::sfpu;
+use tensix_isa::tensix;
+use tensix_isa::tile::{L1Format, TileImage};
 use tt_tests::datapath::{
     flat_descriptor, pack_config, pack_instruction, set_adc_x, set_adc_x_pack, set_adc_x_unpack,
     src_thread_config, thread_config, unpack_config, unpack_instruction, unpack_src_config,
@@ -197,7 +197,7 @@ fn fp32_operands() -> Vec<u32> {
 
 fn bf16_operands() -> Vec<u32> {
     (0..N)
-        .map(|i| u32::from(tt_isa::tile::fp32_to_bf16_truncate((1.0f32 + i as f32).to_bits()) | 1))
+        .map(|i| u32::from(tensix_isa::tile::fp32_to_bf16_truncate((1.0f32 + i as f32).to_bits()) | 1))
         .collect()
 }
 
@@ -211,7 +211,7 @@ fn m02_src_landing_fp32_to_tf32() {
             (L1Format::Fp32, 0),
             4,
             &fp32_operands(),
-            tt_isa::tile::fp32_to_tf32,
+            tensix_isa::tile::fp32_to_tf32,
             false,
         );
     }
@@ -222,8 +222,8 @@ fn m02_src_landing_fp32_to_tf32() {
 #[test]
 fn m03_src_landing_bf16() {
     assert_on_silicon();
-    let to_bf16 = |d: u32| tt_isa::tile::bf16_to_fp32(tt_isa::tile::fp32_to_bf16_truncate(d));
-    let bf16_as_fp32 = |d: u32| tt_isa::tile::bf16_to_fp32(d as u16);
+    let to_bf16 = |d: u32| tensix_isa::tile::bf16_to_fp32(tensix_isa::tile::fp32_to_bf16_truncate(d));
+    let bf16_as_fp32 = |d: u32| tensix_isa::tile::bf16_to_fp32(d as u16);
     for (key, u) in [("srca", Unpacker::SrcA), ("srcb", Unpacker::SrcB)] {
         src_probe(
             &format!("{key}.fp32_bf16"),
@@ -256,7 +256,7 @@ fn m04_mova2d_single_row() {
         (L1Format::Fp32, 0),
         4,
         &fp32_operands(),
-        tt_isa::tile::fp32_to_tf32,
+        tensix_isa::tile::fp32_to_tf32,
         true,
     );
 }
@@ -433,7 +433,7 @@ fn m08_bf16_unpack_to_dst() {
     p.push(backend::wait_for_unpacker0(backend::Before::EVERYTHING).unwrap());
     let want: Vec<u32> = halves
         .iter()
-        .map(|&h| tt_isa::tile::bf16_to_fp32(h as u16))
+        .map(|&h| tensix_isa::tile::bf16_to_fp32(h as u16))
         .collect();
     for (label, fmt) in [("fmt0", 0u32), ("fmt3", 3)] {
         in_device(|dev| {
@@ -473,7 +473,7 @@ fn m09_non_zero_config_fields_on_silicon() {
             .alloc_window(tt_device::tlb::WindowKind::TwoMib)
             .unwrap();
         let mut words = Vec::new();
-        for addr32 in 0..tt_isa::cfg::CONFIG_WORDS_PER_BANK {
+        for addr32 in 0..tensix_isa::cfg::CONFIG_WORDS_PER_BANK {
             dev.write32(&w, tile, tensix::CFGREG_RD_CNTL, addr32)
                 .unwrap();
             harness::advance(dev, 64);
@@ -487,7 +487,7 @@ fn m09_non_zero_config_fields_on_silicon() {
             .map(|(i, v)| format!("{i}:{v:#x}"))
             .collect();
         measure("cfg.nonzero_words", nonzero.join(" "));
-        for (name, field) in tt_isa::cfg::generated::ALL_CONFIG_FIELDS {
+        for (name, field) in tensix_isa::cfg::generated::ALL_CONFIG_FIELDS {
             let v = field.extract(words[field.addr32() as usize]);
             if v != 0 {
                 measure(&format!("cfg.field.{name}"), format!("{v:#x}"));
@@ -537,7 +537,7 @@ fn m10_where_unpack_to_dst_writes() {
                 dev,
                 &Run::new(&p)
                     .stage(&[(STAGE, &staged)])
-                    .dump_rows(tt_isa::mailbox::DUMP_MAX_ROWS),
+                    .dump_rows(tensix_isa::mailbox::DUMP_MAX_ROWS),
             );
             let marked = out.dst.iter().filter(|&&v| v == MARK).count();
             let changed: Vec<String> = out
@@ -639,7 +639,7 @@ fn m12_srca_corruption_versus_burst_size() {
         in_device(|dev| {
             let out = harness::run(dev, &Run::new(&p).stage(&[(STAGE, &staged)]).dump_rows(2));
             let bad: Vec<String> = (0..n)
-                .filter(|&i| out.dst[i] != tt_isa::tile::fp32_to_tf32(datums[i]))
+                .filter(|&i| out.dst[i] != tensix_isa::tile::fp32_to_tf32(datums[i]))
                 .map(|i| i.to_string())
                 .collect();
             std::fs::write(&path, bad.join(",")).unwrap();
@@ -696,7 +696,7 @@ fn m13_srca_corruption_race_or_cells() {
             let out = harness::run(dev, &Run::new(&p).stage(&[(STAGE, &staged)]).dump_rows(2));
             let bad: Vec<String> = (0..n)
                 .filter_map(|i| {
-                    let want = tt_isa::tile::fp32_to_tf32(datums[i]);
+                    let want = tensix_isa::tile::fp32_to_tf32(datums[i]);
                     let got = out.dst[i];
                     (got != want).then(|| format!("{i}:{want:08x}:{got:08x}"))
                 })
@@ -891,7 +891,7 @@ fn m16_srca_move_versus_wait_mask() {
             let stage = [(STAGE, staged.as_slice())];
             let mut run = Run::new(&p)
                 .stage(&stage)
-                .dump_rows(tt_isa::mailbox::DUMP_MAX_ROWS);
+                .dump_rows(tensix_isa::mailbox::DUMP_MAX_ROWS);
             run.clear_dst = clear;
             let out = harness::run(dev, &run);
             let nonzero: Vec<String> = out
@@ -968,7 +968,7 @@ fn m18_srca_filled_by_movd2a() {
     let n = 32usize;
     let datums: Vec<u32> = (0..n).map(|i| (1.0f32 + i as f32).to_bits()).collect();
     let staged = stage(L1Format::Fp32, 0, &datums);
-    let barrier = |p: &mut Vec<tt_isa::isa::Instruction>| {
+    let barrier = |p: &mut Vec<tensix_isa::isa::Instruction>| {
         p.push(backend::wait_for_unpacker0(backend::Before::EVERYTHING).unwrap());
         p.push(backend::wait_for_matrix(backend::Before::EVERYTHING).unwrap());
     };
@@ -1164,7 +1164,7 @@ fn m21_lane_config_zeroed_before_the_move() {
             for attempt in 0..3 {
                 let mut p = Vec::new();
                 if zero_lane_config {
-                    p.push(tt_isa::isa::generated::encode::sfpconfig(0, 15, 1).unwrap());
+                    p.push(tensix_isa::isa::generated::encode::sfpconfig(0, 15, 1).unwrap());
                     p.push(backend::wait_for_sfpu(backend::Before::EVERYTHING).unwrap());
                 }
                 p.extend(src_thread_config());
@@ -1220,8 +1220,8 @@ fn m21_lane_config_zeroed_before_the_move() {
 /// unpack on thread 0, clear and move on thread 1.
 #[test]
 fn m22_zero_flags_cleared_before_the_move() {
-    use tt_isa::isa::generated::defs;
-    use tt_isa::isa::Instruction;
+    use tensix_isa::isa::generated::defs;
+    use tensix_isa::isa::Instruction;
     assert_on_silicon();
     let n = 32usize;
     let datums: Vec<u32> = (0..n).map(|i| (1.0f32 + i as f32).to_bits()).collect();
@@ -1359,7 +1359,7 @@ fn m23_untouched_tiles() {
 fn creg(
     dev: &mut harness::Dev<'_>,
     w: &tt_device::Window,
-    tile: tt_isa::noc::NocCoord<tt_isa::noc::Noc0>,
+    tile: tensix_isa::noc::NocCoord<tensix_isa::noc::Noc0>,
     hw_addr: u32,
 ) -> u32 {
     dev.write32(w, tile, tensix::CFGREG_RD_CNTL, hw_addr)
@@ -1374,7 +1374,7 @@ const THD_STATE_SIZE: u32 = 68;
 /// Every non-zero `Config` (bank 0) and `ThreadConfig` word on `tile`, one line.
 fn state_line(
     dev: &mut harness::Dev<'_>,
-    tile: tt_isa::noc::NocCoord<tt_isa::noc::Noc0>,
+    tile: tensix_isa::noc::NocCoord<tensix_isa::noc::Noc0>,
 ) -> String {
     let w = dev
         .alloc_window(tt_device::tlb::WindowKind::TwoMib)
@@ -1410,8 +1410,8 @@ fn m24_state_left_by_the_last_program() {
     let mut dev = tt_device::Device::open(kmd).unwrap();
     let grid = harness::tensix_grid(&mut dev);
     for x in grid.columns() {
-        for y in tt_isa::noc::grid::TENSIX_ROWS {
-            let tile = tt_isa::noc::NocCoord::new(x, y).unwrap();
+        for y in tensix_isa::noc::grid::TENSIX_ROWS {
+            let tile = tensix_isa::noc::NocCoord::new(x, y).unwrap();
             let line = state_line(&mut dev, tile);
             if !line.is_empty() {
                 measure(&format!("state.({x},{y})"), line);
@@ -1550,7 +1550,7 @@ fn m26_whole_face_versus_partial_run() {
 /// 0 only).
 #[test]
 fn m27_llk_unpacker_settings() {
-    use tt_isa::cfg::generated::thcon as t;
+    use tensix_isa::cfg::generated::thcon as t;
     assert_on_silicon();
     let n = 256usize;
     let datums: Vec<u32> = (0..n).map(|i| (1.0f32 + i as f32).to_bits()).collect();
@@ -1737,8 +1737,8 @@ fn m28_packer_reads_the_matrix_result() {
 /// out by each route. `ELWADD` built from LLK's `TT_OP_ELWADD`.
 #[test]
 fn m29_elwadd_reads_srca_in_fp32_mode() {
-    use tt_isa::isa::generated::defs;
-    use tt_isa::isa::Instruction;
+    use tensix_isa::isa::generated::defs;
+    use tensix_isa::isa::Instruction;
     assert_on_silicon();
     const STAGE_B: u64 = STAGE + 0x2000;
     let n = 256usize;
@@ -1816,8 +1816,8 @@ fn m30_dest_clock_gating_register() {
         .unwrap();
     let mut seen = std::collections::BTreeMap::<(u32, u32), Vec<String>>::new();
     for x in grid.columns() {
-        for y in tt_isa::noc::grid::TENSIX_ROWS {
-            let tile = tt_isa::noc::NocCoord::<tt_isa::noc::Noc0>::new(x, y).unwrap();
+        for y in tensix_isa::noc::grid::TENSIX_ROWS {
+            let tile = tensix_isa::noc::NocCoord::<tensix_isa::noc::Noc0>::new(x, y).unwrap();
             let cg = dev.read32(&w, tile, 0xFFB1_2240).unwrap();
             let fd = dev.read32(&w, tile, 0xFFB1_2068).unwrap();
             seen.entry((cg, fd)).or_default().push(format!("({x},{y})"));
@@ -1837,8 +1837,8 @@ fn m30_dest_clock_gating_register() {
 /// and without it.
 #[test]
 fn m31_zerosrc_first() {
-    use tt_isa::isa::generated::defs;
-    use tt_isa::isa::Instruction;
+    use tensix_isa::isa::generated::defs;
+    use tensix_isa::isa::Instruction;
     assert_on_silicon();
     const STAGE_B: u64 = STAGE + 0x2000;
     let n = 256usize;
@@ -1910,10 +1910,10 @@ fn m31_zerosrc_first() {
 /// by `ELWADD` + zero `SrcB` and by `MOVA2D`.
 #[test]
 fn m32_srca_address_swizzle() {
-    use tt_isa::backend::ThreadConfigEntry;
-    use tt_isa::cfg::generated::thread;
-    use tt_isa::isa::generated::defs;
-    use tt_isa::isa::Instruction;
+    use tensix_isa::backend::ThreadConfigEntry;
+    use tensix_isa::cfg::generated::thread;
+    use tensix_isa::isa::generated::defs;
+    use tensix_isa::isa::Instruction;
     assert_on_silicon();
     const STAGE_B: u64 = STAGE + 0x2000;
     let n = 256usize;

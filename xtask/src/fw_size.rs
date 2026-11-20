@@ -277,7 +277,7 @@ fn functions(nm: &Path, elf: &Path) -> Result<Vec<Func>, String> {
 }
 
 /// The last path segment of a demangled name, generics and closures aside:
-/// `tt_isa::dm::record::gather_by_column` -> `gather_by_column`.
+/// `tensix_isa::dm::record::gather_by_column` -> `gather_by_column`.
 fn last_segment(name: &str) -> &str {
     let name = name
         .split('<')
@@ -337,12 +337,12 @@ mod tests {
     #[test]
     fn last_segment_drops_paths_and_generics() {
         assert_eq!(
-            last_segment("tt_isa::dm::record::gather_by_column"),
+            last_segment("tensix_isa::dm::record::gather_by_column"),
             "gather_by_column"
         );
         assert_eq!(last_segment("dm_b::run_record"), "run_record");
         assert_eq!(
-            last_segment("tt_isa::dm::record::expand_for::<true, false, dm_b::run_record::{closure#2}>::{closure#0}"),
+            last_segment("tensix_isa::dm::record::expand_for::<true, false, dm_b::run_record::{closure#2}>::{closure#0}"),
             "expand_for"
         );
     }

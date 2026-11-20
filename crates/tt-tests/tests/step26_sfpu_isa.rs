@@ -14,9 +14,9 @@
 //! stepped by an address modifier) and unrolled (immediate addresses), and
 //! both must match the same interpreter tile: that is the X1 gate.
 
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::isa::Instruction;
-use tt_isa::tile::{L1Format, TileImage};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::isa::Instruction;
+use tensix_isa::tile::{L1Format, TileImage};
 use tt_kernels::datapath::{
     config_program, pack_tile_from_dst, state_id, thread_config, tile_descriptor,
     tile_unpack_config, unpack_tile_to_dst, OUT, STAGE,
@@ -25,7 +25,7 @@ use tt_kernels::sfpu::interp::Vector;
 use tt_kernels::sfpu::{Cond, Format, LReg, LoopForm, LoopPolicy, Program};
 use tt_tests::harness::{self, Roles, Run};
 
-const STAGE_B: u64 = STAGE + tt_isa::dm::TILE_SLOT;
+const STAGE_B: u64 = STAGE + tensix_isa::dm::TILE_SLOT;
 
 fn operands(seed: u32) -> Vec<u32> {
     let specials: [u32; 14] = [
@@ -271,7 +271,7 @@ fn sfpdivp2_wraps_on_silicon_as_the_page_says() {
     let mut p = Program::with_policy(LoopPolicy::Unrolled);
     p.for_each_row_group(64, |p, o| {
         p.load(LReg::L0, Format::Fp32, o);
-        p.raw(tt_isa::isa::generated::encode::sfpdivp2(253, 0, 2, 1).unwrap());
+        p.raw(tensix_isa::isa::generated::encode::sfpdivp2(253, 0, 2, 1).unwrap());
         p.store(LReg::L2, Format::Fp32, 128 + o);
     });
     let math = p.finish();
@@ -366,7 +366,7 @@ fn cases_10_2a() -> Vec<Case> {
             "SFPLE writing a mask",
             none,
             |p| {
-                p.raw(tt_isa::isa::generated::encode::sfple(1, 0, 8).unwrap());
+                p.raw(tensix_isa::isa::generated::encode::sfple(1, 0, 8).unwrap());
                 p.mov(LReg::L0, LReg::L2);
             },
             Format::Int32,
@@ -559,7 +559,7 @@ fn cases_10_2a() -> Vec<Case> {
                 p.loadi_bits(LReg::L7, 5);
                 // `VD = 2`, `Mod1 = 10`, the mirror matching: the result lands in
                 // `L5`, and `L2` keeps B.
-                p.raw(tt_isa::isa::generated::encode::sfplutfp32(8, 2, 10).unwrap());
+                p.raw(tensix_isa::isa::generated::encode::sfplutfp32(8, 2, 10).unwrap());
                 p.xor(LReg::L5, LReg::L2);
             },
             Format::Int32,

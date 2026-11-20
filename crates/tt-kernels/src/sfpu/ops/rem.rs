@@ -56,7 +56,7 @@
 
 use super::super::kernel::{A_ROW, B_ROW, OUT_ROW, SPILL_ROW};
 use super::super::{Cond, Format, LReg, Program};
-use tt_isa::isa::generated::encode;
+use tensix_isa::isa::generated::encode;
 
 const L0: LReg = LReg::L0;
 const L1: LReg = LReg::L1;

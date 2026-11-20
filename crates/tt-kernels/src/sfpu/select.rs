@@ -17,7 +17,7 @@
 //!
 //! Only tile row 0 is a row; the other rows of each tile are computed and never read.
 
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::Instruction;
 
 use super::kernel::{A_ROW, C_ROW, OUT_ROW};
 use super::{Cond, Format, LReg, LoopPolicy, Program};
@@ -195,8 +195,8 @@ pub fn roles(
         clear_unpacker0_adcs, config_program, pack_tile_from_dst, state_id, thread_config,
         tile_unpack_config, unpack_tile_to_dst,
     };
-    use tt_isa::backend::{self, Before, ConfigWords};
-    use tt_isa::sync::{self, Unit};
+    use tensix_isa::backend::{self, Before, ConfigWords};
+    use tensix_isa::sync::{self, Unit};
     let s = layout.sems;
     let mut unpack = thread_config();
     unpack.extend(clear_unpacker0_adcs());
@@ -206,7 +206,7 @@ pub fn roles(
     for n in 0..tiles {
         unpack.extend(sync::take(s.consumed, Before::UNPACKER));
         unpack.extend(unpack_tile_to_dst(
-            layout.in_at + n as u64 * tt_isa::dm::TILE_SLOT,
+            layout.in_at + n as u64 * tensix_isa::dm::TILE_SLOT,
             A_ROW,
         ));
         unpack.extend(sync::post_after(Unit::Unpacker0, s.unpacked));
@@ -225,7 +225,7 @@ pub fn roles(
     let mut pack = vec![state_id()];
     pack.extend(sync::take(s.computed, Before::PACKER));
     pack.extend(pack_tile_from_dst(
-        layout.out_at + tt_isa::dm::TILE_DATA,
+        layout.out_at + tensix_isa::dm::TILE_DATA,
         OUT_ROW,
     ));
     pack.extend(sync::post_after(Unit::Packer, s.packed));
@@ -265,7 +265,7 @@ pub fn host(row: &[f32]) -> usize {
 /// `fan_in` ([`partial_out`]); then the choice.
 pub fn reference(row: &[f32], run: usize, fan_in: usize) -> usize {
     use super::interp::Vector;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     let ct = row.len().div_ceil(32);
     let tile = |j: usize| -> Vec<u32> {
         // Padding rows and columns hold NaN: never read, or never chosen.

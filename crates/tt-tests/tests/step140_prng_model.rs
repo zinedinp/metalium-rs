@@ -347,7 +347,7 @@ fn integer_range_counts_are_floor_or_ceil_of_two_to_the_23_over_r() {
 #[test]
 fn lane_initialisation_matches_the_model() {
     use tt_device::{tlb::WindowKind, Transport};
-    use tt_isa::{backend, mailbox, tensix::Core};
+    use tensix_isa::{backend, mailbox, tensix::Core};
     use tt_kernels::{
         datapath,
         sfpu::{Format, LReg, Program},

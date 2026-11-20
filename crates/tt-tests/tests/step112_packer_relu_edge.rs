@@ -3,7 +3,7 @@
 //! A whole FP32 tile goes L1 -> `Dst` (raw bits, `UnpackToDst`) and back out
 //! through the packer with one optional stage on, and every datum is compared
 //! with an independent raw-bit model of `Packers/ReLU.md` / `EdgeMasking.md`
-//! written here, on integers, sharing nothing with `tt_isa::packer`.
+//! written here, on integers, sharing nothing with `tensix_isa::packer`.
 //! `Packers/*` is a Wormhole page and `PACR.md` on Blackhole is "basic", so the
 //! behaviour is UNVERIFIED on Blackhole: the simulator arms pin what ttsim does
 //! (divergence rows 85 and 86), and the `silicon` arms measure the chip against the page.
@@ -14,9 +14,9 @@
 //! `packer_edge_row_masks_match_the_page_lookup`,
 //! `silicon_edge_partial_columns_and_negative_infinity`,
 //! `silicon_edge_then_relu_order`.
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::packer::{EdgeFill, EdgeMasking, PackerRelu, PlaneRows, ThresholdFormat};
-use tt_isa::tile::{L1Format, TileImage};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::packer::{EdgeFill, EdgeMasking, PackerRelu, PlaneRows, ThresholdFormat};
+use tensix_isa::tile::{L1Format, TileImage};
 use tt_kernels::datapath::{
     config_program, pack_tile_from_dst_staged, state_id, thread_config, tile_descriptor,
     tile_unpack_config, unpack_tile_to_dst, PackStages, OUT, STAGE, TILE_DATUMS,
@@ -103,7 +103,7 @@ fn restored() -> PackStages {
 /// restored (off) stages for a second, `Dst` read from row 0 both times.
 fn pack_roles(
     stages: &PackStages,
-) -> (Vec<tt_isa::isa::Instruction>, Vec<tt_isa::isa::Instruction>) {
+) -> (Vec<tensix_isa::isa::Instruction>, Vec<tensix_isa::isa::Instruction>) {
     let mut unpack = thread_config();
     let mut words = ConfigWords::new();
     tile_unpack_config(&mut words, STAGE);
@@ -393,7 +393,7 @@ fn relu_unspecified_classes() {
 
 // ---- independent raw-bit oracle: edge masking ------------------------------
 
-/// The edge-masking test vector, as plain integers: no `tt_isa::packer` type
+/// The edge-masking test vector, as plain integers: no `tensix_isa::packer` type
 /// in the oracle's inputs.
 #[derive(Copy, Clone)]
 struct Edge {

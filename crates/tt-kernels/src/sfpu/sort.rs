@@ -66,11 +66,11 @@
 use std::sync::{Arc, Mutex, OnceLock};
 
 use tt_device::Transport;
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::dm::{record, TILE_SLOT};
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::sync::{self, Unit};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::dm::{record, TILE_SLOT};
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::sync::{self, Unit};
 
 use super::{Cond, Format, LReg, Program};
 use crate::datapath::{
@@ -574,7 +574,7 @@ fn build(
     }
     let ins = p.finish();
     // The role program wraps this in a handful of synchronisation words.
-    let max = tt_isa::mailbox::PROGRAM_MAX as usize - 64;
+    let max = tensix_isa::mailbox::PROGRAM_MAX as usize - 64;
     if ins.len() > max {
         return Err(SortError::Program {
             kernel,
@@ -597,7 +597,7 @@ pub struct Layout {
 /// semaphores in the order every SFPU kernel declares them.
 pub fn plan_layout(inputs: usize, outputs: usize) -> Result<Layout, crate::l1::PlanError> {
     let mut req = Requirements::new(1);
-    let align = tt_isa::dram::ALIGN;
+    let align = tensix_isa::dram::ALIGN;
     let a = req.scratch("sort input slots", inputs as u64 * TILE_SLOT, align, 0..1);
     let out = req.scratch("sort output slots", outputs as u64 * TILE_SLOT, align, 0..1);
     let unpacked = req.semaphore("sfpu unpacked", 0, 0..1);
@@ -647,7 +647,7 @@ pub fn roles(
     pack.extend(sync::take(s.computed, Before::PACKER));
     for t in 0..outputs {
         pack.extend(pack_tile_from_dst(
-            slot(layout.out_at, t) + tt_isa::dm::TILE_DATA,
+            slot(layout.out_at, t) + tensix_isa::dm::TILE_DATA,
             TILE_ROWS * t as u32,
         ));
     }
@@ -798,7 +798,7 @@ impl<T: Transport> Session<T> {
                 if n > 0 {
                     // Every pass after the first reads what an earlier one
                     // wrote to GDDR: wait for those writes.
-                    gather.insert(0, [tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
+                    gather.insert(0, [tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
                 }
                 steps.push(Step::List {
                     what: "sort gather",
@@ -1008,7 +1008,7 @@ mod tests {
         for (lane, col) in cols.iter().enumerate() {
             for (e, &x) in col.iter().enumerate() {
                 let [r, c] = plane_coord(lane, e);
-                tiles[e / SLOTS][tt_isa::dm::face_index(r % 32, c % 32)] = x;
+                tiles[e / SLOTS][tensix_isa::dm::face_index(r % 32, c % 32)] = x;
             }
         }
         tiles
@@ -1019,7 +1019,7 @@ mod tests {
             let (want_keys, want_idx) = reference(spec.elem, col, spec.descending);
             let at = |e: usize| {
                 let [r, c] = plane_coord(lane, e);
-                (e / SLOTS, tt_isa::dm::face_index(r % 32, c % 32))
+                (e / SLOTS, tensix_isa::dm::face_index(r % 32, c % 32))
             };
             let got_keys: Vec<u32> = (0..spec.n)
                 .map(|e| {

@@ -36,10 +36,8 @@ pub fn check_no_flex_in_backend() -> Result<(), String> {
 
 /// Crates whose dependency tree must stay free of the simulator binding.
 const SHIPPABLE: &[&str] = &[
-    "tt-isa",
     "tt-device",
     "tt-kmd",
-    "tt-layout",
     "tt-kernels",
     "tt-firmware-images",
     "burn-tt",

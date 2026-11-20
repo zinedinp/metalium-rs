@@ -13,12 +13,12 @@
 //! run on ttsim and both cards confirms the layout.
 
 use tt_device::{core_control::WaitError, tlb::WindowKind};
-use tt_isa::backend;
-use tt_isa::cfg::generated::thcon;
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox::{self, status};
-use tt_isa::tensix;
+use tensix_isa::backend;
+use tensix_isa::cfg::generated::thcon;
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::tensix;
 use tt_tests::firmware;
 use tt_tests::harness::{self, advance, in_device, Dev, BUDGET, DST_FMT_FP32};
 
@@ -84,7 +84,7 @@ fn add_imm(result: u32, imm: u32, left: u32) -> Instruction {
 /// `program`, then `gpr` written to `WORD` and the `NOP` `WRCFG.md` asks for.
 fn then_write(mut program: Vec<Instruction>, gpr: u32) -> Vec<Instruction> {
     program.push(backend::write_word(gpr, WORD).unwrap());
-    program.push(tt_isa::sfpu::nop());
+    program.push(tensix_isa::sfpu::nop());
     program
 }
 

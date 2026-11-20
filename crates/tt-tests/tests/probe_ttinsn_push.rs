@@ -18,7 +18,7 @@
 //! the poison, a push that wrote nothing would compare equal to a correct one).
 
 use std::fmt::Write as _;
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::Instruction;
 use tt_kernels::code::{Code, Loop};
 use tt_kernels::sfpu::kernel::{self, A_ROW};
 use tt_kernels::sfpu::ops::{self, kind_sfpu, Broadcast};
@@ -153,7 +153,7 @@ pub fn kernel_math(tiles: usize) -> Code {
 /// `short` was one until the run-time translator made the image outgrow the T1
 /// slot; its baked result is in `performance-log.md`.
 pub fn programs() -> Vec<(String, Code)> {
-    let nop = tt_isa::sfpu::nop();
+    let nop = tensix_isa::sfpu::nop();
     let mut v = vec![
         ("nop1".to_string(), Code::plain(vec![nop])),
         ("nop4".to_string(), Code::plain(vec![nop; 4])),
@@ -272,7 +272,7 @@ pub fn generate() -> String {
     // The opcode bytes of every Tensix instruction, one bit each: what the run-time
     // translator checks a word against (the firmware cannot afford the whole table).
     let mut opcodes = [0u32; 8];
-    for d in tt_isa::isa::generated::ALL {
+    for d in tensix_isa::isa::generated::ALL {
         opcodes[(d.opcode() >> 5) as usize] |= 1 << (d.opcode() & 31);
     }
     let words: Vec<String> = opcodes.iter().map(|w| format!("{w:#010x}")).collect();
@@ -336,12 +336,12 @@ fn the_programs_are_runnable_by_the_runner() {
 mod experiment {
     use super::*;
     use tt_device::trace::TraceEvent;
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     use tt_kernels::runtime::{self, Kernel, Schedule};
     use tt_tests::harness::{in_device, tensix_tile, Dev};
 
     /// `ttinsn_t1.rs`'s scratch block.
-    const SCRATCH: u64 = tt_isa::mailbox::TTINSN_SCRATCH;
+    const SCRATCH: u64 = tensix_isa::mailbox::TTINSN_SCRATCH;
     const STAMP_VALUE: u32 = 0x7717_0001;
 
     /// The ttsim tests of this file run one at a time. Run concurrently they hung
@@ -755,7 +755,7 @@ mod experiment {
     // `gelu` (`kernel::roles_code`), the math role pushed by the runner or fused.
     // -----------------------------------------------------------------------
 
-    use tt_isa::tile::{L1Format, TileImage};
+    use tensix_isa::tile::{L1Format, TileImage};
     use tt_kernels::datapath;
     use tt_kernels::sfpu::kernel::OUT_ROW;
 
@@ -825,9 +825,9 @@ mod experiment {
         let mode = mode.to_le_bytes();
         let mut stage: Vec<(u64, &[u8])> = vec![(SCRATCH, &mode[..])];
         for (n, bytes) in inputs.iter().enumerate() {
-            stage.push((layout.a_at + n as u64 * tt_isa::dm::TILE_SLOT, bytes));
+            stage.push((layout.a_at + n as u64 * tensix_isa::dm::TILE_SLOT, bytes));
         }
-        let out_len = tiles * tt_isa::dm::TILE_SLOT as usize;
+        let out_len = tiles * tensix_isa::dm::TILE_SLOT as usize;
         let read_back = [(SCRATCH, 64usize), (layout.out_at, out_len)];
         let kernel = Kernel {
             stage: &stage,

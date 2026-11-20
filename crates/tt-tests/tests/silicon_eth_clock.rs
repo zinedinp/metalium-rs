@@ -14,7 +14,7 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::eth::mover::event;
+use tensix_isa::eth::mover::event;
 use tt_kernels::link::{discover, Dest, Dir, Mover, Source};
 use tt_tests::bench::{report, with_cards, Stats};
 

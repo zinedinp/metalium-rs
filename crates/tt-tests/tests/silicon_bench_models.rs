@@ -1177,7 +1177,7 @@ fn bench_plan_format() -> Option<tt_models::quant::Format> {
 /// head's format: a step reads one row of it, and a tied head (the table transposed) whole.
 fn weight_bytes<B: burn::tensor::backend::Backend>(m: &Llama<B>) -> f64 {
     use burn::module::{Module, ModuleVisitor, Param};
-    use tt_isa::format::TileFormat;
+    use tensix_isa::format::TileFormat;
     use tt_models::quant::Format;
     struct Count(Vec<String>, tt_models::quant::Plan, f64);
     impl<B: burn::tensor::backend::Backend> ModuleVisitor<B> for Count {
@@ -1219,7 +1219,7 @@ fn qwen_step_bytes<B: burn::tensor::backend::Backend>(
     plan: &tt_models::quant::Plan,
 ) -> f64 {
     use burn::module::{Module, ModuleVisitor, Param};
-    use tt_isa::format::TileFormat;
+    use tensix_isa::format::TileFormat;
     use tt_models::quant::Format;
     struct Count<'a>(Vec<String>, &'a tt_models::quant::Plan, f64);
     impl<B: burn::tensor::backend::Backend> ModuleVisitor<B> for Count<'_> {
@@ -1337,7 +1337,7 @@ fn traced_generation_on<B: tt_models::generate::TracedBackend>(
                     .iter()
                     .flatten()
                     .map(|u| {
-                        2 * *u.stream.heads.get(&tt_isa::dm::op::PAIR_CALL).unwrap_or(&0) as u64
+                        2 * *u.stream.heads.get(&tensix_isa::dm::op::PAIR_CALL).unwrap_or(&0) as u64
                     })
                     .sum();
                 let unit_traces = units.iter().flatten().count();

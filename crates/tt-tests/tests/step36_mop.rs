@@ -1,6 +1,6 @@
 //! Phase 10 gate (X2): the MOP Expander.
 //!
-//! A role's `MopCfg` comes from its mailbox (`tt_isa::mailbox::MOP_CFG`): the
+//! A role's `MopCfg` comes from its mailbox (`tensix_isa::mailbox::MOP_CFG`): the
 //! runner waits for the expander to be idle and writes the nine words before
 //! pushing. Each case loads a configuration whose slots are integer adds of
 //! distinct amounts to one SFPU register (`SFPIADD` by an immediate), issues
@@ -9,7 +9,7 @@
 //! stored integer is a sum that says how many times each slot ran. The claim:
 //! the device's tile **bit for bit** the interpreter's, running the same
 //! program with the `MOP` replaced by the page's functional model's expansion
-//! (`tt_isa::frontend::mop::expand`); and the first case's sum is also the
+//! (`tensix_isa::frontend::mop::expand`); and the first case's sum is also the
 //! number worked out by hand, so the model cannot agree with the device by
 //! being wrong the same way.
 //!
@@ -19,10 +19,10 @@
 //! on ttsim and then on silicon in its own run on a healthy tile, and the
 //! generated table cites it (`xtask/src/gen_isa/measured.rs`, `CONFIRMED`).
 
-use tt_isa::backend::{self, Before};
-use tt_isa::frontend::mop::{self, MopConfig, Template0, Template1};
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
+use tensix_isa::backend::{self, Before};
+use tensix_isa::frontend::mop::{self, MopConfig, Template0, Template1};
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
 use tt_kernels::datapath::{pack_tile_from_dst, state_id, thread_config, OUT};
 use tt_kernels::sfpu::interp::Vector;
 use tt_kernels::sfpu::{Format, LReg, LoopPolicy, Program};
@@ -76,7 +76,7 @@ fn model(mops: &[Instruction], cfg: &MopConfig) -> Vec<u32> {
     let mut expanded = Vec::new();
     let mut mask_hi = 0;
     for &i in mops {
-        if core::ptr::eq(i.def(), &tt_isa::isa::generated::defs::MOP_CFG) {
+        if core::ptr::eq(i.def(), &tensix_isa::isa::generated::defs::MOP_CFG) {
             mask_hi = i.operand("MaskHi").unwrap();
         } else {
             mop::expand(cfg, i, mask_hi, &mut expanded);

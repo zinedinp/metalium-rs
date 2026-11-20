@@ -1,7 +1,7 @@
 //! Phase 10 gate (F1): whole FP32 tiles through `Dst` and back.
 //!
 //! Phase 5 moved 128 datums; an SFPU tile kernel moves 32x32 tiles. A tile
-//! image is a 16-byte header and 1024 datums in `tt_layout`'s face order, and
+//! image is a 16-byte header and 1024 datums in `tensix_layout`'s face order, and
 //! one flat 1024-datum `UnpackToDst` lays the four faces down sixty-four `Dst`
 //! rows (`datapath::tile_descriptor`), which is exactly what the packer reads
 //! back. The claims, every datum checked:
@@ -15,11 +15,11 @@
 //!   builder iterates a tile: a copy so walked, to rows 128..192, packs back
 //!   as the tile it copied.
 
-use tt_isa::backend::ConfigWords;
-use tt_isa::backend::{self, Before};
-use tt_isa::sfpu::{self, mod0_fmt, DST_ODD_COLUMNS};
-use tt_isa::tile::L1Format;
-use tt_isa::tile::TileImage;
+use tensix_isa::backend::ConfigWords;
+use tensix_isa::backend::{self, Before};
+use tensix_isa::sfpu::{self, mod0_fmt, DST_ODD_COLUMNS};
+use tensix_isa::tile::L1Format;
+use tensix_isa::tile::TileImage;
 use tt_kernels::datapath::{
     config_program, pack_tile_from_dst, state_id, thread_config, tile_descriptor,
     tile_unpack_config, unpack_tile_to_dst, OUT, STAGE, TILE_DATUMS,
@@ -27,7 +27,7 @@ use tt_kernels::datapath::{
 use tt_tests::harness::{self, Roles, Run};
 
 /// Where the second input tile is staged: one tile slot on, as in GDDR.
-const STAGE_B: u64 = STAGE + tt_isa::dm::TILE_SLOT;
+const STAGE_B: u64 = STAGE + tensix_isa::dm::TILE_SLOT;
 
 fn tile(seed: u32) -> Vec<u32> {
     let specials = [
@@ -65,7 +65,7 @@ fn image(datums: &[u32]) -> Vec<u8> {
 
 /// Copy `Dst` rows `from..from + 64` to `to..to + 64` through `LReg` 0, one
 /// row group and column half at a time.
-fn sfpu_copy(from: u32, to: u32) -> Vec<tt_isa::isa::Instruction> {
+fn sfpu_copy(from: u32, to: u32) -> Vec<tensix_isa::isa::Instruction> {
     let mut p = Vec::new();
     for g in 0..16 {
         for half in [0, DST_ODD_COLUMNS] {

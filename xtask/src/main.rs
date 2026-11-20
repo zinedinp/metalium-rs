@@ -14,8 +14,6 @@ mod conformance;
 mod fetch;
 mod fw_size;
 mod gen_burn;
-mod gen_cfg;
-mod gen_isa;
 mod pin;
 mod pipeline_report;
 mod ship;
@@ -31,7 +29,6 @@ fn main() -> ExitCode {
         Some("fetch-ttsim") => fetch::fetch_ttsim(args.any(|a| a == "--force")),
         Some("check-no-sim-in-ship") => ship::check_no_sim_in_ship(),
         Some("check-no-flex-in-backend") => ship::check_no_flex_in_backend(),
-        Some("gen-cfg") => gen_cfg::gen_cfg(args.any(|a| a == "--check")),
         Some("fetch-spec") => fetch::fetch_spec(args.any(|a| a == "--force")),
         Some("fetch-kmd") => fetch::fetch_kmd(args.any(|a| a == "--force")),
         Some("fetch-mnist") => fetch::fetch_mnist(args.any(|a| a == "--force")),
@@ -46,8 +43,6 @@ fn main() -> ExitCode {
             fetch::fetch_weights(model, force)
         }
         Some("fetch-burn-tests") => fetch::fetch_burn_tests(args.any(|a| a == "--force")),
-        Some("check-isa-sources") => gen_isa::check_sources(),
-        Some("gen-isa") => gen_isa::generate(args.any(|a| a == "--check")),
         Some("gen-burn-ops") => gen_burn::generate(args.any(|a| a == "--check")),
         Some("burn-coverage") => burn_coverage::run(args.any(|a| a == "--check")),
         Some("silicon") => silicon::run(args),

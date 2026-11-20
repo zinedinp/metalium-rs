@@ -18,9 +18,9 @@
 // Simulator only, permanently: it writes every `Config` register blind, which on silicon is a whole-backend reconfiguration.
 #![cfg(not(feature = "silicon"))]
 
-use tt_isa::backend;
-use tt_isa::isa::Instruction;
-use tt_isa::sfpu;
+use tensix_isa::backend;
+use tensix_isa::isa::Instruction;
+use tensix_isa::sfpu;
 use tt_tests::harness::{self, survives, Run};
 
 /// A scratch GPR well clear of anything the firmware touches.
@@ -70,7 +70,7 @@ fn map_which_config_registers_ttsim_models() {
     // Name the refused ones, so the map is readable rather than a list of numbers.
     println!("\n=== refused registers, by the fields that live in them ===");
     for addr32 in &refused {
-        let mut names: Vec<&str> = tt_isa::cfg::generated::ALL_CONFIG_FIELDS
+        let mut names: Vec<&str> = tensix_isa::cfg::generated::ALL_CONFIG_FIELDS
             .iter()
             .filter(|(_, f)| f.addr32() == *addr32)
             .map(|(n, _)| *n)

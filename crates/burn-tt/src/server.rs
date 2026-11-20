@@ -6010,7 +6010,7 @@ pub(crate) fn kmd_mesh_engine(
                 )));
             }
             let tile = s.tile();
-            let relay = tt_isa::noc::NocCoord::new(relay.0, relay.1).expect("a Tensix coordinate");
+            let relay = tensix_isa::noc::NocCoord::new(relay.0, relay.1).expect("a Tensix coordinate");
             chips.push(Chip::new(s.into_device(), tile, relay).map_err(TtError::from)?);
         }
         let mut links = Vec::new();

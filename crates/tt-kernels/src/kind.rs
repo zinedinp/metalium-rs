@@ -2,7 +2,7 @@
 //! computed on the SFPU (`crate::sfpu::ops`), bit for bit `burn-flex`'s.
 //! `kind_sfpu` there numbers the ops beyond these.
 //!
-//! These were once the data mover's own FP32 kinds (`tt_isa::dm`); the mover
+//! These were once the data mover's own FP32 kinds (`tensix_isa::dm`); the mover
 //! now only moves data, so they live here, with the numbers they had. 8, 9 and
 //! 10 -- the column sum, the padding fill and the copy -- are not element-wise
 //! ops any more: the sum is `sfpu::reduce`'s, the fill `dm::op::FILL`, the copy

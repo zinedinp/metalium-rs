@@ -516,7 +516,7 @@ fn streaming_ragged_broadcast_and_nonbatched_execution() {
 #[test]
 fn failed_reader_cancels_the_waiting_writer() {
     use tt_device::tlb::WindowKind;
-    use tt_isa::dm::{self, op, Mover};
+    use tensix_isa::dm::{self, op, Mover};
     use tt_kernels::dm::DataMover;
     with_tiles(1, |session| {
         let tile = session.tile();
@@ -581,7 +581,7 @@ fn failed_reader_cancels_the_waiting_writer() {
         );
         assert_eq!(
             device
-                .read32(&window, tile, tt_isa::dataflow::ABORT)
+                .read32(&window, tile, tensix_isa::dataflow::ABORT)
                 .unwrap(),
             dm::error::OP
         );
@@ -593,7 +593,7 @@ fn failed_reader_cancels_the_waiting_writer() {
 #[test]
 fn failed_writer_cancels_the_waiting_reader() {
     use tt_device::tlb::WindowKind;
-    use tt_isa::dm::{self, op, Mover};
+    use tensix_isa::dm::{self, op, Mover};
     use tt_kernels::dm::DataMover;
     with_tiles(1, |session| {
         let tile = session.tile();
@@ -647,7 +647,7 @@ fn failed_writer_cancels_the_waiting_reader() {
         );
         assert_eq!(
             device
-                .read32(&window, tile, tt_isa::dataflow::ABORT)
+                .read32(&window, tile, tensix_isa::dataflow::ABORT)
                 .unwrap(),
             dm::error::OP
         );
@@ -662,7 +662,7 @@ fn failed_writer_cancels_the_waiting_reader() {
 /// Replayed over changed inputs, bit for bit the host's sums.
 #[test]
 fn large_streaming_pipeline_trace_crosses_chunks() {
-    let chunk = tt_isa::dm::TRACE_CHUNK_ENTRIES;
+    let chunk = tensix_isa::dm::TRACE_CHUNK_ENTRIES;
     with_tiles(1, |session| {
         let first = values(2048 * 2048, 7);
         let input = session.upload(&first, 2048, 2048).unwrap();
@@ -708,8 +708,8 @@ fn a_warm_streaming_region_has_one_host_commit() {
 #[test]
 fn a_sixteen_page_ring_runs_without_sync_unit_counters() {
     use tt_device::tlb::WindowKind;
-    use tt_isa::dataflow::{Action, STREAMED, VERSION};
-    use tt_isa::dm::{op, Mover};
+    use tensix_isa::dataflow::{Action, STREAMED, VERSION};
+    use tensix_isa::dm::{op, Mover};
     use tt_kernels::dm::DataMover;
     with_tiles(1, |session| {
         let tile = session.tile();
@@ -736,7 +736,7 @@ fn a_sixteen_page_ring_runs_without_sync_unit_counters() {
         .unwrap();
         let mut launch = [op::LAUNCH, 0x100, 0, 0, 0, 0, 0, 0];
         for role in 0..3 {
-            let address = tt_isa::l1::PROGRAM_CACHE.base + role as u64 * 4096;
+            let address = tensix_isa::l1::PROGRAM_CACHE.base + role as u64 * 4096;
             let mut words = vec![VERSION, 49, 16, role as u32];
             words.resize(4 + 49 * 4, 0);
             let bytes: Vec<u8> = words.iter().flat_map(|word| word.to_le_bytes()).collect();
@@ -768,10 +768,10 @@ fn a_sixteen_page_ring_runs_without_sync_unit_counters() {
         let number = reader.enqueue(device, &window, &packet).unwrap();
         reader.wait_for(device, &window, number).unwrap();
         for address in [
-            tt_isa::dataflow::INPUT,
-            tt_isa::dataflow::INPUT + 4,
-            tt_isa::dataflow::OUTPUT,
-            tt_isa::dataflow::OUTPUT + 4,
+            tensix_isa::dataflow::INPUT,
+            tensix_isa::dataflow::INPUT + 4,
+            tensix_isa::dataflow::OUTPUT,
+            tensix_isa::dataflow::OUTPUT + 4,
         ] {
             assert_eq!(device.read32(&window, tile, address).unwrap(), 49);
         }
@@ -834,11 +834,11 @@ fn a_failed_stream_role_invalidates_traces_and_recovers() {
             .read32(
                 &window,
                 tile,
-                tt_isa::mailbox::role::Mailbox::of(0).program_addr(),
+                tensix_isa::mailbox::role::Mailbox::of(0).program_addr(),
             )
             .unwrap();
         device
-            .write32(&window, tile, address as u64, tt_isa::dataflow::VERSION + 1)
+            .write32(&window, tile, address as u64, tensix_isa::dataflow::VERSION + 1)
             .unwrap();
         session.replay(trace).unwrap();
         assert!(session.sync().is_err());
@@ -875,11 +875,11 @@ fn releasing_a_stale_trace_leaves_a_newer_traces_programs_held() {
             .read32(
                 &window,
                 tile,
-                tt_isa::mailbox::role::Mailbox::of(0).program_addr(),
+                tensix_isa::mailbox::role::Mailbox::of(0).program_addr(),
             )
             .unwrap();
         device
-            .write32(&window, tile, address as u64, tt_isa::dataflow::VERSION + 1)
+            .write32(&window, tile, address as u64, tensix_isa::dataflow::VERSION + 1)
             .unwrap();
         session.replay(stale).unwrap();
         assert!(session.sync().is_err());
@@ -934,14 +934,14 @@ fn a_failed_transfer_only_packet_recovers_without_reusing_storage() {
         let device = session.device();
         let window = device.alloc_window(WindowKind::TwoMib).unwrap();
         device
-            .write32(&window, tile, tt_isa::dm::QUEUE_ERROR_AT, 1)
+            .write32(&window, tile, tensix_isa::dm::QUEUE_ERROR_AT, 1)
             .unwrap();
         device
             .write32(
                 &window,
                 tile,
-                tt_isa::dm::QUEUE_ERROR,
-                tt_isa::dm::error::OP,
+                tensix_isa::dm::QUEUE_ERROR,
+                tensix_isa::dm::error::OP,
             )
             .unwrap();
         let doomed = session.copy(&input).unwrap();

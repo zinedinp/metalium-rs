@@ -25,7 +25,7 @@
 use std::sync::Arc;
 
 use tt_device::Transport;
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{global, thcon},
     dm::{op, TILE_DATA},
@@ -45,7 +45,7 @@ use crate::{
 };
 
 /// 1024 two-byte datums, a 16-byte header and 64-byte slot alignment.
-pub const TILE_SLOT: u64 = tt_isa::dm::BF16_TILE_SLOT;
+pub const TILE_SLOT: u64 = tensix_isa::dm::BF16_TILE_SLOT;
 
 /// The unpacker/packer code for FP16 (`L1Format::Fp16`, measured by
 /// `probe_src::survey_src_out_formats`).
@@ -325,7 +325,7 @@ fn roles(layout: &kernel::Layout, mode: Mode) -> [Vec<Instruction>; 3] {
     if mode == Mode::Widen(Widening::SrcRaw) {
         // Eight 128-datum chunks through SrcA and MOVA2D, as BF16 does.
         unpack = datapath::src_thread_config();
-        let mut empty = tt_isa::matrix::Banks::after_reset();
+        let mut empty = tensix_isa::matrix::Banks::after_reset();
         for chunk in 0..8 {
             unpack.extend(sync::take(s.free, Before::UNPACKER));
             let mut words = ConfigWords::new();
@@ -337,25 +337,25 @@ fn roles(layout: &kernel::Layout, mode: Mode) -> [Vec<Instruction>; 3] {
                 FP16_CODE,
             );
             words
-                .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                 .unwrap();
             words
                 .set(
-                    tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Zero_Flag_disabled_src,
+                    tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Zero_Flag_disabled_src,
                     1,
                 )
                 .unwrap();
             unpack.extend(datapath::config_program(&words));
             unpack.push(datapath::set_adc_x(datapath::Unpacker::SrcA, 0, 127));
             let (i, banks) = empty
-                .unpack_a(tt_isa::isa::generated::encode::UnpacrRegular::ZERO.multi_context_mode(1))
+                .unpack_a(tensix_isa::isa::generated::encode::UnpacrRegular::ZERO.multi_context_mode(1))
                 .unwrap();
             unpack.push(i);
             unpack.extend(sync::post_after(Unit::Unpacker0, s.unpacked));
             math.extend(sync::take(s.unpacked, Before::MATRIX));
             let (i, banks) = banks
                 .mova2d(
-                    tt_isa::isa::generated::encode::Mova2D::ZERO
+                    tensix_isa::isa::generated::encode::Mova2D::ZERO
                         .move8_rows(1)
                         .dst_row(chunk as u32 * 8),
                 )
@@ -438,7 +438,7 @@ fn jobs(input: &Placement, output: &Placement, mode: Mode) -> Result<Vec<Job>> {
                         input.slot(t),
                         true,
                         a,
-                        tt_isa::dm::TILE_SLOT as u32,
+                        tensix_isa::dm::TILE_SLOT as u32,
                     )],
                     vec![transfer(output.slot(t), false, out, 4096)],
                 ),
@@ -447,7 +447,7 @@ fn jobs(input: &Placement, output: &Placement, mode: Mode) -> Result<Vec<Job>> {
                         input.slot(t),
                         true,
                         a,
-                        tt_isa::dm::TILE_SLOT as u32,
+                        tensix_isa::dm::TILE_SLOT as u32,
                     )],
                     vec![transfer(output.slot(t), false, out, 2048)],
                 ),
@@ -492,7 +492,7 @@ fn jobs(input: &Placement, output: &Placement, mode: Mode) -> Result<Vec<Job>> {
 /// standalone transfer, as the bit repacks are.
 fn compact_jobs(staged: &Placement, output: &Placement) -> Result<Vec<Job>> {
     let mut req = crate::l1::Requirements::new(1);
-    let src = req.scratch("FP16 staged words", tt_isa::dm::TILE_SLOT, 64, 0..1);
+    let src = req.scratch("FP16 staged words", tensix_isa::dm::TILE_SLOT, 64, 0..1);
     let dst = req.scratch("FP16 compacted", TILE_SLOT, 64, 0..1);
     let layout = req
         .plan(crate::l1::arena())
@@ -505,7 +505,7 @@ fn compact_jobs(staged: &Placement, output: &Placement) -> Result<Vec<Job>> {
                 depth: 1,
                 batches: vec![TransferBatch {
                     read: vec![
-                        transfer(staged.slot(t), true, src, tt_isa::dm::TILE_SLOT as u32),
+                        transfer(staged.slot(t), true, src, tensix_isa::dm::TILE_SLOT as u32),
                         [
                             op::COPY_HALFWORDS,
                             (src + TILE_DATA) as u32,

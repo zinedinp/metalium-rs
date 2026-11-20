@@ -20,7 +20,7 @@
 use core::panic::PanicInfo;
 use core::ptr::{read_volatile, write_volatile};
 
-use tt_isa::mailbox::{self, panic_code, status};
+use tensix_isa::mailbox::{self, panic_code, status};
 
 // Entry point.
 //
@@ -95,13 +95,13 @@ pub unsafe fn l1_read32(offset: u64) -> u32 {
 
 extern "C" {
     /// Where this image's mailbox is, set per binary by `build.rs` from
-    /// `tt_isa::mailbox::MAILBOX_BASE` (Tensix) or `tt_isa::eth::MAILBOX_BASE`
+    /// `tensix_isa::mailbox::MAILBOX_BASE` (Tensix) or `tensix_isa::eth::MAILBOX_BASE`
     /// (Ethernet) -- generated, so the host and the image cannot disagree. Only its
     /// address means anything.
     static __mailbox: u8;
 }
 
-/// The address of mailbox word `offset` (one of `tt_isa::mailbox::offset`).
+/// The address of mailbox word `offset` (one of `tensix_isa::mailbox::offset`).
 #[inline]
 pub fn mailbox_word(offset: u64) -> u64 {
     // Taking the address of a linker-defined symbol reads nothing.
@@ -250,8 +250,8 @@ pub mod fused;
 pub mod ttinsn;
 
 pub mod tensix {
-    use tt_isa::sfpu::Instruction;
-    use tt_isa::tensix::{self, PushesTo, TensixThread};
+    use tensix_isa::sfpu::Instruction;
+    use tensix_isa::tensix::{self, PushesTo, TensixThread};
 
     /// Push one Tensix instruction into this core's Tensix thread.
     ///
@@ -268,7 +268,7 @@ pub mod tensix {
     /// words live in the compressed-instruction encoding space, so they disassemble
     /// as garbage, and the instruction-set gate in `crates/tt-tests/build.rs` would
     /// have to stop rejecting undecodable instructions to let them through. The
-    /// encoding is implemented and tested in `tt_isa::sfpu`; using it belongs with
+    /// encoding is implemented and tested in `tensix_isa::sfpu`; using it belongs with
     /// the rest of the performance work, when there is a measurement to justify it.
     ///
     /// # Which core, and which thread
@@ -276,7 +276,7 @@ pub mod tensix {
     /// `C` is the core this image runs on and `Th` is the Tensix thread to reach.
     /// Both are type parameters rather than arguments because the buffer address
     /// depends on the *pair*, and two of the nine combinations hang the RISC-V
-    /// unrecoverably (`PushTensixInstruction.md:5-9`). `tt_isa::tensix::PushesTo`
+    /// unrecoverably (`PushTensixInstruction.md:5-9`). `tensix_isa::tensix::PushesTo`
     /// is implemented for exactly the six that do not, so a hanging push is a
     /// compile error rather than a lockup. `C` cannot be inferred -- core identity
     /// is not discoverable at run time -- so every call site names it, which is the
@@ -384,7 +384,7 @@ pub mod tensix {
         }
     }
 
-    /// Load this thread's `MopCfg` (`tt_isa::frontend::mop`): wait for the
+    /// Load this thread's `MopCfg` (`tensix_isa::frontend::mop`): wait for the
     /// expander to be idle, write the nine words, and fence so they land before
     /// any later push reaches it.
     pub fn load_mop_config(words: &[u32; 9]) {
@@ -407,7 +407,7 @@ pub mod tensix {
     ///
     /// # Safety
     ///
-    /// `address` must come from [`tt_isa::sfpu::dst32_address`], and the
+    /// `address` must come from [`tensix_isa::sfpu::dst32_address`], and the
     /// coprocessor must have retired the instruction that wrote it — see
     /// [`wait_for_coprocessor`].
     #[inline]
@@ -418,7 +418,7 @@ pub mod tensix {
 
 /// Reading and writing Tensix backend configuration from a baby RISC-V core.
 pub mod cfg {
-    use tt_isa::cfg::{ConfigBank, ConfigField, ThreadConfigField};
+    use tensix_isa::cfg::{ConfigBank, ConfigField, ThreadConfigField};
 
     /// Read the word containing `field`.
     ///
@@ -493,7 +493,7 @@ pub mod cfg {
     /// As [`read_thread_config`].
     #[inline]
     pub unsafe fn active_bank(thread: u32) -> ConfigBank {
-        use tt_isa::cfg::generated::thread::CFG_STATE_ID_StateID;
+        use tensix_isa::cfg::generated::thread::CFG_STATE_ID_StateID;
         // SAFETY: delegated to the caller.
         if unsafe { read_thread_config(CFG_STATE_ID_StateID, thread) } == 0 {
             ConfigBank::Bank0
@@ -507,7 +507,7 @@ pub mod cfg {
 /// NIU: NoC #0's or NoC #1's, named per request.
 pub mod noc {
     use core::ptr::{read_volatile, write_volatile};
-    use tt_isa::noc::niu::{self, initiator, Batch, Command, InFlight, Niu, RequestError, TxnId};
+    use tensix_isa::noc::niu::{self, initiator, Batch, Command, InFlight, Niu, RequestError, TxnId};
 
     const _: () = assert!(niu::NOC1_BASE <= u32::MAX as u64 && niu::NOC0_BASE < niu::NOC1_BASE);
 
@@ -517,7 +517,7 @@ pub mod noc {
 
     /// Each NIU's and transaction ID's requests in flight, kept under its cap
     /// so the 8-bit counter `wait` reads cannot wrap
-    /// (`tt_isa::noc::niu::InFlight`), and what the cap has cost. Each NIU
+    /// (`tensix_isa::noc::niu::InFlight`), and what the cap has cost. Each NIU
     /// counts its own requests. In local data RAM (`sections.x`, `.local`):
     /// touched on every issue and every wait, and a load there is 2 cycles
     /// (`BabyRISCV/README.md:147`). Written by `reset` before `firmware_main`,
@@ -536,7 +536,7 @@ pub mod noc {
     static mut NOC1_USED: bool = false;
     /// Bytes of the GDDR requests issued through NoC #0 since `reset` (wrapping), in a `profile`
     /// image; never counted otherwise. On RISCV B, which writes no GDDR, its reads: what its
-    /// `READ_BYTES` marks count (`tt_isa::mailbox::trace::READ_BYTES`). Counted here rather than
+    /// `READ_BYTES` marks count (`tensix_isa::mailbox::trace::READ_BYTES`). Counted here rather than
     /// read from the NIU's read-data counter, which also counts reads of other tiles' L1.
     #[link_section = ".local"]
     static mut READ_BYTES: u32 = 0;
@@ -687,7 +687,7 @@ pub mod noc {
         Ok(())
     }
 
-    /// [`issue_on`] for one request of a `tt_isa::noc::niu::DramMove`, its
+    /// [`issue_on`] for one request of a `tensix_isa::noc::niu::DramMove`, its
     /// values as arguments -- registers, on RISC-V -- written straight to the
     /// initiator: no register array built and read back per request. The two
     /// address-middle words and `AT_DATA` are written zero, as
@@ -807,7 +807,7 @@ pub mod noc {
     /// target coordinate and length only when either differs from the last
     /// request's, `NOC_CTRL`, and the command. The return coordinate and tag
     /// are the same in every read of a move and of a list (`DramMove`), which
-    /// `tt_isa::noc::niu` gates. The accounting is [`issue_dram_on`]'s, except
+    /// `tensix_isa::noc::niu` gates. The accounting is [`issue_dram_on`]'s, except
     /// that the caller makes room under `txn`'s cap first ([`room_for_read`]),
     /// so that this stays a leaf with no frame to save the request in: the
     /// issue is counted after, and `CMD_CTRL` read back.
@@ -855,7 +855,7 @@ pub mod noc {
 
     /// A run of GDDR reads through the fast path, [`issue_read`] without its per-request costs: the in-flight
     /// room and the initiator's last key live in registers for the run, and `CMD_CTRL` is read back once, when
-    /// the run ends or must read a counter (`tt_isa::noc::niu::Batch`), not after each request. The next
+    /// the run ends or must read a counter (`tensix_isa::noc::niu::Batch`), not after each request. The next
     /// request's wait for the initiator to be free reads the same register behind the same store, so it
     /// already orders one request's writes before the next; only the counter reads need the fence.
     /// Every exit from a run calls [`ReadBatch::end`], or the requests it issued are not counted and the
@@ -958,12 +958,12 @@ pub mod noc {
         }
     }
 
-    /// One request of a `tt_isa::noc::niu::HostMove` through NoC #0, under
+    /// One request of a `tensix_isa::noc::niu::HostMove` through NoC #0, under
     /// `txn`: [`issue_dram_on`] with the high address words a host address
     /// needs. Cold: host moves are not the per-tile path.
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
-    pub fn issue_host(r: tt_isa::noc::niu::HostRequest, txn: TxnId) {
+    pub fn issue_host(r: tensix_isa::noc::niu::HostRequest, txn: TxnId) {
         use initiator::*;
         let niu = Niu::Noc0;
         if in_flight(niu, txn).at_cap() {
@@ -989,7 +989,7 @@ pub mod noc {
     }
 
     /// Issue one request already encoded -- by `Command::registers`, or by a
-    /// `tt_isa::noc::niu::DramMove`, which checks a whole move once (the
+    /// `tensix_isa::noc::niu::DramMove`, which checks a whole move once (the
     /// mover's per-entry path) -- under `txn`, through NoC #1 (`NOC1`) or
     /// NoC #0, fixed at compile time: the move path's copy for NoC #0 has a
     /// constant base and in-flight slot and none of NoC #1's bookkeeping.
@@ -1023,7 +1023,7 @@ pub mod noc {
         in_flight(niu, txn).after_issue();
     }
 
-    /// Issue a multicast write already encoded (`tt_isa::noc::multicast::registers_to`) through
+    /// Issue a multicast write already encoded (`tensix_isa::noc::multicast::registers_to`) through
     /// NoC #0, outside the in-flight caps: a response-marked broadcast leaves its ID's
     /// outstanding counter meaningless (one up, one down per recipient), so its completion is
     /// counted on [`wr_acks`] instead, and nothing waits on its ID. Waits for the initiator to be

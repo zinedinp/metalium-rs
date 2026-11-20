@@ -24,7 +24,7 @@
 //! `DIV`'s body is too long for the replay buffer, so each of its instructions is pushed from
 //! the role program, and one unit pushed all 64 tiles' (`performance-log.md`, 2026-10-16).
 
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::Instruction;
 
 use super::kernel::OUT_ROW;
 use super::ops::sqrt_program;
@@ -129,7 +129,7 @@ fn reference_with(
     programmed: impl Fn(u32) -> u32,
 ) -> Vec<f32> {
     use super::interp::Vector;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     let (rt, per) = (rows.div_ceil(32), cols.div_ceil(32));
     let valid = match cols % 32 {
         0 => 32,
@@ -171,7 +171,7 @@ fn reference_with(
 /// rows NaN.
 pub fn reference_packed(x: &[f32], eps: f32) -> f32 {
     use super::interp::Vector;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     let cols = x.len();
     let (squares, fin) = math_packed(cols, eps);
     let mut v = Vector::new();
@@ -327,7 +327,7 @@ mod tests {
         let layout = plan_layout(1, MAX_TILES).unwrap();
         for (role, p) in roles(&layout, &squares, &fin).iter().enumerate() {
             assert!(
-                p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize,
+                p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize,
                 "role {role}: {} instructions",
                 p.len()
             );

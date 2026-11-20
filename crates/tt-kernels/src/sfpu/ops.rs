@@ -9,7 +9,7 @@
 //! `step19_eltwise` holds every kind to `burn-flex`.
 
 use crate::kind;
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::Instruction;
 
 use super::kernel::{bias_row, Operands, A_ROW, B_ROW, OUT_ROW};
 use super::{Cond, Format, LReg, Program};
@@ -1816,7 +1816,7 @@ pub fn erfcx_clenshaw_f32(a: f32) -> f32 {
 
 /// [`erfcx_clenshaw_f32`] for any [`Piece`].
 pub fn piece_clenshaw_f32(piece: Piece, a: f32) -> f32 {
-    use tt_isa::numerics::fma_bh;
+    use tensix_isa::numerics::fma_bh;
     let (s1, s0) = clenshaw_map(piece);
     let f = |x: f32| x.to_bits();
     let g = f32::from_bits;
@@ -3227,7 +3227,7 @@ pub fn code2(kind: u32, scalars: [f32; 2]) -> Option<(Operands, crate::code::Cod
         return Some((Operands::Unary, code));
     }
     if (kind_sfpu::HARDWARE_ROUND..kind_sfpu::HARDWARE_ROUND + 6).contains(&kind) {
-        use tt_isa::numerics::stochastic::{Precision, Rounding};
+        use tensix_isa::numerics::stochastic::{Precision, Rounding};
         let offset = kind - kind_sfpu::HARDWARE_ROUND;
         let precision = if offset < 3 {
             Precision::Bf16
@@ -3774,7 +3774,7 @@ pub fn reference_op(
     cols: usize,
 ) -> Vec<f32> {
     use super::interp::Vector;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     let (a, b, c) = (inputs[0], inputs.get(1).copied(), inputs.get(2).copied());
     let (operands, math) = program_for(kind, scalars, bcast).expect("an SFPU op");
     let (rt, ct) = (rows.div_ceil(32), cols.div_ceil(32));
@@ -4007,7 +4007,7 @@ mod fit {
                 roles_code(&layout, operands, &math)
                     .0
                     .iter()
-                    .all(|p| p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize)
+                    .all(|p| p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize)
             };
             assert!(fits(n), "kind {k}: {n} tiles");
             assert!(
@@ -5746,7 +5746,7 @@ mod silu {
 mod row_limited_tests {
     use super::super::interp::Vector;
     use super::*;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
 
     /// Ordinary values of several magnitudes with every special value among them.
     fn tile(seed: u32) -> Vec<u32> {
@@ -5897,7 +5897,7 @@ mod row_limited_tests {
 mod col_broadcast_tests {
     use super::super::interp::Vector;
     use super::*;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
 
     /// Ordinary values and every special value, from `seed`.
     fn tile(seed: u32) -> Vec<u32> {
@@ -6219,7 +6219,7 @@ mod sub_exp_tests {
                         .collect()
                 };
                 let (a, b) = (tile(1), tile(2));
-                let run = |program: &[tt_isa::isa::Instruction]| {
+                let run = |program: &[tensix_isa::isa::Instruction]| {
                     let mut v = Vector::new();
                     v.put_tile(A_ROW as usize, &a);
                     v.put_tile(B_ROW as usize, &b);

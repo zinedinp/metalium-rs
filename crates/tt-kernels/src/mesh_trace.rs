@@ -39,7 +39,7 @@
 use std::collections::HashMap;
 
 use tt_device::Transport;
-use tt_isa::dram::DramRange;
+use tensix_isa::dram::DramRange;
 
 use crate::session::Session;
 use crate::shard::Fabric;

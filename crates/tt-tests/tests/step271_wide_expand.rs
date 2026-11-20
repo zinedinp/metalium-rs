@@ -1,5 +1,5 @@
 //! Roadmap W1, defect 5: a broadcast of a trailing axis of one over more rows than a tensor
-//! reference names column tiles (`tt_isa::dm::record::MAX_EXTENT`, 65,536 tiles: 2,097,152 rows).
+//! reference names column tiles (`tensix_isa::dm::record::MAX_EXTENT`, 65,536 tiles: 2,097,152 rows).
 //!
 //! `expand` repeats such an axis through `[1, rows]`: past 2,097,152 rows the copy was refused
 //! ("descriptor refused before submission (code 2)", seen at the next download), the nearest

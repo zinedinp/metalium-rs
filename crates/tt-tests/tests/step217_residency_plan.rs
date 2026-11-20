@@ -213,7 +213,7 @@ fn a_capture_keeps_its_region_below_every_op() {
         let plain = TracedGenerator::<_, Tt>::new(&model, &shapes, &d).unwrap();
         let want = plain.generate(&prompt, 4).unwrap();
         let region = 256 * 1024;
-        let base = tt_isa::l1::DATA.end - region;
+        let base = tensix_isa::l1::DATA.end - region;
         assert!(
             tops(&plain).iter().any(|&t| t > base),
             "without a region some op plans above {base:#x}, or the region moves nothing"
@@ -283,7 +283,7 @@ fn a_capture_with_too_little_below_its_region_is_refused() {
         let a: Vec<f32> = (0..rows * cols).map(|i| (i % 97) as f32).collect();
         let x = s.upload(&a, rows, cols).unwrap();
         // One tile slot left below the region: an element-wise op's three rings do not fit.
-        s.set_l1_region(tt_isa::l1::DATA.len() - tt_isa::dm::TILE_SLOT);
+        s.set_l1_region(tensix_isa::l1::DATA.len() - tensix_isa::dm::TILE_SLOT);
         s.begin_trace().unwrap();
         let failed = s.eltwise(add, &x, Some(&x));
         let refused = s.end_trace();

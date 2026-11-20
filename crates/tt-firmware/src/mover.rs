@@ -1,13 +1,13 @@
 // The data mover, shared by RISCV B's image (`bin/dm_b.rs`) and RISCV NC's
-// (`bin/dm_nc.rs`): each binary defines `M`, its `tt_isa::dm::Mover` -- the
+// (`bin/dm_nc.rs`): each binary defines `M`, its `tensix_isa::dm::Mover` -- the
 // mailbox, list ring, scratch and trace chunk it uses -- and includes this.
-// Protocol and layout are `tt_isa::dm`, which the host shares.
+// Protocol and layout are `tensix_isa::dm`, which the host shares.
 
 use tt_firmware::{l1_read32, l1_write32, mailbox_word, noc, publish};
-use tt_isa::dm::{self, encoded, op, record, Descriptor, Entry, Transform};
-use tt_isa::mailbox::role::Mailbox;
-use tt_isa::mailbox::{offset, status};
-use tt_isa::noc::niu::{Command, DramMove, Niu, TxnId};
+use tensix_isa::dm::{self, encoded, op, record, Descriptor, Entry, Transform};
+use tensix_isa::mailbox::role::Mailbox;
+use tensix_isa::mailbox::{offset, status};
+use tensix_isa::noc::niu::{Command, DramMove, Niu, TxnId};
 
 const TXN: TxnId = match TxnId::new(if IS_NC { dm::TXN_NC } else { dm::TXN_B }) {
     Some(t) => t,
@@ -115,12 +115,12 @@ fn pump(most: u32) {
     let Some(c) = pump_slot().as_mut() else {
         return;
     };
-    // In a profile image, the time a wait's turn spends here (`tt_isa::dataflow::NcWait::Pump`);
+    // In a profile image, the time a wait's turn spends here (`tensix_isa::dataflow::NcWait::Pump`);
     // not a drain's, which is the prefetch's own owner waiting for it.
     let since = if STAMPS { wall_clock() } else { 0 };
     let issued = pump_reads(c, most, all);
     if STAMPS && !all && issued {
-        use tt_isa::dataflow::{NcWait, NC_WAITS};
+        use tensix_isa::dataflow::{NcWait, NC_WAITS};
         let took = wall_clock().wrapping_sub(since);
         let word = |w: NcWait| NC_WAITS + w as u64 * 4;
         wr(word(NcWait::Pump), rd(word(NcWait::Pump)).wrapping_add(took));
@@ -229,7 +229,7 @@ fn fetch_ahead(me: (u8, u8), usable: u32, after: Option<u32>) {
                     channel,
                     0,
                     offset,
-                    tt_isa::dataflow::AHEAD_CHUNK as u32,
+                    tensix_isa::dataflow::AHEAD_CHUNK as u32,
                     entries * dm::ENTRY_BYTES as u32,
                 )
                 .and_then(|d| {
@@ -315,7 +315,7 @@ fn wr(addr: u64, v: u32) {
 /// Whether this image is RISCV NC's. B is a reader and NC the writer
 /// (`dm::Mover::permits`): the write path, and with it every use of NoC #1
 /// for writes, is compiled into NC's image alone.
-const IS_NC: bool = matches!(M.core, tt_isa::tensix::Core::NC);
+const IS_NC: bool = matches!(M.core, tensix_isa::tensix::Core::NC);
 
 /// The entry the other direction would run, which this mover refuses
 /// (`Mover::permits`, which the host checks lists against too): NC runs
@@ -427,7 +427,7 @@ fn issue_write(me: (u8, u8), d: Descriptor) -> Result<(), u32> {
 #[link_section = ".text.warm"]
 #[inline(never)]
 fn issue_l1_write(me: (u8, u8), at: (u8, u8), to: u32, from: u32, len: u32) -> Result<(), u32> {
-    use tt_isa::noc::niu::Endpoint;
+    use tensix_isa::noc::niu::Endpoint;
     let w = *writes();
     let (niu, me) = match w.niu {
         Niu::Noc1 => (Niu::Noc1, w.me1),
@@ -454,7 +454,7 @@ fn issue_l1_write(me: (u8, u8), at: (u8, u8), to: u32, from: u32, len: u32) -> R
 #[link_section = ".text.warm"]
 #[inline(never)]
 fn credit(me: (u8, u8), at: (u8, u8), addr: u32, value: u32) -> Result<(), u32> {
-    use tt_isa::noc::niu::Endpoint;
+    use tensix_isa::noc::niu::Endpoint;
     noc::wait(TXN);
     publish();
     let (niu, me) = match (IS_NC, writes().niu) {
@@ -492,7 +492,7 @@ fn multicast_l1(
     [to, from, len]: [u32; 3],
     run: bool,
 ) -> Result<(), u32> {
-    use tt_isa::noc::multicast::{corners_hi, registers_to};
+    use tensix_isa::noc::multicast::{corners_hi, registers_to};
     const MCAST_TXN: TxnId = match TxnId::new(dm::TXN_NC_MCAST) {
         Some(t) => t,
         None => panic!(),
@@ -565,7 +565,7 @@ struct PlannedReads {
 
 impl PlannedReads {
     #[inline(always)]
-    fn issue(&mut self, r: tt_isa::noc::niu::DramRequest) {
+    fn issue(&mut self, r: tensix_isa::noc::niu::DramRequest) {
         if noc::read_fast() {
             let txn = self.txn;
             self.batch
@@ -620,7 +620,7 @@ impl record::Sink for PlannedReads {
 /// One GDDR read request on NoC #0 under `txn`, made and checked already ([`dm::ReadPlan`]):
 /// through the fast read path when the host chose it, as [`issue_via`] issues each of a move's.
 #[inline(always)]
-fn issue_request(r: tt_isa::noc::niu::DramRequest, txn: TxnId) {
+fn issue_request(r: tensix_isa::noc::niu::DramRequest, txn: TxnId) {
     if noc::read_fast() {
         noc::room_for_read(txn);
         noc::issue_read(r.targ, r.targ_hi, r.ret, r.ret_hi, r.tag, r.ctrl, r.len, txn);
@@ -661,10 +661,10 @@ fn list_settings() {
 /// clock `noc` times waits for room under the in-flight cap with: read only
 /// when a request has to wait.
 fn wall_clock() -> u32 {
-    rd(tt_isa::tensix::timestamper::WALL_CLOCK_L)
+    rd(tensix_isa::tensix::timestamper::WALL_CLOCK_L)
 }
 
-/// The clock NC's waits are timed from, in a profile image (`tt_isa::dataflow::NC_WAITS`); 0
+/// The clock NC's waits are timed from, in a profile image (`tensix_isa::dataflow::NC_WAITS`); 0
 /// otherwise, and on B.
 #[inline(always)]
 fn nc_clock() -> u32 {
@@ -677,16 +677,16 @@ fn nc_clock() -> u32 {
 
 /// Add the cycles since `since` ([`nc_clock`]) to NC's total for `what`, in a profile image.
 #[inline(always)]
-fn nc_waited(what: tt_isa::dataflow::NcWait, since: u32) {
+fn nc_waited(what: tensix_isa::dataflow::NcWait, since: u32) {
     if STAMPS && IS_NC {
         add_wait(what, since);
     }
 }
 
-/// Add the cycles since `since` to the total for `what` at `tt_isa::dataflow::NC_WAITS`.
+/// Add the cycles since `since` to the total for `what` at `tensix_isa::dataflow::NC_WAITS`.
 #[inline(always)]
-fn add_wait(what: tt_isa::dataflow::NcWait, since: u32) {
-    let at = tt_isa::dataflow::NC_WAITS + what as u64 * 4;
+fn add_wait(what: tensix_isa::dataflow::NcWait, since: u32) {
+    let at = tensix_isa::dataflow::NC_WAITS + what as u64 * 4;
     wr(at, rd(at).wrapping_add(wall_clock().wrapping_sub(since)));
 }
 
@@ -706,7 +706,7 @@ fn publish_stalls(seen: &mut noc::Stalls, traced: bool) {
 #[cold]
 #[inline(never)]
 fn stalled(seen: noc::Stalls, now: noc::Stalls, traced: bool) {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     let cycles = now.cycles.wrapping_sub(seen.cycles);
     wr(
         M.at(dm::THROTTLE_STALLS),
@@ -827,7 +827,7 @@ fn launch(generation: u32, programs: [(u32, u32); 3]) {
     publish();
     *launched() = generation;
     let traced = trace_mode() != 0 && in_window();
-    trace(traced, tt_isa::mailbox::trace::KICK, generation);
+    trace(traced, tensix_isa::mailbox::trace::KICK, generation);
 }
 
 /// Wait for each role to acknowledge `generation`, the last one launched
@@ -857,12 +857,12 @@ fn await_roles(generation: u32) -> Result<(), u32> {
         }
     }
     let traced = trace_mode() != 0 && in_window();
-    trace(traced, tt_isa::mailbox::trace::ROLES_DONE, generation);
+    trace(traced, tensix_isa::mailbox::trace::ROLES_DONE, generation);
     if STAMPS && traced {
         // The math role's pushing and its waits for the coprocessor, if it measured
         // them (`mailbox::trace_word::PUSH`): written before its acknowledgement,
         // which the polls above read through a fence.
-        use tt_isa::mailbox::trace as ev;
+        use tensix_isa::mailbox::trace as ev;
         let math = Mailbox::of(1);
         let unit = |cycles: u32| (cycles >> ev::PUSH_UNIT_SHIFT).min(ev::DETAIL_MAX);
         let (push, drain) = (rd(math.push_cycles()), rd(math.drain_cycles()));
@@ -886,7 +886,7 @@ fn await_roles(generation: u32) -> Result<(), u32> {
 #[cold]
 #[inline(never)]
 fn stamp_batches() {
-    use tt_isa::mailbox::{trace as ev, BATCH_TIMES_MAX, BATCH_TIME_WORDS};
+    use tensix_isa::mailbox::{trace as ev, BATCH_TIMES_MAX, BATCH_TIME_WORDS};
     let (t0, t2) = (Mailbox::of(0), Mailbox::of(2));
     publish();
     let (n0, n2) = (rd(t0.batch_count()), rd(t2.batch_count()));
@@ -931,8 +931,8 @@ fn stamp_batches() {
 /// (`M.at(dm::TRACE)`). One 128-bit event per store, so the mover's events and the
 /// role runners' share one stream without interleaving.
 fn trace(on: bool, event: u32, detail: u32) {
-    use tt_isa::mailbox::trace as ev;
-    use tt_isa::tensix::timestamper as ts;
+    use tensix_isa::mailbox::trace as ev;
+    use tensix_isa::tensix::timestamper as ts;
     if STAMPS && on {
         wr(
             ts::TIMESTAMP,
@@ -946,7 +946,7 @@ fn trace(on: bool, event: u32, detail: u32) {
 #[link_section = ".local"]
 static mut READ_MARKED: u32 = 0;
 
-/// RISCV B's `READ_BYTES` mark (`tt_isa::mailbox::trace::READ_BYTES`): the GDDR bytes it issued
+/// RISCV B's `READ_BYTES` mark (`tensix_isa::mailbox::trace::READ_BYTES`): the GDDR bytes it issued
 /// since its last mark, stamped when `stamp`. Taken whenever a list is traced, stamped or not, so a
 /// stamped mark counts from the mark before it, which the host times by that mark's stamp or, if it
 /// was not stamped, leaves out. Nothing on NC; compiled out in an image without stamps.
@@ -962,7 +962,7 @@ fn read_mark(stamp: bool) {
 #[cold]
 #[inline(never)]
 fn read_mark_now(stamp: bool) {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     if trace_mode() != 0 {
         // SAFETY: as `pump_slot`.
         let marked = unsafe { READ_MARKED };
@@ -1015,7 +1015,7 @@ fn barrier(
     arrive: bool,
     release: bool,
 ) -> Result<(), u32> {
-    use tt_isa::noc::niu::Endpoint;
+    use tensix_isa::noc::niu::Endpoint;
     let counter = Endpoint {
         x,
         y,
@@ -1100,7 +1100,7 @@ fn release(me: (u8, u8), target: u32) -> Result<(), u32> {
     for i in 0..n as u64 {
         let hi = rd(dm::BARRIER_RECTS + 4 + 8 * i);
         acks = acks.wrapping_add(rd(dm::BARRIER_RECTS + 8 + 8 * i));
-        let regs = tt_isa::noc::multicast::registers_to(
+        let regs = tensix_isa::noc::multicast::registers_to(
             dm::BARRIER_RELEASE_STAGE as u32,
             dm::BARRIER_RELEASE as u32,
             4,
@@ -1241,7 +1241,7 @@ const CAPS: u32 = dm::caps::VALID
     | if STAMPS { dm::caps::STAMPS } else { 0 };
 
 /// `op::READ_ENCODED`: one GDDR read the host validated and encoded
-/// (`tt_isa::dm::encoded`). The card verifies the entry's checksum -- damage in
+/// (`tensix_isa::dm::encoded`). The card verifies the entry's checksum -- damage in
 /// transit, an overwritten list, or an entry the encoder did not make -- and issues it
 /// as `issue_via` issues the words of a decoded one, with the tag and control word a B
 /// read always has. With `encoded-guard` it also runs the semantic guard first.
@@ -1380,7 +1380,7 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
             action,
             capacity,
         } => {
-            use tt_isa::dataflow::{Action, Endpoint};
+            use tensix_isa::dataflow::{Action, Endpoint};
             let (endpoint, actor) = if M == dm::Mover::B {
                 (Endpoint::Reader, 0)
             } else {
@@ -1389,13 +1389,13 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
             if matches!(action, Action::Push | Action::Pop) {
                 let since = nc_clock();
                 noc::wait(TXN);
-                nc_waited(tt_isa::dataflow::NcWait::Drain, since);
+                nc_waited(tensix_isa::dataflow::NcWait::Drain, since);
                 publish();
             }
             let since = nc_clock();
             tt_firmware::dataflow::buffer(stream, action, capacity, endpoint, actor)?;
             if action == Action::Wait {
-                nc_waited(tt_isa::dataflow::NcWait::Credits, since);
+                nc_waited(tensix_isa::dataflow::NcWait::Credits, since);
             }
         }
         Entry::Released { target, which } => {
@@ -1447,7 +1447,7 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
             }
             let since = nc_clock();
             issue_l1_write(me, (x, y), to, from, len)?;
-            nc_waited(tt_isa::dataflow::NcWait::Issue, since);
+            nc_waited(tensix_isa::dataflow::NcWait::Issue, since);
         }
         Entry::Credit { x, y, addr, value } => credit(me, (x, y), addr, value)?,
         Entry::WaitCredit { addr, target } => {
@@ -1459,7 +1459,7 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
                 if IS_NC { 4 } else { 0 },
                 || pump(PUMP_TURN),
             )?;
-            nc_waited(tt_isa::dataflow::NcWait::Credits, since);
+            nc_waited(tensix_isa::dataflow::NcWait::Credits, since);
         }
         Entry::L1Read {
             x,
@@ -1470,7 +1470,7 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
         } => {
             reader_only()?;
             let cmd = Command::Read {
-                from: tt_isa::noc::niu::Endpoint { x, y, addr: from },
+                from: tensix_isa::noc::niu::Endpoint { x, y, addr: from },
                 to_local: to,
                 len,
             };
@@ -1489,7 +1489,7 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
             }
             let since = nc_clock();
             multicast_l1(me, start, end, [to, from, len], run)?;
-            nc_waited(tt_isa::dataflow::NcWait::Issue, since);
+            nc_waited(tensix_isa::dataflow::NcWait::Issue, since);
         }
         Entry::Kernel {
             generation,
@@ -1504,7 +1504,7 @@ fn exec(me: (u8, u8), usable: u32, w: [u32; 8]) -> Result<(), u32> {
         Entry::Wait { prefetch } => {
             noc::wait(TXN);
             if prefetch {
-                use tt_isa::mailbox::trace as ev;
+                use tensix_isa::mailbox::trace as ev;
                 let stamped = stamps_waits();
                 trace(stamped, ev::ENTRY_BEGIN, dm::trace_mode::PREFETCH_WAIT);
                 // The job's kernel waits for these reads now, and no small op is left to make room
@@ -1691,7 +1691,7 @@ fn tile_layout(tilize: bool, block: u64, stride: usize, slot: u64, valid: u32) {
 #[cold]
 #[inline(never)]
 fn host_move(me: (u8, u8), write: bool, host_lo: u32, host_hi: u32, l1: u32, len: u32) {
-    let mv = tt_isa::noc::niu::HostMove {
+    let mv = tensix_isa::noc::niu::HostMove {
         host_lo,
         host_hi,
         l1,
@@ -1720,7 +1720,7 @@ fn entry_at(at: u64) -> [u32; 8] {
 /// through `Entry::decode` and every refusal in it.
 ///
 /// With `M.at(dm::TRACE)` set, the list, and each entry or record in it, is
-/// bracketed by timestamper events (`tt_isa::mailbox::trace`); a record's
+/// bracketed by timestamper events (`tensix_isa::mailbox::trace`); a record's
 /// expanded moves are not, so the events per list stay bounded by its length.
 fn run_list(me: (u8, u8), usable: u32, count: u32) -> Result<(), u32> {
     run_list_at(me, usable, 0, count)
@@ -1739,7 +1739,7 @@ fn run_list_at(me: (u8, u8), usable: u32, first: u32, count: u32) -> Result<(), 
     // (`silicon_perf::mover_read_shapes`).
     let head = entry_at(base);
     let result = if head[0] == op::PAIR {
-        if M != dm::Mover::B || tt_isa::dataflow::packet_length(head)? != count as usize {
+        if M != dm::Mover::B || tensix_isa::dataflow::packet_length(head)? != count as usize {
             return Err(dm::error::LENGTH);
         }
         pair_shared(me, usable, base + dm::ENTRY_BYTES, head[1], head[2])?;
@@ -1858,7 +1858,7 @@ fn begin_pair() -> Result<u32, u32> {
 }
 
 fn finish_pair(sequence: u32, result: Result<(), u32>) -> Result<(), u32> {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     let mut poll = tt_firmware::dataflow::Poll::new();
     let stamped = stamps_waits();
     trace(stamped, ev::ENTRY_BEGIN, dm::trace_mode::WRITER_WAIT);
@@ -1954,7 +1954,7 @@ fn pair_call(
 #[link_section = ".text.hot"]
 #[inline(never)]
 fn run_entries(me: (u8, u8), usable: u32, base: u64, count: u32) -> Result<(), u32> {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     let word = trace_word();
     let mode = word & dm::trace_mode::MODE;
     let credits = word & dm::trace_mode::CREDITS != 0;
@@ -2224,7 +2224,7 @@ fn call(
     generation_base: u32,
     barrier_base: u32,
 ) -> Result<(), u32> {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     // The outermost call is one stamped scope, its own list begin and end around all its chunks
     // (a `PAIR_CALL`'s reader section runs as a call inside it).
     let scope = trace_mode() != 0 && unsafe { !IN_CALL && TRACE_DEPTH == 0 };
@@ -2259,12 +2259,12 @@ fn call_chunks(
 ) -> Result<(), u32> {
     let mut done = 0u32;
     let chunk = if M == dm::Mover::B && !unsafe { PAIR_ACTIVE } {
-        tt_isa::dataflow::OUTER_CHUNK
+        tensix_isa::dataflow::OUTER_CHUNK
     } else {
         M.trace_chunk
     };
     while done < count {
-        use tt_isa::mailbox::trace as ev;
+        use tensix_isa::mailbox::trace as ev;
         let n = (count - done).min(dm::TRACE_CHUNK_ENTRIES);
         let stamped = stamps_waits();
         trace(stamped, ev::ENTRY_BEGIN, dm::trace_mode::FETCH);
@@ -2276,7 +2276,7 @@ fn call_chunks(
             && unsafe { PAIR_ACTIVE }
             && take_ahead([channel, offset, n]);
         let chunk = if ahead {
-            tt_isa::dataflow::AHEAD_CHUNK
+            tensix_isa::dataflow::AHEAD_CHUNK
         } else {
             chunk
         };
@@ -2305,7 +2305,7 @@ fn call_chunks(
             }
             noc::wait(TXN);
         }
-        nc_waited(tt_isa::dataflow::NcWait::Fetch, since);
+        nc_waited(tensix_isa::dataflow::NcWait::Fetch, since);
         trace(stamped, ev::ENTRY_END, dm::trace_mode::FETCH);
         // The chunk is in L1, written by the NoC past the L0 cache.
         publish();
@@ -2458,7 +2458,7 @@ pub extern "Rust" fn firmware_main() -> ! {
                 0,
                 0,
             );
-            nc_waited(tt_isa::dataflow::NcWait::Call, since);
+            nc_waited(tensix_isa::dataflow::NcWait::Call, since);
             r
         } else if rd(M.at(dm::OP)) == op::LIST {
             run_list(me, usable, rd(M.at(dm::LEN)))

@@ -29,11 +29,11 @@
 use tt_firmware::corpus::{self, experiment};
 use tt_firmware::ttinsn;
 use tt_firmware::{l1_read32, l1_write32, publish};
-use tt_isa::sfpu::dst32_address;
-use tt_isa::tensix::{RiscvT1, Thread1};
+use tensix_isa::sfpu::dst32_address;
+use tensix_isa::tensix::{RiscvT1, Thread1};
 
 /// The scratch block, in the probes' own L1 (`mailbox::PROBE_SCRATCH`).
-const SCRATCH: u64 = tt_isa::mailbox::TTINSN_SCRATCH;
+const SCRATCH: u64 = tensix_isa::mailbox::TTINSN_SCRATCH;
 /// Host-written: 0 = the runner's own push, 1 = fused where a program matches.
 const MODE: u64 = SCRATCH;
 /// Written here: how many programs this run pushed fused (0 or 1).
@@ -71,7 +71,7 @@ const CFG0_READBACK: u64 = SCRATCH + 52;
 /// Where translated code goes: the last 16 KiB of L1, the program-cache region
 /// no test of this experiment uses. (A real design would plan it through
 /// `l1::Requirements`.)
-const CODE_BUFFER: u64 = tt_isa::tensix::L1_SIZE - 0x4000;
+const CODE_BUFFER: u64 = tensix_isa::tensix::L1_SIZE - 0x4000;
 const CODE_WORDS: usize = 0x4000 / 4;
 
 include!("../ttinsn_programs.in");

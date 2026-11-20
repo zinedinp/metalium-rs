@@ -9,7 +9,7 @@
 #![cfg(not(feature = "silicon"))]
 
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::eth::Ethernet;
+use tensix_isa::eth::Ethernet;
 use tt_kernels::link::{Dest, Dir, Link, Mover, Source};
 use tt_ttsim::{fork_scope, Simulator};
 

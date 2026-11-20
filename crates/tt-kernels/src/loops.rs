@@ -4,7 +4,7 @@
 //! (`silicon_perf::role_push_rate`), and a matmul's unpack and math roles push
 //! no faster than that: the kernel's pace is its word count. The frontend has
 //! two expanders that turn a few pushed words into many instructions
-//! (`tt_isa::frontend`): the Replay Expander, which records up to 32
+//! (`tensix_isa::frontend`): the Replay Expander, which records up to 32
 //! instructions and replays them for one `REPLAY` word; and before it the MOP
 //! Expander, which turns one `MOP` into a loop of the instructions in the
 //! thread's `MopCfg` -- which may themselves be `REPLAY`s, so one `MOP`
@@ -13,7 +13,7 @@
 //! A program states its loops as [`Item::Repeat`]; [`lower`] picks each one's
 //! form and says which it picked and why ([`Lowered::loops`]):
 //!
-//! * a body of at most [`tt_isa::frontend::REPLAY_BUFFER`] instructions, none
+//! * a body of at most [`tensix_isa::frontend::REPLAY_BUFFER`] instructions, none
 //!   of them a `REPLAY` or `MOP`, is recorded once (executing as it records)
 //!   and replayed: one word for each further iteration;
 //! * the loop that saves the most words beyond that -- and every other loop
@@ -33,10 +33,10 @@
 //! instructions the backend receives from the lowered program are exactly the
 //! unrolled program's, word for word.
 
-use tt_isa::frontend::mop::{self, MopConfig, Template0};
-use tt_isa::frontend::{self, REPLAY_BUFFER};
-use tt_isa::isa::generated::defs;
-use tt_isa::isa::Instruction;
+use tensix_isa::frontend::mop::{self, MopConfig, Template0};
+use tensix_isa::frontend::{self, REPLAY_BUFFER};
+use tensix_isa::isa::generated::defs;
+use tensix_isa::isa::Instruction;
 
 /// One element of a role program.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -125,7 +125,7 @@ pub struct Lowered {
 }
 
 /// The most iterations one template-0 `MOP` runs here: one per mask bit
-/// (`tt_isa::frontend::mop::mop_template0`).
+/// (`tensix_isa::frontend::mop::mop_template0`).
 const MOP_ITERATIONS: u32 = 32;
 
 fn is_expander_insn(i: &Instruction) -> bool {
@@ -425,7 +425,7 @@ fn lower_flat(items: &[Item], allow_mop: bool) -> Lowered {
 }
 
 /// What the backend receives from `words` under `mop`: the MOP Expander's
-/// output (`tt_isa::frontend::mop::expand`) through the Replay Expander's
+/// output (`tensix_isa::frontend::mop::expand`) through the Replay Expander's
 /// (`REPLAY.md`: `Load` records `Count` instructions from `Index`, executing
 /// them if `Exec`; otherwise it expands to the recorded ones). The model the
 /// lowering is held to; `None` for a stream the model refuses (a replay of
@@ -476,7 +476,7 @@ mod tests {
     use super::*;
 
     fn op(n: u32) -> Instruction {
-        tt_isa::sfpu::loadi(0, 0, n).unwrap()
+        tensix_isa::sfpu::loadi(0, 0, n).unwrap()
     }
     fn body(range: std::ops::Range<u32>) -> Vec<Item> {
         range.map(|n| Item::I(op(n))).collect()

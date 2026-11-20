@@ -17,7 +17,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_ttsim::{fork_scope, Simulator};
 
 /// UMD's `DRAM_CORES_NOC0` (`blackhole_implementation.hpp:96-105`): channel `c`'s
@@ -147,7 +147,7 @@ fn a_four_gib_window_reaches_the_whole_channel() {
 #[test]
 #[ignore = "exploratory"]
 fn which_congruence_ttsim_demands_of_a_dram_read() {
-    use tt_isa::dm;
+    use tensix_isa::dm;
     for (dram_at, l1_at) in [
         (0x1000u32, 0x2_0000u32),
         (0x1020, 0x2_0000),
@@ -162,7 +162,7 @@ fn which_congruence_ttsim_demands_of_a_dram_read() {
             let t = c(3, 4);
             let (_, image, _) = tt_firmware_images::DM_B;
             let mut m =
-                tt_kernels::dm::DataMover::start(d, &w, t, &tt_isa::dram::Dram::FULL, image)
+                tt_kernels::dm::DataMover::start(d, &w, t, &tensix_isa::dram::Dram::FULL, image)
                     .unwrap();
             let _ = &mut m;
             for (at, v) in [

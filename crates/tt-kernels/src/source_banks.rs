@@ -6,7 +6,7 @@ use crate::{
     l1::Requirements,
     runtime::SemaphoreInit,
 };
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{alu, thread},
     isa::{generated::encode, Instruction},

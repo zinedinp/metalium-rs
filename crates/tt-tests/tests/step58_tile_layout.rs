@@ -1,16 +1,16 @@
-//! Tilizing on the card (`tt_isa::dm::op::TILIZE`, `UNTILIZE`): a tile's
+//! Tilizing on the card (`tensix_isa::dm::op::TILIZE`, `UNTILIZE`): a tile's
 //! mover turns a row-major block in L1 into a tile slot's datums and back,
 //! so the host can keep row-major data -- Burn's -- and the tile layout stays
 //! on the card.
 //!
 //! The claims: a band of blocks side by side, ragged in both directions,
 //! tilizes to exactly the host tilizer's datums (`matmul::tilize_f32_fp32`,
-//! itself checked against `tt_layout`'s), padding zero; untilized into a band
+//! itself checked against `tensix_layout`'s), padding zero; untilized into a band
 //! filled with a sentinel, the valid datums come back and nothing outside
 //! them is written; and a malformed entry is refused on the host.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{error, fill, op};
+use tensix_isa::dm::{error, fill, op};
 use tt_kernels::dm::{DataMover, DmError};
 use tt_kernels::matmul;
 use tt_tests::backend::GATE_TILE;

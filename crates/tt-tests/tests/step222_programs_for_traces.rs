@@ -1,5 +1,5 @@
 //! The program slots are trace data while a trace runs (`docs/completed-plans/decode-to-bandwidth.md` Phase 8,
-//! "Room for a second job's `B`", P2): a trace's capture plans into `tt_isa::l1::TRACE_ARENA`,
+//! "Room for a second job's `B`", P2): a trace's capture plans into `tensix_isa::l1::TRACE_ARENA`,
 //! which takes in `PROGRAMS`, since a traced kernel runs from the program cache.
 //!
 //! The claims:
@@ -23,8 +23,8 @@
 //! refuses (`tensix_decode_and_execute: opcode=0x0`).
 
 use tt_device::tlb::WindowKind;
-use tt_isa::l1::PROGRAMS;
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::l1::PROGRAMS;
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{DramTensor, Eltwise};
@@ -232,7 +232,7 @@ fn captured<T: tt_device::Transport>(
 
 #[test]
 fn a_capture_in_the_trace_arena_replays_as_the_ops_run_fresh() {
-    use tt_isa::l1::{DATA, TRACE_ARENA};
+    use tensix_isa::l1::{DATA, TRACE_ARENA};
     with_session(TileChoice::Count(8), |s| {
         let seeds = [10u64, 20, 21];
         let a = s.upload(&values(2, K), 1, K).unwrap();

@@ -59,9 +59,9 @@ profile = ["tt-firmware-images/profile", "burn-tt/profile"]
 # cannot reach a shippable artefact -- `check-no-sim-in-ship` walks the shippable
 # crates, and this is not one of them.
 [dependencies]
-tt-isa.workspace = true
+tensix-isa.workspace = true
 tt-device.workspace = true
-tt-layout.workspace = true
+tensix-layout.workspace = true
 tt-kernels.workspace = true
 tt-firmware-images.workspace = true
 burn-tt.workspace = true

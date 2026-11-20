@@ -2,7 +2,7 @@
 //! slot without its 16-byte header leaves whatever the slot held there. The unpacker takes the
 //! tile's shape and format from its configuration, not from the header, so a BFP8, BFP4 or BFP2
 //! tile unpacks to the same `Dst` rows whatever its header bytes are.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     tile::{L1Format, TileImage},
 };
@@ -12,7 +12,7 @@ use tt_tests::harness::{self, Roles, Run};
 #[test]
 fn a_block_float_tile_unpacks_the_same_under_any_header() {
     use datapath::Unpacker;
-    use tt_isa::{cfg::generated::alu, isa::generated::encode, matrix::Banks};
+    use tensix_isa::{cfg::generated::alu, isa::generated::encode, matrix::Banks};
     harness::in_device(|dev| {
         for (format, code) in [
             (L1Format::Bfp8, 6),

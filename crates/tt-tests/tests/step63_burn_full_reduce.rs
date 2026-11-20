@@ -6,7 +6,7 @@ use burn::backend::Autodiff;
 use burn::tensor::{Tensor, TensorData, TensorPrimitive};
 use burn_flex::{Flex, FlexDevice};
 use burn_tt::{tensor_traffic, Trace, TtBackend, TtDevice};
-use tt_isa::numerics::add_bh;
+use tensix_isa::numerics::add_bh;
 use tt_kernels::sfpu::ops::{kind_sfpu, reference_op, Broadcast};
 use tt_kernels::sfpu::reduce::{reference, Axis, ReduceOp};
 use tt_tests::burn_device::{with_device, Config};

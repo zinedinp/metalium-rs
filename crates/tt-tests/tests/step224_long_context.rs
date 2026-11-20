@@ -33,7 +33,7 @@ use tt_tests::burn_device::{with_device, Config};
 
 /// What one trace's programs may take of a unit's program cache: room for the eager ops between
 /// replays beside them, so a replay does not evict what the next one needs.
-const TRACE_BUDGET: u64 = tt_isa::l1::PROGRAM_CACHE.len() / 2;
+const TRACE_BUDGET: u64 = tensix_isa::l1::PROGRAM_CACHE.len() / 2;
 
 fn configs() -> Vec<(&'static str, LlamaConfig)> {
     let base = LlamaConfig {

@@ -3,7 +3,7 @@
 //! Three layers of evidence:
 //!
 //! * **Model and layout (host, always).** [`model`] is a literal transcription of
-//!   the page's pseudocode. It does not use `tt_isa::noc::atomic`: it *decodes*
+//!   the page's pseudocode. It does not use `tensix_isa::noc::atomic`: it *decodes*
 //!   the `NOC_AT_LEN_BE` word the encoder produced, with field positions parsed
 //!   from the vendored diagram source (`Diagrams/Src/Bits32.lua`,
 //!   `NOC_AT_LEN_BE_*`) rather than copied from the encoder, so an encoder that
@@ -25,7 +25,7 @@
 
 mod noc_support;
 
-use tt_isa::noc::atomic::{AccFormat, AtomicOp, AtomicRequest, SwapForm, Zaamo};
+use tensix_isa::noc::atomic::{AccFormat, AtomicOp, AtomicRequest, SwapForm, Zaamo};
 
 // ---------------------------------------------------------------------------
 // Layouts, parsed from the vendored diagram source.
@@ -624,7 +624,7 @@ const TARGET_BASE: u32 = 0x2_2000;
 
 fn request_of(s: &Scenario) -> AtomicRequest {
     AtomicRequest {
-        to: tt_isa::noc::niu::Endpoint {
+        to: tensix_isa::noc::niu::Endpoint {
             x: 4,
             y: 4,
             addr: TARGET_BASE + 4 * s.target_word,
@@ -691,7 +691,7 @@ fn mutants_are_caught() {
 fn layouts_match_the_vendored_diagrams() {
     let enc = |op, addr: u32| {
         AtomicRequest {
-            to: tt_isa::noc::niu::Endpoint { x: 1, y: 2, addr },
+            to: tensix_isa::noc::niu::Endpoint { x: 1, y: 2, addr },
             ret_local: 0x100,
             op,
         }
@@ -804,8 +804,8 @@ fn layouts_match_the_vendored_diagrams() {
 // ---------------------------------------------------------------------------
 
 use noc_support::{read_bytes, run_probe, unicast, write_bytes};
-use tt_isa::noc::niu::TxnId;
-use tt_isa::noc::probe;
+use tensix_isa::noc::niu::TxnId;
+use tensix_isa::noc::probe;
 use tt_tests::harness::{self, Dev};
 
 /// Run `s` on a device: the target tile's unit is seeded, the probe on the gate

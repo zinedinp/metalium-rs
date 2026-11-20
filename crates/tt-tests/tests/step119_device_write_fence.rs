@@ -41,7 +41,7 @@ mod model {
 
     use tt_device::tlb::{self, WindowKind};
     use tt_device::{Bar, ConfigOffset, Device, FencedWrite, Result, Transport, Window};
-    use tt_isa::noc::{Noc0, NocCoord};
+    use tensix_isa::noc::{Noc0, NocCoord};
     use tt_ttsim::{fork_scope, Simulator};
 
     const ADDR: u64 = 0x2_0000;
@@ -122,7 +122,7 @@ mod model {
         fn is_simulated(&self) -> bool {
             self.inner.is_simulated()
         }
-        fn chip(&self) -> tt_isa::noc::ChipId {
+        fn chip(&self) -> tensix_isa::noc::ChipId {
             self.inner.chip()
         }
     }

@@ -1,5 +1,5 @@
 //! Physical two-bank oracle, clear/release consumers and isolated refusals.
-use tt_isa::{
+use tensix_isa::{
     isa::generated::encode,
     matrix::{Banks, ShiftBMode},
     tile::{L1Format, TileImage},
@@ -195,11 +195,11 @@ fn run(
                         }
                         if matches!(mutant, 10 | 11) && i.def().key() == "UNPACR_NOP_ZEROSRC_BH" {
                             let bit = if mutant == 10 { 16 } else { 8 };
-                            *i = tt_isa::isa::Instruction::new(i.word() | bit, i.def());
+                            *i = tensix_isa::isa::Instruction::new(i.word() | bit, i.def());
                         }
                         if mutant == 1 && i.def().key() == "ZEROSRC" {
                             let word = i.word() ^ 3;
-                            *i = tt_isa::isa::Instruction::new(word, i.def());
+                            *i = tensix_isa::isa::Instruction::new(word, i.def());
                         }
                         if i.def().key() == "SHIFTXB_BH" {
                             if mutant == 2 {
@@ -454,7 +454,7 @@ fn simulator_refuses_each_unpacker_clear_form_with_surviving_controls() {
 
 #[test]
 fn released_sources_feed_existing_matmul_and_pooling_sequences() {
-    use tt_isa::{
+    use tensix_isa::{
         backend::{self, Before},
         sync::{self, Unit},
     };
@@ -481,7 +481,7 @@ fn released_sources_feed_existing_matmul_and_pooling_sequences() {
                 let mut req = Requirements::new(1);
                 let b = req.scratch("downstream Src inputs", 2 * 2048 + 32, 16, 0..1);
                 let plan = req
-                    .plan(tt_isa::l1::Region {
+                    .plan(tensix_isa::l1::Region {
                         name: "downstream source arena",
                         base: p.input + 4096,
                         end: p.input + 16384,
@@ -610,7 +610,7 @@ fn unpacr_zero_blackhole_bank_and_clear_value_fields() {
 #[test]
 #[cfg(feature = "silicon")]
 fn unpacr_zero_waits_on_current_unpacker_bank_with_matrix_bank_held() {
-    use tt_isa::{
+    use tensix_isa::{
         backend::{self, Before, ConfigWords},
         cfg::generated::alu,
         sync::{self, Unit},
@@ -622,7 +622,7 @@ fn unpacr_zero_waits_on_current_unpacker_bank_with_matrix_bank_held() {
             let input = req.scratch("two-bank wait probe", 16 + 512 * 4, 16, 0..1);
             let ready = req.semaphore("bank 1 clear retired while bank 0 held", 0, 0..1);
             let released = req.semaphore("matrix released bank 0", 0, 0..1);
-            let plan = req.plan(tt_isa::l1::DATA).unwrap();
+            let plan = req.plan(tensix_isa::l1::DATA).unwrap();
             let ready = plan.semaphore(ready);
             let released = plan.semaphore(released);
             let at = plan.addr(input);

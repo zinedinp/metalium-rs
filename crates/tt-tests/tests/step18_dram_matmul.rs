@@ -8,7 +8,7 @@
 //! crossed PCIe.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_tests::backend::GATE_TILE;

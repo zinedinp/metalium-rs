@@ -132,7 +132,7 @@ fn records<T: tt_device::Transport>(
     s: &Session<T>,
     id: tt_kernels::trace::TraceId,
 ) -> Vec<Option<(u32, u32)>> {
-    use tt_isa::dm::record;
+    use tensix_isa::dm::record;
     s.trace_footprint(id)
         .unwrap()
         .into_iter()

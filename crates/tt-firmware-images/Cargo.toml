@@ -24,8 +24,8 @@ encoded-guard = ["fast-reads"]
 profile = []
 
 [dependencies]
-tt-isa.workspace = true
+tensix-isa.workspace = true
 
 # The gate checks each admitted `.ttinsn` word against the instruction table.
 [build-dependencies]
-tt-isa.workspace = true
+tensix-isa.workspace = true

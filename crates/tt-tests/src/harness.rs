@@ -21,10 +21,10 @@
 use tt_device::core_control::WaitError;
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::{grid, Noc0, NocCoord};
-use tt_isa::tensix::Core;
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::{grid, Noc0, NocCoord};
+use tensix_isa::tensix::Core;
 
 /// Re-exported so a gate can say `harness::Dev` without caring which target it
 /// is built for. [`crate::backend`] is where the choice is made.
@@ -110,7 +110,7 @@ pub struct Run<'a> {
     /// [`Run::traced`].
     pub trace: bool,
     /// Each role's MOP Expander configuration; see [`Run::mop`].
-    pub mop: [Option<tt_isa::frontend::mop::MopConfig>; 3],
+    pub mop: [Option<tensix_isa::frontend::mop::MopConfig>; 3],
 }
 
 pub use tt_kernels::runtime::SemaphoreInit;
@@ -118,7 +118,7 @@ pub use tt_kernels::runtime::SemaphoreInit;
 /// A kernel split the way tt-metal's LLK splits it: thread 0 unpacks, thread 1
 /// does math (Matrix Unit and SFPU), thread 2 packs, each program pushed by its
 /// own core (T0, T1, T2) and reporting through its own mailbox
-/// (`tt_isa::mailbox::role`).
+/// (`tensix_isa::mailbox::role`).
 ///
 /// Much of the coprocessor's state is per thread -- ADCs, RWCs, address
 /// modifiers, `ThreadConfig` -- and the hardware ties some of it to a role:
@@ -181,7 +181,7 @@ impl<'a> Run<'a> {
     /// an unpacker that fills more `Src` banks than exist waits for a Matrix Unit
     /// whose thread has not started. Concurrently, the roles synchronise the way
     /// LLK's do -- `Src` banks by hardware, `Dst` through the semaphores in
-    /// `init` (`tt_isa::sync`). Those are set, and the `Dst` rows about to be
+    /// `init` (`tensix_isa::sync`). Those are set, and the `Dst` rows about to be
     /// dumped zeroed, by a setup run on thread 0 that completes before any role
     /// starts: a semaphore outlives the program that last used it on silicon,
     /// so a consumer released alongside its own `SEMINIT` could read a stale
@@ -192,7 +192,7 @@ impl<'a> Run<'a> {
     }
 
     /// Have each role record `START`, `PUSHED` and `RETIRED` through the
-    /// tile's timestamper (`tt_isa::mailbox::trace`), returned in
+    /// tile's timestamper (`tensix_isa::mailbox::trace`), returned in
     /// [`Outcome::trace`]. Silicon only: ttsim's support is its own probe. The firmware stamps
     /// only when built with `profile` (`tt-tests/profile`, `cargo xtask silicon --profile`):
     /// refused without it, rather than returning an empty trace.
@@ -210,8 +210,8 @@ impl<'a> Run<'a> {
     }
 
     /// Load these MOP Expander configurations (unpack, math, pack) before
-    /// the roles push (`tt_isa::mailbox::MOP_CFG`).
-    pub fn mop(mut self, cfg: [Option<tt_isa::frontend::mop::MopConfig>; 3]) -> Self {
+    /// the roles push (`tensix_isa::mailbox::MOP_CFG`).
+    pub fn mop(mut self, cfg: [Option<tensix_isa::frontend::mop::MopConfig>; 3]) -> Self {
         self.mop = cfg;
         self
     }
@@ -257,7 +257,7 @@ impl Outcome {
 /// the programs stay the same; the wait keeps it ahead of anything the program
 /// then writes.
 fn dst_clear_prelude(dump_rows: u32) -> Vec<Instruction> {
-    use tt_isa::sfpu;
+    use tensix_isa::sfpu;
     let mut p = Vec::new();
     p.extend(sfpu::load_f32(0, 0).unwrap());
     for group in 0..dump_rows.div_ceil(4) {
@@ -265,7 +265,7 @@ fn dst_clear_prelude(dump_rows: u32) -> Vec<Instruction> {
             p.push(sfpu::store(0, sfpu::store_format::FP32, 0, (group * 4) | cols).unwrap());
         }
     }
-    p.push(tt_isa::backend::wait_for_sfpu(tt_isa::backend::Before::EVERYTHING).unwrap());
+    p.push(tensix_isa::backend::wait_for_sfpu(tensix_isa::backend::Before::EVERYTHING).unwrap());
     p
 }
 

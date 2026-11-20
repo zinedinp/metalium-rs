@@ -1,12 +1,12 @@
 //! Independent byte/GPR models and isolated L1 instruction acceptance.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{thcon, thread},
     isa::{generated::encode, Instruction},
     scalar::{self, OffsetHalf, OffsetIncrement as Inc, TransferWidth as Width},
 };
 use tt_tests::harness::{self, Roles, Run};
-const SRC: u64 = tt_isa::l1::DATA.base;
+const SRC: u64 = tensix_isa::l1::DATA.base;
 const DST: u64 = SRC + 8192;
 const WIDTHS: [Width; 4] = [Width::Byte, Width::Halfword, Width::Word, Width::Quadword];
 const INCS: [Inc; 4] = [Inc::None, Inc::Bytes2, Inc::Bytes4, Inc::Bytes16];
@@ -595,7 +595,7 @@ fn benchmark_local_b_core_baseline() {
             let dest = if zero { DST + 16 } else { DST + 32 };
             let entry = if zero {
                 [
-                    tt_isa::dm::op::COPY_WORDS,
+                    tensix_isa::dm::op::COPY_WORDS,
                     SRC as u32,
                     dest as u32,
                     1024,
@@ -606,7 +606,7 @@ fn benchmark_local_b_core_baseline() {
                 ]
             } else {
                 [
-                    tt_isa::dm::op::COPY_WORDS,
+                    tensix_isa::dm::op::COPY_WORDS,
                     SRC as u32,
                     dest as u32,
                     (bytes / 4) as u32,

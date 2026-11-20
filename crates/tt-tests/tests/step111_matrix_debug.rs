@@ -1,4 +1,4 @@
-//! Matrix diagnostics: `MOVDBGA2D` and `GATESRCRST` (`tt_isa::matrix::debug`).
+//! Matrix diagnostics: `MOVDBGA2D` and `GATESRCRST` (`tensix_isa::matrix::debug`).
 //!
 //! Both are diagnostic surfaces, so there is no Burn routing, gradient or tensor
 //! padding to establish: the gates below move `SrcA` rows through the Matrix Unit
@@ -27,7 +27,7 @@
 #![cfg_attr(not(feature = "silicon"), allow(dead_code))]
 mod matrix_debug_support;
 use matrix_debug_support::{a_bits, eight, entry1, one, rows16};
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before},
     isa::{generated::encode, Instruction},
     matrix::debug::{

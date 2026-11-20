@@ -1,5 +1,5 @@
 //! RISCV NC bring-up: NC runs, from the jump at its reset PC to its image at
-//! the top of L1 (`tt_isa::dm::nc`), and issues on both NoCs.
+//! the top of L1 (`tensix_isa::dm::nc`), and issues on both NoCs.
 //!
 //! The first code this workspace runs on NC. The probe image
 //! (`tt-firmware/src/bin/nc_probe.rs`) keeps a heartbeat, reports the tile's
@@ -7,10 +7,10 @@
 //! through NoC #1 (port 1) and reads it back through NoC #0.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{self, nc};
-use tt_isa::mailbox::{offset, status};
-use tt_isa::noc::niu;
-use tt_isa::tensix::Core;
+use tensix_isa::dm::{self, nc};
+use tensix_isa::mailbox::{offset, status};
+use tensix_isa::noc::niu;
+use tensix_isa::tensix::Core;
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile};
 

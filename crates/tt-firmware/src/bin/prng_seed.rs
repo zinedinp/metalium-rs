@@ -5,10 +5,10 @@
 use tt_firmware::cfg::write_config_field;
 use tt_firmware::tensix::{push_word, read_dst32, wait_for_coprocessor};
 use tt_firmware::{fail, finish, l1_read32, l1_write32, publish, spin};
-use tt_isa::cfg::{generated::global::PRNG_SEED_Seed_Val, ConfigBank};
-use tt_isa::mailbox::{self, panic_code};
-use tt_isa::sfpu::dst32_address;
-use tt_isa::tensix::{RiscvT1, TensixThread, Thread1};
+use tensix_isa::cfg::{generated::global::PRNG_SEED_Seed_Val, ConfigBank};
+use tensix_isa::mailbox::{self, panic_code};
+use tensix_isa::sfpu::dst32_address;
+use tensix_isa::tensix::{RiscvT1, TensixThread, Thread1};
 
 #[no_mangle]
 pub extern "Rust" fn firmware_main() -> ! {

@@ -5,7 +5,7 @@
 //! buffer's size, alignment and kind (scratch, or a circular buffer with a page
 //! size, a page count and one producer and one consumer), the stages of the
 //! kernel it is live in, and the semaphores it uses. [`Requirements::plan`]
-//! places them in [`tt_isa::l1::DATA`] (or any arena), sharing bytes between
+//! places them in [`tensix_isa::l1::DATA`] (or any arena), sharing bytes between
 //! buffers that are never live at once and semaphores likewise, and [`check`]
 //! verifies a plan independently of how it was made.
 //!
@@ -29,15 +29,15 @@
 use std::ops::Range;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use tt_isa::l1::Region;
-use tt_isa::sync::Semaphore;
+use tensix_isa::l1::Region;
+use tensix_isa::sync::Semaphore;
 
 use crate::runtime::SemaphoreInit;
 
 std::thread_local! {
     /// Where [`arena`] ends on this thread: `DATA`'s end, or a planned capture's persistent region's
     /// base.
-    static ARENA_END: std::cell::Cell<u64> = const { std::cell::Cell::new(tt_isa::l1::DATA.end) };
+    static ARENA_END: std::cell::Cell<u64> = const { std::cell::Cell::new(tensix_isa::l1::DATA.end) };
 }
 
 /// The part of `DATA` an op's layouts may use: all of it, except while a capture with a persistent
@@ -47,7 +47,7 @@ std::thread_local! {
 pub fn arena() -> Region {
     Region {
         name: "the data arena",
-        base: tt_isa::l1::DATA.base,
+        base: tensix_isa::l1::DATA.base,
         end: ARENA_END.with(|e| e.get()),
     }
 }
@@ -56,7 +56,7 @@ pub fn arena() -> Region {
 /// end <= DATA.end`), returning where it ended.
 pub(crate) fn set_arena_end(end: u64) -> u64 {
     assert!(
-        (tt_isa::l1::DATA.base..=tt_isa::l1::DATA.end).contains(&end),
+        (tensix_isa::l1::DATA.base..=tensix_isa::l1::DATA.end).contains(&end),
         "an arena end {end:#x} outside DATA"
     );
     ARENA_END.with(|e| e.replace(end))
@@ -77,13 +77,13 @@ pub fn half() -> u64 {
 pub(crate) fn half_arena() -> Region {
     Region {
         name: "first half of the data arena",
-        base: tt_isa::l1::DATA.base,
-        end: tt_isa::l1::DATA.base + half(),
+        base: tensix_isa::l1::DATA.base,
+        end: tensix_isa::l1::DATA.base + half(),
     }
 }
 
 /// Where a product's `B` ring is placed against (`matmul::matmul_requirements_top_b`): [`arena`]'s
-/// end, or, while a capture plans into the trace arena (`tt_isa::l1::TRACE_ARENA`), the base of its
+/// end, or, while a capture plans into the trace arena (`tensix_isa::l1::TRACE_ARENA`), the base of its
 /// persistent region above `DATA` -- the one layout that reaches past `DATA`, so every other
 /// layout, and every choice sized from the arena, is as it is outside a capture
 /// (`docs/completed-plans/decode-to-bandwidth.md` Phase 8, P3). Whatever caches a ring's layout, or programs
@@ -101,7 +101,7 @@ pub fn ring_end() -> u64 {
 pub(crate) fn set_ring_end(end: Option<u64>) -> Option<u64> {
     if let Some(end) = end {
         assert!(
-            (tt_isa::l1::DATA.base..=tt_isa::l1::TRACE_ARENA.end).contains(&end),
+            (tensix_isa::l1::DATA.base..=tensix_isa::l1::TRACE_ARENA.end).contains(&end),
             "a ring end {end:#x} outside the trace arena"
         );
     }
@@ -643,7 +643,7 @@ impl Requirements {
             if s.live.start >= s.live.end || s.live.end > self.stages {
                 return bad(format!("{}: live {:?} outside the kernel", s.name, s.live));
             }
-            if s.initial > tt_isa::sync::MAX_VALUE {
+            if s.initial > tensix_isa::sync::MAX_VALUE {
                 return bad(format!(
                     "{}: starts at {}, past the maximum",
                     s.name, s.initial
@@ -664,7 +664,7 @@ impl Requirements {
         let (plan, need) = self.plan_unnoted(arena)?;
         // A layout in a tile's data arena, or past it into the trace arena (a product's `B` ring in
         // a capture, `ring_end`): noted as the op's.
-        if arena.base >= tt_isa::l1::DATA.base && arena.end <= tt_isa::l1::TRACE_ARENA.end {
+        if arena.base >= tensix_isa::l1::DATA.base && arena.end <= tensix_isa::l1::TRACE_ARENA.end {
             note_planned(Planned {
                 top: self.top(&plan.addr).unwrap_or(arena.base),
                 need: need.unwrap_or(arena.base),
@@ -751,7 +751,7 @@ impl Requirements {
         for (s, &n) in self.sems.iter().zip(&sems) {
             if !init.iter().any(|(sem, ..)| sem.index() as u32 == n) {
                 let sem = Semaphore::new(n as u8).expect("one of eight");
-                init.push((sem, s.initial, tt_isa::sync::MAX_VALUE));
+                init.push((sem, s.initial, tensix_isa::sync::MAX_VALUE));
             }
         }
         init.sort_by_key(|(sem, ..)| sem.index());
@@ -928,9 +928,9 @@ pub fn check(req: &Requirements, plan: &Plan, arena: Region) -> Result<(), Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::l1::DATA;
+    use tensix_isa::l1::DATA;
 
-    const SLOT: u64 = tt_isa::dm::TILE_SLOT;
+    const SLOT: u64 = tensix_isa::dm::TILE_SLOT;
 
     #[test]
     fn one_stage_buffers_are_packed_in_order() {
@@ -1047,7 +1047,7 @@ mod tests {
         assert_eq!(p.semaphore(a), p.semaphore(c));
         let init = p.semaphore_init();
         assert_eq!(init.len(), 2);
-        assert!(init.contains(&(p.semaphore(b), 1, tt_isa::sync::MAX_VALUE)));
+        assert!(init.contains(&(p.semaphore(b), 1, tensix_isa::sync::MAX_VALUE)));
         check(&r, &p, DATA).unwrap();
         // And the checker refuses a plan that shares them anyway.
         let mut bad = p.clone();

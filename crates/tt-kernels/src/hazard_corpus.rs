@@ -1,12 +1,12 @@
-//! The hazard checker (`tt_isa::hazard`) over the builders that are not public:
+//! The hazard checker (`tensix_isa::hazard`) over the builders that are not public:
 //! pooling, the Src transpose, rectangle copies and the Matrix Unit element-wise
 //! kernels. Their role programs are carried in the `Step::Kernel`s of the `Work`
 //! each builds, which needs no device. The public builders (matmul, SFPU
 //! kernels, reductions, scans) are `tt-tests`'s `step121_wait_planner`.
 
-use tt_isa::dram::Dram;
-use tt_isa::hazard::{self, Kind};
-use tt_isa::isa::Instruction;
+use tensix_isa::dram::Dram;
+use tensix_isa::hazard::{self, Kind};
+use tensix_isa::isa::Instruction;
 
 use crate::code::Code;
 use crate::fpu::PoolOp;

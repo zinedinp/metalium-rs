@@ -28,8 +28,8 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::noc::{Noc0, NocCoord};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::noc::{Noc0, NocCoord};
+use tensix_isa::tensix::{self, Core};
 use tt_tests::harness::{self, assert_on_silicon, in_device, Dev};
 
 /// Where the parked cores' `j .` lives: clear of the firmware load address and

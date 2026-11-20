@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::eth::mover::{event as ev, MAX_LEN};
+use tensix_isa::eth::mover::{event as ev, MAX_LEN};
 use tt_kernels::link::{discover, Dest, Dir, EthEvent, Link, Mover, Source};
 use tt_tests::bench::{pattern, report, report_rate, with_cards, Conditions, Peak, Stats, REPS};
 use tt_tests::harness::{tile, Dev};

@@ -40,9 +40,9 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{self, op, Mover};
-use tt_isa::noc::niu::Niu;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, Mover};
+use tensix_isa::noc::niu::Niu;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::{DataMover, DmError, L1Writes};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -64,7 +64,7 @@ const BYSTANDER: (u8, u8) = (GATE_TILE.0 + 1, GATE_TILE.1 + 1);
 const LENS: [u32; 5] = [64, 1040, 4160, 16384, 8256];
 
 fn window() -> std::ops::Range<u64> {
-    tt_isa::l1::DATA.end - WINDOW_LEN..tt_isa::l1::DATA.end
+    tensix_isa::l1::DATA.end - WINDOW_LEN..tensix_isa::l1::DATA.end
 }
 
 fn pattern(len: usize, seed: u32) -> Vec<u8> {
@@ -214,7 +214,7 @@ fn the_host_refuses_what_its_session_does_not_own() {
         assert!(r.is_err(), "the non-memory column named: {r:?}");
         let r = nc.set_l1_writes(L1Writes {
             tiles: PEERS.to_vec(),
-            window: 0x1_0000..tt_isa::l1::DATA.end,
+            window: 0x1_0000..tensix_isa::l1::DATA.end,
             ..Default::default()
         });
         assert!(r.is_err(), "a window below DATA: {r:?}");
@@ -295,7 +295,7 @@ fn the_tile_refuses_a_malformed_write_by_itself() {
                     op::WRITE_L1,
                     x,
                     y,
-                    tt_isa::l1::MAILBOXES.base as u32,
+                    tensix_isa::l1::MAILBOXES.base as u32,
                     SRC,
                     64,
                     0,
@@ -350,7 +350,7 @@ const BESIDE: [(u8, u8); 2] = [
 
 #[test]
 fn the_tile_takes_a_write_into_the_trace_arena() {
-    use tt_isa::l1::{CAPTURE_ONLY, PROGRAMS};
+    use tensix_isa::l1::{CAPTURE_ONLY, PROGRAMS};
     in_device(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let mut nc = start(d, &w, Mover::NC);

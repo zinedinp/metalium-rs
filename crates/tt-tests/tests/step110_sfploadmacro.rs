@@ -6,7 +6,7 @@
 //! can only be judged against a model. Three independent things are checked
 //! here, none against itself:
 //!
-//! * `tt_isa::sfpu::load_macro` (checked helper, writes the configuration words) is
+//! * `tensix_isa::sfpu::load_macro` (checked helper, writes the configuration words) is
 //!   read back by `tt_kernels::sfpu::macro_sched` (a model written from the
 //!   page's functional model that re-reads the raw words), so a wrongly placed
 //!   bit disagrees rather than agrees;
@@ -42,12 +42,12 @@
 //! and ends with `MacroConfig::teardown`, because the configuration is
 //! persistent state the next program and process inherit.
 
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::sfpu::load_macro::{
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::sfpu::load_macro::{
     drain, MacroConfig, MacroError, MacroLoad, Misc, Sequence, Slot, Source, SubUnit, Template,
 };
-use tt_isa::sfpu::{self, mod0_fmt};
+use tensix_isa::sfpu::{self, mod0_fmt};
 use tt_kernels::sfpu::interp::Vector;
 use tt_kernels::sfpu::macro_sched::{Machine, SchedError, Unit};
 #[cfg(feature = "silicon")]

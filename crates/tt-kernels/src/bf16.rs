@@ -4,7 +4,7 @@
 //! signed zero, matching Blackhole late pack narrowing.
 use std::sync::Arc;
 
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{global, thcon},
     dm::{op, TILE_DATA},
@@ -20,7 +20,7 @@ use crate::{
 };
 
 /// 1024 two-byte datums, a 16-byte header and 64-byte slot alignment.
-pub const TILE_SLOT: u64 = tt_isa::dm::BF16_TILE_SLOT;
+pub const TILE_SLOT: u64 = tensix_isa::dm::BF16_TILE_SLOT;
 
 /// A resident BF16 matrix, with an explicit physical allocation. It is
 /// intentionally distinct from `DramTensor`'s 32-bit datum contract.
@@ -136,7 +136,7 @@ pub(crate) fn quantize_items(row: u32, rows: u32) -> Vec<crate::loops::Item> {
         crate::sfpu::with_rows(rows, || quantize_code(row))
     };
     let mut items = vec![crate::loops::Item::I(
-        tt_isa::isa::generated::encode::Setrwc::ZERO
+        tensix_isa::isa::generated::encode::Setrwc::ZERO
             .dst(1)
             .encode()
             .unwrap(),
@@ -169,7 +169,7 @@ fn roles(layout: &kernel::Layout, compress: bool) -> [Vec<Instruction>; 3] {
         // where its last face was, which would offset every datum read here
         // (`step233`'s widening after a product).
         unpack.extend(datapath::clear_unpacker0_adcs());
-        let mut empty = tt_isa::matrix::Banks::after_reset();
+        let mut empty = tensix_isa::matrix::Banks::after_reset();
         for chunk in 0..8 {
             unpack.extend(sync::take(s.free, Before::UNPACKER));
             let mut words = ConfigWords::new();
@@ -181,25 +181,25 @@ fn roles(layout: &kernel::Layout, compress: bool) -> [Vec<Instruction>; 3] {
                 5,
             );
             words
-                .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                 .unwrap();
             words
                 .set(
-                    tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Zero_Flag_disabled_src,
+                    tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Zero_Flag_disabled_src,
                     1,
                 )
                 .unwrap();
             unpack.extend(datapath::config_program(&words));
             unpack.push(datapath::set_adc_x(datapath::Unpacker::SrcA, 0, 127));
             let (i, banks) = empty
-                .unpack_a(tt_isa::isa::generated::encode::UnpacrRegular::ZERO.multi_context_mode(1))
+                .unpack_a(tensix_isa::isa::generated::encode::UnpacrRegular::ZERO.multi_context_mode(1))
                 .unwrap();
             unpack.push(i);
             unpack.extend(sync::post_after(Unit::Unpacker0, s.unpacked));
             math.extend(sync::take(s.unpacked, Before::MATRIX));
             let (i, banks) = banks
                 .mova2d(
-                    tt_isa::isa::generated::encode::Mova2D::ZERO
+                    tensix_isa::isa::generated::encode::Mova2D::ZERO
                         .move8_rows(1)
                         .dst_row(chunk as u32 * 8),
                 )
@@ -250,7 +250,7 @@ fn jobs(input: &Placement, output: &Placement, compress: bool) -> Result<Vec<Job
                         true,
                         layout.a_at,
                         if compress {
-                            tt_isa::dm::TILE_SLOT as u32
+                            tensix_isa::dm::TILE_SLOT as u32
                         } else {
                             TILE_SLOT as u32
                         },
@@ -403,7 +403,7 @@ fn repack_many_into(
 ) -> Result<Vec<Job>> {
     let (rows, cols) = (output.rows, output.cols);
     use crate::tensor::TransferBatch;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     if rows == 0
         || cols == 0
         || rows.checked_mul(cols) != Some(sources.len())

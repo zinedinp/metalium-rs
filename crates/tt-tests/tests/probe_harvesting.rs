@@ -26,8 +26,8 @@
 
 use tt_device::telemetry::TelemetryTable;
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::arc;
-use tt_isa::noc::grid;
+use tensix_isa::arc;
+use tensix_isa::noc::grid;
 use tt_kmd::Kmd;
 
 #[test]

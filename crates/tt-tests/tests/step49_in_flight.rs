@@ -1,5 +1,5 @@
 //! The data mover keeps its NoC requests in flight under a cap
-//! (`tt_isa::noc::niu::InFlight`), so the 8-bit counter its completion wait
+//! (`tensix_isa::noc::niu::InFlight`), so the 8-bit counter its completion wait
 //! reads cannot wrap: with 256 in flight it would read 0, and a list would be
 //! reported done with data still arriving.
 //!
@@ -10,7 +10,7 @@
 //! next is issued (divergence row 72).
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::op;
+use tensix_isa::dm::op;
 use tt_kernels::dm::DataMover;
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile};
@@ -85,7 +85,7 @@ fn more_requests_than_the_counter_holds_all_land_with_and_without_waiting() {
         let zero = vec![0u8; (ENTRIES * LEN) as usize];
         for (cap, what) in [
             (0u32, "the maximum cap"),
-            (tt_isa::dm::TILE_IN_FLIGHT_CAP, "the tile movers' cap"),
+            (tensix_isa::dm::TILE_IN_FLIGHT_CAP, "the tile movers' cap"),
             (1, "a cap of one"),
         ] {
             d.write(&w, t, L1_AT as u64, &zero).unwrap();
@@ -110,7 +110,7 @@ fn more_requests_than_the_counter_holds_all_land_with_and_without_waiting() {
                 );
             }
         }
-        m.set_in_flight_cap(d, &w, tt_isa::dm::TILE_IN_FLIGHT_CAP)
+        m.set_in_flight_cap(d, &w, tensix_isa::dm::TILE_IN_FLIGHT_CAP)
             .unwrap();
         m.stop(d, &w).unwrap();
     });

@@ -12,9 +12,9 @@
 //! a process and boots a simulator.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::noc::grid;
-use tt_isa::tile::L1Format;
-use tt_layout::{detilize, tilize, HostDtype, Layout, TensorView, TensorViewMut};
+use tensix_isa::noc::grid;
+use tensix_isa::tile::L1Format;
+use tensix_layout::{detilize, tilize, HostDtype, Layout, TensorView, TensorViewMut};
 use tt_tests::harness::{in_device, tile, Dev};
 
 /// Where the tiled buffer is staged.
@@ -34,10 +34,10 @@ fn source(dtype: HostDtype, count: usize) -> Vec<u8> {
         match dtype {
             HostDtype::F32 => out.extend_from_slice(&bits.to_le_bytes()),
             HostDtype::Bf16 => {
-                out.extend_from_slice(&tt_isa::tile::fp32_to_bf16_round(bits).to_le_bytes())
+                out.extend_from_slice(&tensix_isa::tile::fp32_to_bf16_round(bits).to_le_bytes())
             }
             HostDtype::F16 => {
-                out.extend_from_slice(&tt_isa::tile::fp32_to_fp16(bits).unwrap().to_le_bytes())
+                out.extend_from_slice(&tensix_isa::tile::fp32_to_fp16(bits).unwrap().to_le_bytes())
             }
         }
     }

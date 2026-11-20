@@ -7,10 +7,10 @@
 
 #![no_std]
 
-use tt_isa::tensix::Core;
+use tensix_isa::tensix::Core;
 
 /// Whether these images were built with `fast-reads`: the B mover runs host-encoded reads
-/// (`tt_isa::dm::encoded`). The mover reports the same thing at run time (`dm::CAPS`), which
+/// (`tensix_isa::dm::encoded`). The mover reports the same thing at run time (`dm::CAPS`), which
 /// is what a host consults; this is for code that must know at compile time, a gate that
 /// exists only in one mode.
 pub const FAST_READS: bool = cfg!(feature = "fast-reads");
@@ -26,30 +26,30 @@ pub type Image = (Core, &'static [u8], u64);
 pub const LOAD_ADDRESS: u64 = Core::T0.default_reset_pc() as u64;
 
 /// The three role images of the LLK-shaped datapath -- unpack on T0, math on
-/// T1, pack on T2 -- each linked at its own slot (`tt_isa::l1::roles`), so all
+/// T1, pack on T2 -- each linked at its own slot (`tensix_isa::l1::roles`), so all
 /// three fit in one tile's L1 at once alongside the mover and each starts
 /// through its reset-PC override.
 pub const ROLES: [Image; 3] = [
     (
         Core::T0,
         include_bytes!(env!("FIRMWARE_ROLE_T0")),
-        tt_isa::l1::roles::BASE[0],
+        tensix_isa::l1::roles::BASE[0],
     ),
     (
         Core::T1,
         include_bytes!(env!("FIRMWARE_ROLE_T1")),
-        tt_isa::l1::roles::BASE[1],
+        tensix_isa::l1::roles::BASE[1],
     ),
     (
         Core::T2,
         include_bytes!(env!("FIRMWARE_ROLE_T2")),
-        tt_isa::l1::roles::BASE[2],
+        tensix_isa::l1::roles::BASE[2],
     ),
 ];
 
 /// The role runner with guarded runs (`tt_firmware::corpus::run_guarded_role`) on
 /// T0, T1 and T2, each at its core's default reset PC: what `tt_kernels::atomics`
-/// loads for a guarded program (`tt_isa::mailbox::guard`). [`ROLES`] leaves the
+/// loads for a guarded program (`tensix_isa::mailbox::guard`). [`ROLES`] leaves the
 /// guard machinery out (about 1.9 KB an image), so their slots stay small and the
 /// room goes to B's mover. Never loaded beside the mover.
 pub const GUARDED_ROLES: [Image; 3] = [
@@ -88,31 +88,31 @@ pub const CORPUS: &[u8] = include_bytes!(env!("FIRMWARE_CORPUS"));
 /// (divergence row 45).
 pub const CORPUS_T0: &[u8] = include_bytes!(env!("FIRMWARE_CORPUS_T0"));
 
-/// The Ethernet-tile image, for RISCV E1, loaded at `tt_isa::eth::E1_IMAGE`.
+/// The Ethernet-tile image, for RISCV E1, loaded at `tensix_isa::eth::E1_IMAGE`.
 pub const ETH_E1: &[u8] = include_bytes!(env!("FIRMWARE_ETH_E1"));
 
-/// The RISCV B data mover (`tt_isa::dm`), loaded at L1 offset 0.
+/// The RISCV B data mover (`tensix_isa::dm`), loaded at L1 offset 0.
 pub const DM_B: Image = (
     Core::B,
     include_bytes!(env!("FIRMWARE_DM_B")),
-    tt_isa::dm::IMAGE_BASE,
+    tensix_isa::dm::IMAGE_BASE,
 );
 
 /// RISCV NC's bring-up probe (`tt-firmware/src/bin/nc_probe.rs`), loaded at
 /// NC's image base; NC reaches it through the stub at its reset PC
-/// (`tt_isa::dm::nc::stub`).
+/// (`tensix_isa::dm::nc::stub`).
 pub const NC_PROBE: Image = (
     Core::NC,
     include_bytes!(env!("FIRMWARE_NC_PROBE")),
-    tt_isa::dm::nc::IMAGE_BASE,
+    tensix_isa::dm::nc::IMAGE_BASE,
 );
 
-/// The RISCV NC data mover (`tt_isa::dm::Mover::NC`): the same mover as
+/// The RISCV NC data mover (`tensix_isa::dm::Mover::NC`): the same mover as
 /// [`DM_B`], on NC's mailbox and ring, loaded at NC's image base.
 pub const DM_NC: Image = (
     Core::NC,
     include_bytes!(env!("FIRMWARE_DM_NC")),
-    tt_isa::dm::nc::IMAGE_BASE,
+    tensix_isa::dm::nc::IMAGE_BASE,
 );
 
 /// The instruction-cache probes (`tt-firmware/src/icache_probe.rs`): B's at
@@ -120,12 +120,12 @@ pub const DM_NC: Image = (
 pub const ICACHE_B: Image = (
     Core::B,
     include_bytes!(env!("FIRMWARE_ICACHE_B")),
-    tt_isa::dm::IMAGE_BASE,
+    tensix_isa::dm::IMAGE_BASE,
 );
 pub const ICACHE_NC: Image = (
     Core::NC,
     include_bytes!(env!("FIRMWARE_ICACHE_NC")),
-    tt_isa::dm::nc::IMAGE_BASE,
+    tensix_isa::dm::nc::IMAGE_BASE,
 );
 
 /// The instruction-cache geometry probes (`tt-firmware/src/icache_alias.rs`): B's at
@@ -133,12 +133,12 @@ pub const ICACHE_NC: Image = (
 pub const ICACHE_ALIAS_B: Image = (
     Core::B,
     include_bytes!(env!("FIRMWARE_ICACHE_ALIAS_B")),
-    tt_isa::dm::IMAGE_BASE,
+    tensix_isa::dm::IMAGE_BASE,
 );
 pub const ICACHE_ALIAS_NC: Image = (
     Core::NC,
     include_bytes!(env!("FIRMWARE_ICACHE_ALIAS_NC")),
-    tt_isa::dm::nc::IMAGE_BASE,
+    tensix_isa::dm::nc::IMAGE_BASE,
 );
 
 /// The L1 Cache Tag Search Accelerator probe (`tt-firmware/src/bin/tag_search_b.rs`)
@@ -146,7 +146,7 @@ pub const ICACHE_ALIAS_NC: Image = (
 pub const TAG_SEARCH_B: Image = (
     Core::B,
     include_bytes!(env!("FIRMWARE_TAG_SEARCH_B")),
-    tt_isa::dm::IMAGE_BASE,
+    tensix_isa::dm::IMAGE_BASE,
 );
 
 /// The NoC atomic, multicast and completion probe (`tt-firmware/src/bin/noc_probe_b.rs`)
@@ -154,7 +154,7 @@ pub const TAG_SEARCH_B: Image = (
 pub const NOC_PROBE_B: Image = (
     Core::B,
     include_bytes!(env!("FIRMWARE_NOC_PROBE_B")),
-    tt_isa::dm::IMAGE_BASE,
+    tensix_isa::dm::IMAGE_BASE,
 );
 
 /// The bare read-loop probe (`tt-firmware/src/bin/read_loop_b.rs`) for RISCV B, at
@@ -162,7 +162,7 @@ pub const NOC_PROBE_B: Image = (
 pub const READ_LOOP_B: Image = (
     Core::B,
     include_bytes!(env!("FIRMWARE_READ_LOOP_B")),
-    tt_isa::dm::IMAGE_BASE,
+    tensix_isa::dm::IMAGE_BASE,
 );
 
 /// The instruction-cache probes for T0, T1 and T2, each at its core's
@@ -193,7 +193,7 @@ pub const ICACHE_T: [Image; 3] = [
 pub const TTINSN_T1: Image = (
     Core::T1,
     include_bytes!(env!("FIRMWARE_TTINSN_T1")),
-    tt_isa::l1::roles::BASE[1],
+    tensix_isa::l1::roles::BASE[1],
 );
 
 /// The ELF entry points `build.rs` read, by image name.
@@ -259,7 +259,7 @@ mod tests {
                 "{name} is linked away from {core:?}'s slot"
             );
             assert!(
-                image.len() as u64 <= tt_isa::l1::roles::SLOT,
+                image.len() as u64 <= tensix_isa::l1::roles::SLOT,
                 "{name} outgrew its slot"
             );
         }
@@ -302,7 +302,7 @@ mod tests {
     /// to the firmware-owned L1 the image must stay out of.
     #[test]
     fn the_ethernet_image_is_linked_where_it_is_loaded() {
-        use tt_isa::eth;
+        use tensix_isa::eth;
         assert_eq!(entry("eth_e1").map(u64::from), Some(eth::E1_IMAGE));
         assert!(ETH_E1.len() as u64 <= eth::E1_IMAGE_MAX);
         assert!(eth::is_customer_l1(eth::E1_IMAGE, eth::E1_IMAGE_MAX));
@@ -321,7 +321,7 @@ mod tests {
         ] {
             assert_eq!(entry(name).map(u64::from), Some(at));
             assert_eq!(at, core.default_reset_pc() as u64);
-            assert!(image.len() as u64 <= tt_isa::dm::IMAGE_MAX);
+            assert!(image.len() as u64 <= tensix_isa::dm::IMAGE_MAX);
         }
     }
 
@@ -337,8 +337,8 @@ mod tests {
         ] {
             assert_eq!(core, Core::NC, "{name}");
             assert_eq!(entry(name).map(u64::from), Some(at), "{name}");
-            assert_eq!(at, tt_isa::dm::nc::IMAGE_BASE, "{name}");
-            assert!(image.len() as u64 <= tt_isa::dm::nc::IMAGE_MAX, "{name}");
+            assert_eq!(at, tensix_isa::dm::nc::IMAGE_BASE, "{name}");
+            assert!(image.len() as u64 <= tensix_isa::dm::nc::IMAGE_MAX, "{name}");
         }
     }
 }

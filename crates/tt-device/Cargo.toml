@@ -7,4 +7,4 @@ license.workspace = true
 description = "Host-side Blackhole device access: transport abstraction, TLB windows, L1 addressing."
 
 [dependencies]
-tt-isa.workspace = true
+tensix-isa.workspace = true

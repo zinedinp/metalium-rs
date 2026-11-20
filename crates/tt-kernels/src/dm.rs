@@ -1,6 +1,6 @@
 //! Moving data between GDDR and a Tensix tile's L1, on the tile itself.
 //!
-//! A [`DataMover`] is the `dm_b` image (`tt_isa::dm`) resident on RISCV B of
+//! A [`DataMover`] is the `dm_b` image (`tensix_isa::dm`) resident on RISCV B of
 //! one Tensix tile. With one, a tensor that lives in DRAM reaches the tile's L1
 //! -- where the unpackers can read it -- and a result goes back, with only a
 //! descriptor crossing PCIe. Phase 9's point: the data never does.
@@ -9,19 +9,19 @@ use std::time::{Duration, Instant};
 
 use tt_device::core_control::CYCLES_PER_POLL;
 use tt_device::{Device, Transport, TransportError, Window};
-use tt_isa::dataflow::{Channel, Endpoint};
-use tt_isa::dm::{self, encoded, op, record, Descriptor, Entry, Mover, Transform};
-use tt_isa::dram::{Dram, DramRange};
-use tt_isa::mailbox::{offset, status};
-use tt_isa::noc::niu::Niu;
-use tt_isa::noc::{NocCoord, NocId};
+use tensix_isa::dataflow::{Channel, Endpoint};
+use tensix_isa::dm::{self, encoded, op, record, Descriptor, Entry, Mover, Transform};
+use tensix_isa::dram::{Dram, DramRange};
+use tensix_isa::mailbox::{offset, status};
+use tensix_isa::noc::niu::Niu;
+use tensix_isa::noc::{NocCoord, NocId};
 
 /// Why a data-mover operation did not complete.
 #[derive(Debug)]
 pub enum DmError {
     Transport(TransportError),
     /// A descriptor the mover would refuse, refused here first, with its
-    /// `tt_isa::dm::error` code.
+    /// `tensix_isa::dm::error` code.
     Invalid(u32),
     /// The mover refused the descriptor with this code.
     Mover(u32),
@@ -33,12 +33,12 @@ pub enum DmError {
     /// B did not reach its prologue.
     NotStarted,
     /// The write NoC asked for is one this mover's image does not have: only
-    /// NC writes on NoC #1 (`tt_isa::dm::write_noc`); B writes on NoC #0.
+    /// NC writes on NoC #1 (`tensix_isa::dm::write_noc`); B writes on NoC #0.
     WriteNoc {
         mover: dm::Mover,
         noc: WriteNoc,
     },
-    /// Queued list `list` failed with this code (`tt_isa::dm::QUEUE_ERROR`);
+    /// Queued list `list` failed with this code (`tensix_isa::dm::QUEUE_ERROR`);
     /// the queue has stopped.
     Queued {
         list: u32,
@@ -88,7 +88,7 @@ impl std::error::Error for DmError {}
 
 pub type Result<T> = std::result::Result<T, DmError>;
 
-/// Where a list of `n` entries fits in the queue's ring (`tt_isa::dm::LIST`,
+/// Where a list of `n` entries fits in the queue's ring (`tensix_isa::dm::LIST`,
 /// `LIST_MAX` entries) beside the lists in flight, oldest first, the next
 /// free entry being `write_at`: after the newest, or wrapped to the start
 /// before the oldest. Never across the end: the mover reads a list as one run.
@@ -136,7 +136,7 @@ impl std::ops::Add for Throttle {
 }
 
 /// Which NIU a mover's GDDR writes go out on ([`DataMover::set_write_noc`],
-/// `tt_isa::dm::write_noc`).
+/// `tensix_isa::dm::write_noc`).
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum WriteNoc {
     Noc0,
@@ -155,7 +155,7 @@ impl From<Niu> for WriteNoc {
 }
 
 /// What the host does about a list that reads or writes L1 outside the data arena
-/// (`tt_isa::l1::DATA`): the mover's own regions, the images and the mailboxes are not a list's to name.
+/// (`tensix_isa::l1::DATA`): the mover's own regions, the images and the mailboxes are not a list's to name.
 /// Enforced unless `TT_CONTAIN` is `report` (print each violation and carry on, the survey that found
 /// the whole simulator suite names none) or `off`. Both modes' hosts; a list that was checked cannot
 /// aim a read at the mover's key, ring or image.
@@ -179,7 +179,7 @@ fn containment() -> Containment {
 
 /// A program-restore list's check ([`DataMover::enqueue_program_restore`]): on B, at most
 /// `dm::LIST_MAX` entries, each a plain `READ` (no transform) whose whole L1 range lies in
-/// `tt_isa::l1::PROGRAM_CACHE`, decoded against the chip's `usable` channels as the mover will.
+/// `tensix_isa::l1::PROGRAM_CACHE`, decoded against the chip's `usable` channels as the mover will.
 pub fn check_program_restore(mover: Mover, usable: u32, reads: &[[u32; 8]]) -> Result<()> {
     if reads.is_empty() || reads.len() > dm::LIST_MAX as usize {
         return Err(DmError::Invalid(dm::error::LENGTH));
@@ -195,7 +195,7 @@ pub fn check_program_restore(mover: Mover, usable: u32, reads: &[[u32; 8]]) -> R
             Entry::Move {
                 descriptor,
                 transform: Transform::None,
-            } if tt_isa::l1::PROGRAM_CACHE
+            } if tensix_isa::l1::PROGRAM_CACHE
                 .contains(descriptor.l1 as u64, descriptor.range.len()) => {}
             _ => return Err(DmError::Invalid(dm::error::RANGE)),
         }
@@ -205,7 +205,7 @@ pub fn check_program_restore(mover: Mover, usable: u32, reads: &[[u32; 8]]) -> R
 
 /// `op`'s access of `len` bytes at L1 address `l1` lies in `arena`: the data arena, or the trace
 /// arena while a capture plans into it ([`DataMover::set_arena`]).
-fn contained(arena: tt_isa::l1::Region, op: u32, l1: u32, len: u64) -> Result<()> {
+fn contained(arena: tensix_isa::l1::Region, op: u32, l1: u32, len: u64) -> Result<()> {
     let mode = containment();
     if mode == Containment::Off || arena.contains(l1 as u64, len) {
         return Ok(());
@@ -219,7 +219,7 @@ fn contained(arena: tt_isa::l1::Region, op: u32, l1: u32, len: u64) -> Result<()
 
 /// [`Entry::decode`], and a read or write's L1 range must be in `arena` ([`contained`]).
 fn decode_contained(
-    arena: tt_isa::l1::Region,
+    arena: tensix_isa::l1::Region,
     usable: u32,
     e: [u32; 8],
 ) -> std::result::Result<(), u32> {
@@ -257,7 +257,7 @@ pub struct DataMover<N: NocId> {
     mover: Mover,
     usable: u8,
     seq: u32,
-    /// Lists enqueued so far (`tt_isa::dm::QUEUE_HEAD`).
+    /// Lists enqueued so far (`tensix_isa::dm::QUEUE_HEAD`).
     head: u32,
     /// Enqueued lists not yet seen finished: `(number, first entry,
     /// entries)`, oldest first.
@@ -276,9 +276,9 @@ pub struct DataMover<N: NocId> {
     /// Where this mover's [`op::WRITE_L1`] entries may write ([`DataMover::set_l1_writes`]): none
     /// until the session says.
     l1_writes: L1Writes,
-    /// What this mover's lists may name in L1, as the host checks them: `tt_isa::l1::DATA`, or
-    /// `tt_isa::l1::TRACE_ARENA` while a capture plans into it ([`DataMover::set_arena`]).
-    arena: tt_isa::l1::Region,
+    /// What this mover's lists may name in L1, as the host checks them: `tensix_isa::l1::DATA`, or
+    /// `tensix_isa::l1::TRACE_ARENA` while a capture plans into it ([`DataMover::set_arena`]).
+    arena: tensix_isa::l1::Region,
     /// How long a descriptor may take on silicon. On ttsim the budget is
     /// simulated cycles instead, since the simulator's clock only moves when
     /// ticked.
@@ -305,7 +305,7 @@ impl<N: NocId> DataMover<N> {
     /// `tt_firmware_images::DM_NC`'s bytes, loaded at the top of L1 and
     /// reached through the stub at NC's reset PC
     /// (`Device::load_and_start_nc`). Each mover has its own mailbox, ring and
-    /// scratch (`tt_isa::dm::Mover`), so B's and NC's run side by side.
+    /// scratch (`tensix_isa::dm::Mover`), so B's and NC's run side by side.
     pub fn start_on<T: Transport>(
         d: &mut Device<T>,
         w: &Window,
@@ -348,14 +348,14 @@ impl<N: NocId> DataMover<N> {
         // decode-to-bandwidth.md Phase 8, "The stream's rate": whether a lower cap evens the NoC's
         // service between units). NC's writes keep the tile cap.
         let cap = match mover.core {
-            tt_isa::tensix::Core::B => std::env::var("TT_IN_FLIGHT_CAP")
+            tensix_isa::tensix::Core::B => std::env::var("TT_IN_FLIGHT_CAP")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(dm::TILE_IN_FLIGHT_CAP),
             _ => dm::TILE_IN_FLIGHT_CAP,
         };
         d.write32(w, tile, mover.at(dm::IN_FLIGHT_CAP), cap)?;
-        if mover.core == tt_isa::tensix::Core::B {
+        if mover.core == tensix_isa::tensix::Core::B {
             // The prefetch reads' cap: `PREFETCH_CAP_DEFAULT`, or `TT_PREFETCH_CAP` (a development
             // knob, decode-to-bandwidth.md Phase 8; 0 is `TILE_IN_FLIGHT_CAP`).
             let cap = std::env::var("TT_PREFETCH_CAP")
@@ -388,7 +388,7 @@ impl<N: NocId> DataMover<N> {
         let status_at = mover.mailbox + offset::STATUS;
         d.write32(w, tile, status_at, 0)?;
         match mover.core {
-            tt_isa::tensix::Core::NC => d.load_and_start_nc(w, tile, image, mover.image_base)?,
+            tensix_isa::tensix::Core::NC => d.load_and_start_nc(w, tile, image, mover.image_base)?,
             core => d.load_and_start(w, tile, core, image, mover.image_base)?,
         }
         let started = d.wait_for_mailbox(
@@ -429,7 +429,7 @@ impl<N: NocId> DataMover<N> {
             encode_reads: caps & dm::caps::FAST_READS != 0,
             context: encoded::Context::new(dram.usable_mask() as u32, (tile.x(), tile.y()), key),
             l1_writes: L1Writes::default(),
-            arena: tt_isa::l1::DATA,
+            arena: tensix_isa::l1::DATA,
             deadline: Duration::from_secs(1),
         })
     }
@@ -441,7 +441,7 @@ impl<N: NocId> DataMover<N> {
     /// Let this mover's [`op::WRITE_L1`] entries write into `writes` (see [`L1Writes`]); the
     /// default admits none. Host state only: what a list is checked against before it is queued.
     pub fn set_l1_writes(&mut self, writes: L1Writes) -> Result<()> {
-        let listed = tt_isa::l1::LISTED;
+        let listed = tensix_isa::l1::LISTED;
         if [&writes.window, &writes.reads]
             .into_iter()
             .any(|w| !w.is_empty() && (w.start < listed.base || w.end > listed.end))
@@ -451,7 +451,7 @@ impl<N: NocId> DataMover<N> {
         if writes
             .tiles
             .iter()
-            .any(|&(x, y)| !tt_isa::noc::grid::is_tensix_geometry(x, y))
+            .any(|&(x, y)| !tensix_isa::noc::grid::is_tensix_geometry(x, y))
         {
             return Err(DmError::Invalid(dm::error::RANGE));
         }
@@ -459,11 +459,11 @@ impl<N: NocId> DataMover<N> {
         Ok(())
     }
 
-    /// Let this mover's lists name `arena` in L1: `tt_isa::l1::DATA`, or `tt_isa::l1::TRACE_ARENA`
+    /// Let this mover's lists name `arena` in L1: `tensix_isa::l1::DATA`, or `tensix_isa::l1::TRACE_ARENA`
     /// while a capture plans into it (`docs/completed-plans/decode-to-bandwidth.md` Phase 8, P3). Host state
     /// only: what a list is checked against before it is queued.
-    pub fn set_arena(&mut self, arena: tt_isa::l1::Region) -> Result<()> {
-        if arena != tt_isa::l1::DATA && arena != tt_isa::l1::TRACE_ARENA {
+    pub fn set_arena(&mut self, arena: tensix_isa::l1::Region) -> Result<()> {
+        if arena != tensix_isa::l1::DATA && arena != tensix_isa::l1::TRACE_ARENA {
             return Err(DmError::Invalid(dm::error::RANGE));
         }
         self.arena = arena;
@@ -475,15 +475,15 @@ impl<N: NocId> DataMover<N> {
         self.mover
     }
 
-    /// NC's waits since they were last taken, in tile cycles, in `tt_isa::dataflow::NcWait` order
-    /// (`tt_isa::dataflow::NC_WAITS`; counted only by an image built with the profile feature),
+    /// NC's waits since they were last taken, in tile cycles, in `tensix_isa::dataflow::NcWait` order
+    /// (`tensix_isa::dataflow::NC_WAITS`; counted only by an image built with the profile feature),
     /// and zeroed. `None` for B. Dev-facing.
     pub fn take_nc_waits<T: Transport>(
         &self,
         d: &mut Device<T>,
         w: &Window,
     ) -> Result<Option<[u32; 8]>> {
-        use tt_isa::dataflow::{NC_WAITS, NC_WAIT_WORDS};
+        use tensix_isa::dataflow::{NC_WAITS, NC_WAIT_WORDS};
         if self.mover != dm::Mover::NC {
             return Ok(None);
         }
@@ -496,7 +496,7 @@ impl<N: NocId> DataMover<N> {
         Ok(Some(out))
     }
 
-    /// What the in-flight cap (`tt_isa::noc::niu::InFlight`) has cost this
+    /// What the in-flight cap (`tensix_isa::noc::niu::InFlight`) has cost this
     /// mover since it started: the requests that waited for room, and the tile
     /// cycles they waited. Two PCIe reads; not on any hot path.
     pub fn throttle<T: Transport>(&self, d: &mut Device<T>, w: &Window) -> Result<Throttle> {
@@ -519,7 +519,7 @@ impl<N: NocId> DataMover<N> {
     }
 
     /// Cap this mover's requests in flight at `cap` from its next list: 0 for
-    /// `tt_isa::noc::niu::MAX_IN_FLIGHT`, otherwise clamped to
+    /// `tensix_isa::noc::niu::MAX_IN_FLIGHT`, otherwise clamped to
     /// `1..=MAX_IN_FLIGHT`. A mover starts at `dm::TILE_IN_FLIGHT_CAP`; this is
     /// for the gates that force the throttle and the benchmarks that compare
     /// caps.
@@ -546,7 +546,7 @@ impl<N: NocId> DataMover<N> {
     }
 
     /// Send this mover's single-request `READ` entries as host-encoded reads
-    /// ([`tt_isa::dm::encoded`]) from the next list: the host checks each one in full
+    /// ([`tensix_isa::dm::encoded`]) from the next list: the host checks each one in full
     /// ([`encoded::validate`]) and the card only verifies its checksum, so a read entry
     /// costs ~150 cycles on the card instead of ~360. Every list is still checked as plain
     /// entries first. On by default for an image built with `fast-reads`, which is what
@@ -607,7 +607,7 @@ impl<N: NocId> DataMover<N> {
     }
 
     /// Issue this mover's GDDR reads through the fast path from its next list
-    /// (`tt_isa::dm::READ_FAST`), or back through the path that writes every
+    /// (`tensix_isa::dm::READ_FAST`), or back through the path that writes every
     /// initiator register per request. Off at start. Only RISCV B reads: NC's
     /// image ignores it.
     ///
@@ -630,7 +630,7 @@ impl<N: NocId> DataMover<N> {
     }
 
     /// Send this mover's GDDR writes out through `noc` from its next list
-    /// (`tt_isa::dm::WRITE_NOC`): NoC #0 with the reads, NoC #1 on port 1 of
+    /// (`tensix_isa::dm::WRITE_NOC`): NoC #0 with the reads, NoC #1 on port 1 of
     /// every channel, or each in turn. Reads and barriers stay on NoC #0.
     /// Only NC's image has the NoC #1 path: B refuses anything but NoC #0.
     pub fn set_write_noc<T: Transport>(
@@ -698,7 +698,7 @@ impl<N: NocId> DataMover<N> {
     }
 
     /// The first half of [`DataMover::run_list`] for at most
-    /// `tt_isa::dm::LIST_MAX` entries: check them, write them and start the
+    /// `tensix_isa::dm::LIST_MAX` entries: check them, write them and start the
     /// mover, without waiting. [`DataMover::wait`] is the other half; the host
     /// can start other tiles' work in between.
     pub fn submit_list<T: Transport>(
@@ -775,7 +775,7 @@ impl<N: NocId> DataMover<N> {
         let usable = self.usable as u32;
         if entries[0][0] == op::PAIR {
             if self.mover != Mover::B
-                || tt_isa::dataflow::packet_length(entries[0]).map_err(DmError::Invalid)?
+                || tensix_isa::dataflow::packet_length(entries[0]).map_err(DmError::Invalid)?
                     != entries.len()
             {
                 return Err(DmError::Invalid(dm::error::LENGTH));
@@ -822,8 +822,8 @@ impl<N: NocId> DataMover<N> {
                     return Err(DmError::Invalid(dm::error::RANGE));
                 }
                 // A credit word waited on is this tile's, in what its lists may name, or one of
-                // its op-level credit words (`tt_isa::dm::CREDITS`), which no arena holds.
-                let credits = tt_isa::dm::CREDITS..tt_isa::dm::CREDITS_END;
+                // its op-level credit words (`tensix_isa::dm::CREDITS`), which no arena holds.
+                let credits = tensix_isa::dm::CREDITS..tensix_isa::dm::CREDITS_END;
                 if entries[i][0] == op::WAIT_CREDIT && !credits.contains(&(entries[i][1] as u64)) {
                     contained(self.arena, op::WAIT_CREDIT, entries[i][1], 4)?;
                 }
@@ -839,7 +839,7 @@ impl<N: NocId> DataMover<N> {
         Ok(())
     }
 
-    /// Queue a list (`tt_isa::self.mover.at(dm::QUEUE_HEAD)`) and return its number, without
+    /// Queue a list (`tensix_isa::self.mover.at(dm::QUEUE_HEAD)`) and return its number, without
     /// waiting for it -- only, if the ring or the slots are full, for the
     /// oldest lists to finish. [`DataMover::wait_for`] waits for a number.
     /// The single-descriptor path ([`DataMover::submit_list`]) must not be in
@@ -909,8 +909,8 @@ impl<N: NocId> DataMover<N> {
     /// Queue `reads`, each a program's words that the B mover copies from GDDR into this unit's
     /// program cache (`Session::restore_programs`, `docs/plans/roadmap.md` item 1a). The one list
     /// that may write the program cache: every other list's moves stay in the arena
-    /// ([`contained`]), and lists never name the cache (`tt_isa::l1::LISTED`). Each entry must be
-    /// a plain `READ` on B whose whole L1 range lies in `tt_isa::l1::PROGRAM_CACHE`; which ranges,
+    /// ([`contained`]), and lists never name the cache (`tensix_isa::l1::LISTED`). Each entry must be
+    /// a plain `READ` on B whose whole L1 range lies in `tensix_isa::l1::PROGRAM_CACHE`; which ranges,
     /// and that the words are a program the session placed there, is the caller's bookkeeping
     /// (`ProgramCache::restore` returned `Upload` for exactly that range). The reads go as they
     /// are, never encoded: an encoded read's guard holds it to the arena. A kernel after them
@@ -1065,7 +1065,7 @@ impl<N: NocId> DataMover<N> {
 
     /// A stalled tile's state, on stderr (`TT_STALL_DUMP=1`, a development switch read when a
     /// list times out): both movers' descriptor, queue and trace-progress words, the pair counters
-    /// and NC's wait reasons (`tt_isa::dataflow`), the
+    /// and NC's wait reasons (`tensix_isa::dataflow`), the
     /// three roles' generation, acknowledgement, status and panic words, and the barrier words.
     /// What it shows: whether the tile waits in a pair, for its roles or at a barrier.
     fn dump_stall<T: Transport>(&self, d: &mut Device<T>, w: &Window) {
@@ -1107,10 +1107,10 @@ impl<N: NocId> DataMover<N> {
         let flow = words(
             d,
             &(0..15)
-                .map(|i| tt_isa::dataflow::INPUT + 4 * i)
+                .map(|i| tensix_isa::dataflow::INPUT + 4 * i)
                 .collect::<Vec<_>>(),
         );
-        use tt_isa::mailbox::role::Mailbox;
+        use tensix_isa::mailbox::role::Mailbox;
         let roles = words(
             d,
             &(0..3u32)
@@ -1194,11 +1194,11 @@ impl<N: NocId> DataMover<N> {
 pub struct L1Writes {
     /// `(x, y)` as the session names its tiles.
     pub tiles: Vec<(u8, u8)>,
-    /// Inside `tt_isa::l1::DATA`; empty refuses every write.
+    /// Inside `tensix_isa::l1::DATA`; empty refuses every write.
     pub window: std::ops::Range<u64>,
     /// Where an [`op::READ_L1`] may also read, beyond `window`: a holder's slots, which its
     /// readers copy (`crate::tile_op::reuse`), wherever the op's arena placed them. Inside
-    /// `tt_isa::l1::LISTED`; empty admits reads only inside `window`. Reading moves nothing into
+    /// `tensix_isa::l1::LISTED`; empty admits reads only inside `window`. Reading moves nothing into
     /// the tile read, so a capture's narrower write window (planned residency) leaves it.
     pub reads: std::ops::Range<u64>,
 }
@@ -1207,7 +1207,7 @@ impl L1Writes {
     /// Whether [`op::WRITE_L1`] or [`op::WRITE_L1_MCAST`] entry `e` writes inside the window of
     /// the tiles (one of them, or a rectangle all of whose tiles are), [`op::READ_L1`] entry
     /// `e` reads inside the window or the read window of one of them, or [`op::CREDIT`] entry
-    /// `e` credits a word inside the window of one of them or of its [`tt_isa::dm::CREDITS`] (as
+    /// `e` credits a word inside the window of one of them or of its [`tensix_isa::dm::CREDITS`] (as
     /// a 16-byte [`op::WRITE_L1_MCAST`] may set one of those).
     pub fn admits(&self, e: [u32; 8]) -> bool {
         let (to, len) = if e[0] == op::CREDIT {
@@ -1227,10 +1227,10 @@ impl L1Writes {
             }
             _ => false,
         };
-        // The op-level credit words are no op's L1 (`tt_isa::dm::CREDITS`): a credit to one of a
+        // The op-level credit words are no op's L1 (`tensix_isa::dm::CREDITS`): a credit to one of a
         // session tile's is admitted whatever the window, as is a multicast of one word's 16
         // bytes into them (a sender's ready count, `crate::tile_op::multicast`).
-        let in_credits = to >= tt_isa::dm::CREDITS && to + len <= tt_isa::dm::CREDITS_END;
+        let in_credits = to >= tensix_isa::dm::CREDITS && to + len <= tensix_isa::dm::CREDITS_END;
         let credits = in_credits
             && (e[0] == op::CREDIT || (e[0] == op::WRITE_L1_MCAST && len == 16 && to % 16 == 0));
         let inside = |w: &std::ops::Range<u64>| to >= w.start && to + len <= w.end;
@@ -1305,7 +1305,7 @@ pub fn check_pair(entries: &[[u32; 8]]) -> std::result::Result<(), u32> {
 #[cfg(test)]
 mod l1_writes {
     use super::L1Writes;
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
 
     /// A read window admits reads only: a holder's slots may be copied from, never written,
     /// and a read outside both windows, or of a tile not the session's, is refused.
@@ -1355,7 +1355,7 @@ mod l1_writes {
 mod ring {
     use super::ring_room;
     use std::collections::VecDeque;
-    use tt_isa::dm::LIST_MAX;
+    use tensix_isa::dm::LIST_MAX;
 
     /// Lists go after the newest, wrap to the start once the end is too
     /// near, never overlap a list in flight, and never cross the end.
@@ -1407,8 +1407,8 @@ mod ring {
 #[cfg(test)]
 mod program_restore {
     use super::{check_program_restore, DmError};
-    use tt_isa::dm::{self, op, Mover};
-    use tt_isa::l1::{DATA, PROGRAM_CACHE};
+    use tensix_isa::dm::{self, op, Mover};
+    use tensix_isa::l1::{DATA, PROGRAM_CACHE};
 
     const USABLE: u32 = 0xff;
 

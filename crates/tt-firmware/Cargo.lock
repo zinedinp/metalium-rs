@@ -3,12 +3,60 @@
 version = 4
 
 [[package]]
-name = "tt-firmware"
+name = "tensix-fw-abi"
 version = "0.1.0"
 dependencies = [
- "tt-isa",
+ "tensix-insn",
+ "tensix-noc",
+ "tensix-regs",
+ "tensix-tile",
 ]
 
 [[package]]
-name = "tt-isa"
+name = "tensix-insn"
 version = "0.1.0"
+
+[[package]]
+name = "tensix-isa"
+version = "0.1.0"
+dependencies = [
+ "tensix-fw-abi",
+ "tensix-insn",
+ "tensix-noc",
+ "tensix-numerics",
+ "tensix-regs",
+ "tensix-tile",
+ "tensix-units",
+]
+
+[[package]]
+name = "tensix-noc"
+version = "0.1.0"
+
+[[package]]
+name = "tensix-numerics"
+version = "0.1.0"
+
+[[package]]
+name = "tensix-regs"
+version = "0.1.0"
+
+[[package]]
+name = "tensix-tile"
+version = "0.1.0"
+
+[[package]]
+name = "tensix-units"
+version = "0.1.0"
+dependencies = [
+ "tensix-insn",
+ "tensix-numerics",
+ "tensix-regs",
+]
+
+[[package]]
+name = "tt-firmware"
+version = "0.1.0"
+dependencies = [
+ "tensix-isa",
+]

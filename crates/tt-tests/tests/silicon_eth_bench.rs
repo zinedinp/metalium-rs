@@ -7,7 +7,7 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::eth;
+use tensix_isa::eth;
 use tt_kernels::link::{discover, Dest, Dir, Mover, Source};
 use tt_tests::bench::{mbps, median, pattern, with_cards};
 use tt_tests::harness::{tile, Dev};

@@ -29,7 +29,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use tt_isa::dm::{op, record};
+use tensix_isa::dm::{op, record};
 
 use crate::trace::Capture;
 
@@ -961,7 +961,7 @@ pub(crate) fn prune(c: &mut Capture, keep: &[bool]) -> Result<Pruned, String> {
                 if stands == 0 {
                     drop.insert(at);
                 } else {
-                    out[at][tt_isa::dm::BARRIER_STANDS_FOR] = stands;
+                    out[at][tensix_isa::dm::BARRIER_STANDS_FOR] = stands;
                     accounted = h as u32 + 1;
                 }
             }
@@ -1044,7 +1044,7 @@ pub(crate) fn prune(c: &mut Capture, keep: &[bool]) -> Result<Pruned, String> {
     Ok(out)
 }
 
-/// The op-level credit words the edge credits count in ([`tt_isa::dm::CREDITS`]), one an epoch
+/// The op-level credit words the edge credits count in ([`tensix_isa::dm::CREDITS`]), one an epoch
 /// between two barriers kept: past the six the operand-reuse channels use (`tile_op::reuse`).
 pub(crate) const EDGE_WORDS: [u32; 2] = [6, 7];
 
@@ -1169,7 +1169,7 @@ pub(crate) fn credit(
         if need.is_empty() {
             continue;
         }
-        let word = tt_isa::dm::credit_word(EDGE_WORDS[slot]);
+        let word = tensix_isa::dm::credit_word(EDGE_WORDS[slot]);
         slot += 1;
         let mut sends: BTreeMap<(u16, u32), Vec<u16>> = BTreeMap::new();
         let mut waits: BTreeMap<u16, (usize, u32)> = BTreeMap::new();
@@ -1237,7 +1237,7 @@ pub(crate) fn credit(
     // source and a sink, each credit an edge.
     {
         use crate::channel::{Channel, End, Graph, Kind, Page};
-        use tt_isa::dataflow::Endpoint;
+        use tensix_isa::dataflow::Endpoint;
         let runs = run_of.last().map_or(0, |&r| r + 1);
         let id = |u: u16, r: usize| 2 + u as usize * runs + r;
         let edge = |from: usize, to: usize, taken: u32| Channel {
@@ -1605,7 +1605,7 @@ mod tests {
             0,
             0,
         ];
-        let corners = tt_isa::dm::mcast_corners(c[0], c[1]);
+        let corners = tensix_isa::dm::mcast_corners(c[0], c[1]);
         let mcast = [op::WRITE_L1_MCAST, corners, 0, 0x8000, 0x1000, 64, 0, 0];
         assert_eq!(
             classes(
@@ -1763,7 +1763,7 @@ mod tests {
             .stream
             .iter()
             .filter(|e| e[0] == op::BARRIER)
-            .map(|e| (e[1], e[4] == 1, e[tt_isa::dm::BARRIER_STANDS_FOR]))
+            .map(|e| (e[1], e[4] == 1, e[tensix_isa::dm::BARRIER_STANDS_FOR]))
             .collect()
     }
 
@@ -1849,7 +1849,7 @@ mod tests {
         let mut ran = BTreeMap::new();
         let mut s = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
         let mut step = 0usize;
-        let word = |addr: u32| ((u64::from(addr) - tt_isa::dm::CREDITS) / 16) as usize;
+        let word = |addr: u32| ((u64::from(addr) - tensix_isa::dm::CREDITS) / 16) as usize;
         let unit_at = |x: u32, y: u32| {
             coords
                 .iter()
@@ -1983,7 +1983,7 @@ mod tests {
                 waits: 8
             }
         );
-        let word = tt_isa::dm::credit_word(EDGE_WORDS[0]);
+        let word = tensix_isa::dm::credit_word(EDGE_WORDS[0]);
         // Unit 1 credits unit 0 (whose op 1 reads unit 1's op 0 buffer) just before its arrival.
         let r = c.ops[0].entries[1].clone();
         let s = &c.units[1].stream;

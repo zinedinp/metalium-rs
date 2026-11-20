@@ -1,7 +1,7 @@
 //! The L1 map after the mailboxes were packed above the program slots
 //! (`docs/completed-plans/decode-to-bandwidth.md` Phase 8, "Room for a second job's `B`", M2): `DATA`, then
 //! the capture-only arena where the mailboxes were, then `PROGRAMS`, then the 40 KiB of
-//! `MAILBOXES`, each block of which is in `tt_isa::l1::FIXED`.
+//! `MAILBOXES`, each block of which is in `tensix_isa::l1::FIXED`.
 //!
 //! The claims:
 //! - **Nothing writes the old mailboxes, nor the new ones outside their fixed blocks.** The
@@ -21,8 +21,8 @@
 //!   movers' state as an earlier process left them.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::l1::{CAPTURE_ONLY, FIXED, MAILBOXES};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::l1::{CAPTURE_ONLY, FIXED, MAILBOXES};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{DramTensor, Eltwise};

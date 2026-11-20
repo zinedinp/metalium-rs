@@ -5,15 +5,15 @@
 //!
 //! The oracle is the pinned Blackhole pages (`ATGETM.md`, `ATRELM.md`,
 //! `SyncUnit.md`) and nothing in `tt-isa`: the arbitration rule below is
-//! written from the page text, not from `tt_isa::sync::mutex`.
+//! written from the page text, not from `tensix_isa::sync::mutex`.
 //!
 //! The threads report "I hold it" by posting a semaphore of their own, which the
 //! guarded runner publishes (`Guard::snapshot`). Not an L1 store: ttsim refuses
 //! `STOREIND` (divergence row 66's family), and this keeps one path for both
 //! targets.
 #[cfg(not(feature = "silicon"))]
-use tt_isa::mailbox::guard;
-use tt_isa::{
+use tensix_isa::mailbox::guard;
+use tensix_isa::{
     backend::{self, Before},
     isa::Instruction,
     mailbox::guard::PollMode,
@@ -130,7 +130,7 @@ impl Layout {
             req.semaphore("T1 complete", 0, 0..1),
             req.semaphore("T2 complete", 0, 0..1),
         ];
-        let plan = req.plan(tt_isa::l1::DATA).unwrap();
+        let plan = req.plan(tensix_isa::l1::DATA).unwrap();
         Layout {
             acq: plan.semaphore(acq),
             go: plan.semaphore(go),
@@ -237,7 +237,7 @@ fn expect_wait(
     }
 }
 
-type Run3 = Launch<tt_isa::noc::Noc0>;
+type Run3 = Launch<tensix_isa::noc::Noc0>;
 
 /// Which threads have posted their "holds it" marker. Markers are never taken
 /// down, so the largest value any role's snapshot shows is the truth (a role
@@ -461,13 +461,13 @@ fn control_a_waiter_on_another_mutex_is_not_excluded() {
 /// the raw status word and the decoded state, the guard's counters, and the
 /// runner's semaphore snapshot (the mark and completion semaphores in it).
 fn diagnose(dev: &mut harness::Dev<'_>, l: &Layout, launch: &Run3) -> String {
-    use tt_isa::mailbox::role::Mailbox;
+    use tensix_isa::mailbox::role::Mailbox;
     let mut out = String::new();
     for role in 0..3 {
         let mb = Mailbox::of(role as u32);
         let raw = launch.read32(dev, mb.status()).unwrap_or(0xffff_ffff);
         let panic = launch.read32(dev, mb.panic_code()).unwrap_or(0xffff_ffff);
-        let g = tt_isa::mailbox::guard::Guard::of(mb);
+        let g = tensix_isa::mailbox::guard::Guard::of(mb);
         let arm = launch.read32(dev, g.arm()).unwrap_or(0xffff_ffff);
         let polls = launch.read32(dev, g.polls()).unwrap_or(0xffff_ffff);
         let sems = launch.semaphores(dev, role);
@@ -692,7 +692,7 @@ fn calibrate(mode: PollMode) {
         let g = p.guard();
         // In its poll loop: the first poll finished.
         let polling = launch.wait(dev, budget(), "the first poll", |dev, l2| {
-            Ok(l2.read32(dev, g.stage())? >= tt_isa::mailbox::guard::stage::FIRST_POLL_DONE)
+            Ok(l2.read32(dev, g.stage())? >= tensix_isa::mailbox::guard::stage::FIRST_POLL_DONE)
         });
         expect_wait(dev, &l, &launch, polling, "waiting for the poll loop");
         let start = Instant::now();
@@ -949,7 +949,7 @@ fn a_poke_stores_a_word_from_the_runner_core() {
         let body = sync::take(l.go, Before::EVERYTHING).to_vec();
         let p = GuardedProgram::new(1, &body, guard_spec(), l.done[1]).unwrap();
         let init = l.plan.semaphore_init();
-        let at = tt_isa::l1::DATA.base + 0x1000;
+        let at = tensix_isa::l1::DATA.base + 0x1000;
         let launch = atomics::start(
             dev,
             harness::tensix_tile(),
@@ -976,7 +976,7 @@ fn a_poke_stores_a_word_from_the_runner_core() {
         assert_eq!(launch.read32(dev, at).unwrap(), 0xa5a5_1234);
         // The host refuses an address outside the arena before asking.
         assert!(launch
-            .poke(dev, 1, tt_isa::mailbox::MAILBOX_BASE, 1, budget())
+            .poke(dev, 1, tensix_isa::mailbox::MAILBOX_BASE, 1, budget())
             .is_err());
         let released = launch.release(dev, 1, 1 << l.go.index(), budget());
         expect_wait(dev, &l, &launch, released, "the host release");
@@ -1055,7 +1055,7 @@ fn the_runner_refuses_a_poke_outside_the_data_arena() {
             .unwrap();
         let g = p.guard();
         launch
-            .write32(dev, g.poke_addr(), tt_isa::mailbox::MAILBOX_BASE as u32)
+            .write32(dev, g.poke_addr(), tensix_isa::mailbox::MAILBOX_BASE as u32)
             .unwrap();
         launch.write32(dev, g.poke_value(), 7).unwrap();
         launch.write32(dev, g.release(), guard::POKE).unwrap();
@@ -1069,7 +1069,7 @@ fn the_runner_refuses_a_poke_outside_the_data_arena() {
             other => panic!("expected the runner to refuse, got {other:?}"),
         }
         assert_ne!(
-            launch.read32(dev, tt_isa::mailbox::MAILBOX_BASE).unwrap(),
+            launch.read32(dev, tensix_isa::mailbox::MAILBOX_BASE).unwrap(),
             7,
             "nothing was written"
         );
@@ -1084,7 +1084,7 @@ fn the_runner_refuses_a_poke_outside_the_data_arena() {
 #[cfg(not(feature = "silicon"))]
 #[test]
 fn the_runner_refuses_an_oversize_program_and_a_bad_completion_semaphore() {
-    let g = guard::Guard::of(tt_isa::mailbox::role::Mailbox::single_core());
+    let g = guard::Guard::of(tensix_isa::mailbox::role::Mailbox::single_core());
     for (words, complete) in [(guard::MAX_WORDS as usize + 1, 7), (2, 8)] {
         harness::in_device(|dev| {
             let program = vec![backend::nop(); words];

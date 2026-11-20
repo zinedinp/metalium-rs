@@ -9,6 +9,6 @@ license.workspace = true
 # the dev-only one, and `cargo xtask check-no-sim-in-ship` enforces that this
 # crate's dependency graph never reaches it.
 [dependencies]
-tt-isa.workspace = true
+tensix-isa.workspace = true
 tt-device.workspace = true
 libc.workspace = true

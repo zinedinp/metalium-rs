@@ -19,9 +19,9 @@
 //! pages are still written in terms of `Packers[i]`, so "packer 0's configuration"
 //! is `THCON_SEC0_REG1_*` and that is what this configures.
 
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox;
-use tt_isa::tile::{L1Format, TileDescriptor, TileImage};
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox;
+use tensix_isa::tile::{L1Format, TileDescriptor, TileImage};
 use tt_tests::datapath::{dst_round_trip_roles, flat_descriptor, staged_image, OUT, STAGE};
 use tt_tests::harness::{self, in_device, Roles, Run};
 

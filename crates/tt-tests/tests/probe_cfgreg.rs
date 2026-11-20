@@ -3,7 +3,7 @@
 //!
 //! Two questions, and the second is what makes the first answerable.
 //!
-//! 1. **Does ttsim execute `SETDMAREG` and `WRCFG`?** `tt_isa::backend` stages
+//! 1. **Does ttsim execute `SETDMAREG` and `WRCFG`?** `tensix_isa::backend` stages
 //!    configuration as pushed instructions rather than as RISC-V stores, because
 //!    `ThreadConfig` has no store path at all. That plan rests on `WRCFG`, which
 //!    sources from a Tensix GPR, which only `SETDMAREG` can load. `SETDMAREG` is
@@ -24,14 +24,14 @@
 //! Every case forks, so a refusal is a recorded result rather than a dead runner.
 
 use tt_device::{core_control::WaitError, tlb::WindowKind};
-use tt_isa::backend;
-use tt_isa::cfg::generated::alu;
-use tt_isa::cfg::ConfigField;
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::{Noc0, NocCoord};
-use tt_isa::sfpu::{self, store_format};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::backend;
+use tensix_isa::cfg::generated::alu;
+use tensix_isa::cfg::ConfigField;
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::{Noc0, NocCoord};
+use tensix_isa::sfpu::{self, store_format};
+use tensix_isa::tensix::{self, Core};
 use tt_tests::firmware;
 use tt_tests::harness::{self, advance, in_device, Dev};
 
@@ -131,7 +131,7 @@ fn ttsim_executes_setdmareg_and_wrcfg() {
     p.extend(control_tail());
     assert!(
         survives(&p),
-        "ttsim declined SETDMAREG or WRCFG. tt_isa::backend stages configuration as \
+        "ttsim declined SETDMAREG or WRCFG. tensix_isa::backend stages configuration as \
          instructions and cannot work on the simulator if so; the fallback is RISC-V \
          `sw` for Config plus SETC16 for ThreadConfig"
     );
@@ -141,9 +141,9 @@ fn ttsim_executes_setdmareg_and_wrcfg() {
 #[test]
 fn ttsim_executes_setc16() {
     let entry = backend::ThreadConfigEntry::zeroed(
-        tt_isa::cfg::generated::thread::CFG_STATE_ID_StateID.addr32(),
+        tensix_isa::cfg::generated::thread::CFG_STATE_ID_StateID.addr32(),
     )
-    .set(tt_isa::cfg::generated::thread::CFG_STATE_ID_StateID, 0)
+    .set(tensix_isa::cfg::generated::thread::CFG_STATE_ID_StateID, 0)
     .unwrap();
 
     let mut p = vec![entry.encode().unwrap()];

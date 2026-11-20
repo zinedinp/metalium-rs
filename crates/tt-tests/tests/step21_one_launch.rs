@@ -1,10 +1,10 @@
 //! Phase 9.7 gate: one host launch per op per tile.
 //!
-//! The data mover runs the resident roles itself (`tt_isa::dm::op::KERNEL`),
+//! The data mover runs the resident roles itself (`tensix_isa::dm::op::KERNEL`),
 //! so a tile's whole share of a GDDR op -- every block's gather, kernel and
 //! scatter, or every run of element-wise tiles -- is one mover list: one
 //! submission and one wait, however many blocks it has. Lists break only
-//! where they must: at `tt_isa::dm::LIST_MAX` entries, or where a tile's
+//! where they must: at `tensix_isa::dm::LIST_MAX` entries, or where a tile's
 //! kernel programs change. The claims:
 //!
 //! * the results are the bits the host-sequenced path gave (the matmuls
@@ -12,7 +12,7 @@
 //!   column sums against `burn-flex`, as `step19_eltwise`);
 //! * an op that fits one list per tile is exactly one list per tile, on one
 //!   tile and on three, where the host-sequenced path took one per block step;
-//! * and since 9.7b, which sends op records (`tt_isa::dm::record`) that the
+//! * and since 9.7b, which sends op records (`tensix_isa::dm::record`) that the
 //!   mover expands on the tile, "fits" covers any op of these kinds: a
 //!   record is a few entries however many tiles it names.
 

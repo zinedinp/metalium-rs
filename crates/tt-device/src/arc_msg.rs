@@ -13,7 +13,7 @@
 
 use std::time::{Duration, Instant};
 
-use tt_isa::arc::{self, queue};
+use tensix_isa::arc::{self, queue};
 
 use crate::device::{Device, Window};
 use crate::transport::{Result, Transport, TransportError};

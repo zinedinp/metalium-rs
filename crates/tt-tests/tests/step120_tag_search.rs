@@ -4,7 +4,7 @@
 //!
 //! * **Model and encoding (host, always).** [`Model`] is a literal transcription
 //!   of the page's pseudocode (`LatchedConfig`, `TagSearch<T>`, invalidate-all,
-//!   bit-vector query), written without `tt_isa::tag_search`: its register layout
+//!   bit-vector query), written without `tensix_isa::tag_search`: its register layout
 //!   is a separate table checked against `vendor/cfg_defines.h`, and the scenario
 //!   expectations are hand-computed literals. The helpers' register programs are
 //!   run *through* the model, which is what shows that `Config::program` leaves the
@@ -21,7 +21,7 @@
 //! scope), and the permanent test `mutants_are_caught` requires the expectation
 //! table to reject each.
 
-use tt_isa::tag_search::{
+use tensix_isa::tag_search::{
     self as ts, probe, Config, Op, Span, TagWidth, WriteStep, PROGRAM_STEPS, WORD_COUNT,
 };
 
@@ -625,7 +625,7 @@ fn register_layout_matches_the_vendored_header() {
         assert_eq!(define(name, "MASK"), f.2, "{name} mask");
     }
     // The helpers' generated table agrees with the same header.
-    use tt_isa::cfg::generated::global as g;
+    use tensix_isa::cfg::generated::global as g;
     let pairs = [
         (g::L1_CACHE_TAG_SEARCH_ACCEL_Search_Enable, &SEARCH_ENABLE),
         (g::L1_CACHE_TAG_SEARCH_ACCEL_Start_Addr, &START_ADDR),
@@ -772,7 +772,7 @@ fn trigger_addresses_name_the_page_registers() {
 // ---------------------------------------------------------------------------
 
 use tt_device::tlb::WindowKind;
-use tt_isa::mailbox::{self, status};
+use tensix_isa::mailbox::{self, status};
 use tt_tests::harness::{self, Dev};
 
 /// How the probe runs: the normal read-modify-write form, or the simulator
@@ -797,7 +797,7 @@ const PROBE_BUDGET: u64 = 4_000_000;
 fn diagnosis(
     dev: &mut Dev<'_>,
     w: &tt_device::Window,
-    tile: tt_isa::noc::NocCoord<tt_isa::noc::Noc0>,
+    tile: tensix_isa::noc::NocCoord<tensix_isa::noc::Noc0>,
     why: &str,
 ) -> String {
     let mut word = |at: u64| dev.read32(w, tile, at).unwrap_or(0xDEAD_DEAD);

@@ -25,9 +25,9 @@ use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{self, op, Mover};
-use tt_isa::noc::niu::Niu;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, Mover};
+use tensix_isa::noc::niu::Niu;
+use tensix_isa::noc::Noc0;
 use tt_kernels::channel::{self, Ring, Slots};
 use tt_kernels::dm::{DataMover, L1Writes};
 use tt_tests::backend::{device_index, GATE_TILE};
@@ -47,7 +47,7 @@ const OUT: u32 = 0x4_0000;
 const WINDOW_LEN: u64 = 64 << 10;
 
 fn window() -> std::ops::Range<u64> {
-    tt_isa::l1::DATA.end - WINDOW_LEN..tt_isa::l1::DATA.end
+    tensix_isa::l1::DATA.end - WINDOW_LEN..tensix_isa::l1::DATA.end
 }
 /// Each tile's start word, the consumer's `received`, the producer's `freed`.
 fn start_word() -> u32 {
@@ -184,7 +184,7 @@ fn handoffs(d: &mut Dev<'_>, w: &Window, p: &mut Pair, r: &Ring, copy: bool) -> 
 fn barriers(d: &mut Dev<'_>, w: &Window, p: &mut Pair, release: bool) -> Duration {
     let leader = tile(d, PRODUCER.0, PRODUCER.1);
     d.write32(w, leader, dm::BARRIER_COUNTER, 0).unwrap();
-    let rect = tt_isa::noc::multicast::corners_hi(CONSUMER, CONSUMER, Niu::Noc0);
+    let rect = tensix_isa::noc::multicast::corners_hi(CONSUMER, CONSUMER, Niu::Noc0);
     d.write32(w, leader, dm::BARRIER_RECTS, release as u32)
         .unwrap();
     d.write32(w, leader, dm::BARRIER_RECTS + 4, rect).unwrap();

@@ -8,7 +8,7 @@
 //! bh_x4_link_map}`, `step13_ethernet`). One link per adjacent pair, as
 //! `(chip at a, chip at b, (a's X, b's X))`.
 
-use tt_isa::eth::Ethernet;
+use tensix_isa::eth::Ethernet;
 use tt_kernels::link::Link;
 
 /// `bh_x2` (a P300): the pair's first link. The other is chip 0 X 15 <-> chip 1 X 5.

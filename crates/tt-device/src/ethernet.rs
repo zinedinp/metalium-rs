@@ -7,9 +7,9 @@
 //! occupy -- because writing there corrupts the code that keeps the link trained,
 //! and nothing would say so until the link dropped.
 
-use tt_isa::arc;
-use tt_isa::eth::{self, EthCore, EthTile, Ethernet, Mac, PortStatus, TxCommand};
-use tt_isa::mailbox;
+use tensix_isa::arc;
+use tensix_isa::eth::{self, EthCore, EthTile, Ethernet, Mac, PortStatus, TxCommand};
+use tensix_isa::mailbox;
 
 use crate::core_control::WaitError;
 use crate::device::Window;
@@ -39,7 +39,7 @@ fn refuse_firmware_l1(address: u64, len: usize) -> Result<()> {
         return Err(TransportError::Hazard {
             address,
             reason: "Ethernet L1 outside the customer range: base firmware on E0 lives \
-                     there (tt_isa::eth::FIRMWARE_L1)",
+                     there (tensix_isa::eth::FIRMWARE_L1)",
         });
     }
     Ok(())
@@ -268,7 +268,7 @@ impl<T: Transport> Device<T> {
         Ok(v & EthCore::E1.soft_reset_bit() != 0)
     }
 
-    /// Read a word of the E1 image's mailbox (`tt_isa::mailbox::offset`).
+    /// Read a word of the E1 image's mailbox (`tensix_isa::mailbox::offset`).
     pub fn e1_mailbox_read(&mut self, window: &Window, tile: EthTile, offset: u64) -> Result<u32> {
         self.read32(window, tile.coord(), eth::MAILBOX_BASE + offset)
     }

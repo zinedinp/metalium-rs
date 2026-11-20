@@ -6,7 +6,7 @@
 //! which writes its result to rows 128..192, and T2 packs those rows to the
 //! tile's output slot. The data mover gathers the run's operands into L1
 //! before the kernel and scatters the outputs after it
-//! (`tt_isa::dm::record::{READ_RUN, WRITE_RUN}`), so the kernel sees only L1.
+//! (`tensix_isa::dm::record::{READ_RUN, WRITE_RUN}`), so the kernel sees only L1.
 //!
 //! The roles hand each tile on through three semaphores, declared through
 //! `crate::l1` like every kernel's: `unpacked` (T0 -> T1), `computed` (T1 ->
@@ -21,10 +21,10 @@
 //! that each starts its next tile's setup while waiting. Double-buffering
 //! `Dst` is 9.8's.
 
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::dm::TILE_SLOT;
-use tt_isa::isa::Instruction;
-use tt_isa::sync::{self, Semaphore, Unit};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::dm::TILE_SLOT;
+use tensix_isa::isa::Instruction;
+use tensix_isa::sync::{self, Semaphore, Unit};
 
 use crate::datapath::{
     config_program, pack_tile_from_dst, state_id, thread_config, tile_unpack_config,
@@ -90,10 +90,10 @@ impl Formats {
     };
 
     /// The format the packer writes.
-    pub fn pack(&self) -> tt_isa::tile::L1Format {
+    pub fn pack(&self) -> tensix_isa::tile::L1Format {
         match self.out {
-            Out::Bf16 | Out::Bf16Unrounded => tt_isa::tile::L1Format::Bf16,
-            Out::Fp32 | Out::Bf16AsFp32 => tt_isa::tile::L1Format::Fp32,
+            Out::Bf16 | Out::Bf16Unrounded => tensix_isa::tile::L1Format::Bf16,
+            Out::Fp32 | Out::Bf16AsFp32 => tensix_isa::tile::L1Format::Fp32,
         }
     }
 }
@@ -184,7 +184,7 @@ pub fn plan_layout(tiles: usize, operands: Operands) -> Result<Layout, PlanError
 pub fn plan_layout_in(
     tiles: usize,
     operands: Operands,
-    arena: tt_isa::l1::Region,
+    arena: tensix_isa::l1::Region,
 ) -> Result<Layout, PlanError> {
     let req = std::sync::Arc::new(requirements(tiles, operands));
     let plan = req.plan(arena)?;
@@ -200,7 +200,7 @@ pub fn plan_layout_in(
 pub fn requirements(tiles: usize, operands: Operands) -> Requirements {
     let mut req = Requirements::new(1);
     let bytes = tiles as u64 * TILE_SLOT;
-    let align = tt_isa::dram::ALIGN;
+    let align = tensix_isa::dram::ALIGN;
     req.scratch("sfpu A slots", bytes, align, 0..1);
     if operands != Operands::Unary {
         req.scratch("sfpu B slots", bytes, align, 0..1);
@@ -325,8 +325,8 @@ pub fn widened_rows(operands: Operands) -> Option<&'static [u32]> {
 /// the Matrix Unit (T0), and the `MOVA2D` of its eight rows to `Dst` row `row`, the wait for it
 /// and the bank's release (T1).
 fn bf16_chunk(row: u32) -> (Instruction, [Instruction; 3]) {
-    use tt_isa::isa::generated::encode::{Mova2D, UnpacrRegular};
-    let (unpack, banks) = tt_isa::matrix::Banks::after_reset()
+    use tensix_isa::isa::generated::encode::{Mova2D, UnpacrRegular};
+    let (unpack, banks) = tensix_isa::matrix::Banks::after_reset()
         .unpack_a(UnpacrRegular::ZERO.multi_context_mode(1))
         .unwrap();
     let (mova, banks) = banks
@@ -433,7 +433,7 @@ fn roles_looped(
 ) -> Option<crate::code::LoopedRoles> {
     use crate::code::Loop;
     use crate::datapath::{pack_dest_units, pack_tile_from_dst_gpr, unpack_datums_to_dst_gpr};
-    use tt_isa::backend::set_gpr;
+    use tensix_isa::backend::set_gpr;
     let tiles = layout.tiles as u32;
     if tiles < 2 {
         return None;
@@ -570,7 +570,7 @@ fn roles_looped(
 
     let mut pack = vec![state_id()];
     set(&mut pack, PACK_STRIDE_GPR, stride);
-    let out = |at: u64| back(pack_dest_units(at + tt_isa::dm::TILE_DATA));
+    let out = |at: u64| back(pack_dest_units(at + tensix_isa::dm::TILE_DATA));
     set(&mut pack, OUT_GPR, out(layout.out_at));
     if checked {
         set(
@@ -709,13 +709,13 @@ fn roles_unrolled(
 
         pack.extend(sync::take(s.computed, Before::PACKER));
         pack.extend(crate::datapath::pack_tile_from_dst_as(
-            slot(layout.out_at, n) + tt_isa::dm::TILE_DATA,
+            slot(layout.out_at, n) + tensix_isa::dm::TILE_DATA,
             OUT_ROW,
             formats.pack(),
         ));
         if checked {
             pack.extend(pack_tile_from_dst(
-                slot(layout.c_at.expect("domain status slots"), n) + tt_isa::dm::TILE_DATA,
+                slot(layout.c_at.expect("domain status slots"), n) + tensix_isa::dm::TILE_DATA,
                 C_ROW,
             ));
         }
@@ -737,7 +737,7 @@ mod tests {
     /// kind and run length; and their stored size does not grow with the run.
     #[test]
     fn looped_roles_unpack_and_pack_what_the_unrolled_ones_do() {
-        let math = crate::code::Code::plain(vec![tt_isa::sfpu::nop(); 3]);
+        let math = crate::code::Code::plain(vec![tensix_isa::sfpu::nop(); 3]);
         let stored = |code: &[Instruction], loops: &[crate::code::Loop]| {
             crate::code::Code {
                 ins: code.to_vec(),
@@ -817,14 +817,14 @@ mod tests {
     /// stride wrong unpack from other addresses than the unrolled ones.
     #[test]
     fn the_evaluator_sees_a_wrong_stride() {
-        let math = crate::code::Code::plain(vec![tt_isa::sfpu::nop()]);
+        let math = crate::code::Code::plain(vec![tensix_isa::sfpu::nop()]);
         let layout = plan_layout(4, Operands::Binary).unwrap();
         let (mut looped, loops) =
             roles_looped(&layout, Operands::Binary, &math, false, Formats::FP32).unwrap();
-        let wrong = tt_isa::backend::set_gpr(UNPACK_STRIDE_GPR, 2 * 260).unwrap();
+        let wrong = tensix_isa::backend::set_gpr(UNPACK_STRIDE_GPR, 2 * 260).unwrap();
         let at = looped[0]
             .windows(2)
-            .position(|w| w == tt_isa::backend::set_gpr(UNPACK_STRIDE_GPR, 260).unwrap())
+            .position(|w| w == tensix_isa::backend::set_gpr(UNPACK_STRIDE_GPR, 260).unwrap())
             .expect("the stride is set");
         looped[0][at..at + 2].copy_from_slice(&wrong);
         let (unrolled, _) = roles_unrolled(&layout, Operands::Binary, &math, false, Formats::FP32);

@@ -1,5 +1,5 @@
 //! Seed-register characterization. This does not route Burn random to hardware.
-use tt_isa::{backend, numerics::stochastic};
+use tensix_isa::{backend, numerics::stochastic};
 use tt_kernels::{
     datapath,
     sfpu::{Cond, Format, LReg, Program},
@@ -11,7 +11,7 @@ use tt_tests::harness::{self, Run};
 #[test]
 fn riscv_seed_store_characterization() {
     use tt_device::tlb::WindowKind;
-    use tt_isa::{mailbox, tensix::Core};
+    use tensix_isa::{mailbox, tensix::Core};
     harness::in_device(|dev| {
         let tile = harness::tensix_tile();
         let w = dev.alloc_window(WindowKind::TwoMib).unwrap();
@@ -130,13 +130,13 @@ fn seed_register_advance_and_predication() {
                 dev.write32(
                     &w,
                     tile,
-                    tt_isa::tensix::CFGREG_RD_CNTL,
-                    tt_isa::cfg::generated::global::PRNG_SEED_Seed_Val.addr32() as u32,
+                    tensix_isa::tensix::CFGREG_RD_CNTL,
+                    tensix_isa::cfg::generated::global::PRNG_SEED_Seed_Val.addr32() as u32,
                 )
                 .unwrap();
                 harness::advance(dev, 64);
                 assert_eq!(
-                    dev.read32(&w, tile, tt_isa::tensix::CFGREG_RDDATA).unwrap(),
+                    dev.read32(&w, tile, tensix_isa::tensix::CFGREG_RDDATA).unwrap(),
                     seed,
                     "seed register write must land"
                 );

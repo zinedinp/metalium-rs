@@ -1,4 +1,4 @@
-//! The card moving host memory itself (`tt_isa::dm::op::HOST_READ`,
+//! The card moving host memory itself (`tensix_isa::dm::op::HOST_READ`,
 //! `HOST_WRITE`): a tile's mover reads host memory into its L1, and writes
 //! its L1 into host memory, through the host-connected PCIe tile, at the NoC
 //! address the transport gives (`Transport::host_memory`: memory pinned for
@@ -10,7 +10,7 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Transport;
-use tt_isa::dm::{error, op};
+use tensix_isa::dm::{error, op};
 use tt_kernels::dm::{DataMover, DmError};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile};

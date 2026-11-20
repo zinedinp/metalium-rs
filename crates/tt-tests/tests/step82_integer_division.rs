@@ -5,7 +5,7 @@ use tt_tests::burn_device::{assert_native_model, with_device, Config};
 
 #[test]
 fn packed_domain_flags_match_each_physical_face() {
-    use tt_isa::{
+    use tensix_isa::{
         backend::{self, Before},
         tile::{L1Format, TileImage},
     };

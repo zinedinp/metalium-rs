@@ -10,7 +10,7 @@
 //! next gather of the same strip, and an op whose gathers do not pair is refused.
 //!
 //! Each copy is credited both ways through the tile's op-level credit words
-//! ([`tt_isa::dm::CREDITS`]), three an operand ([`READY`] and [`FREED`] for `A`, [`READY_B`]
+//! ([`tensix_isa::dm::CREDITS`]), three an operand ([`READY`] and [`FREED`] for `A`, [`READY_B`]
 //! and [`FREED_B`] for `B`):
 //! - The holder gathers a strip, then credits each of its readers' ready word ([`op::CREDIT`]
 //!   waits for the gather's reads first, so the credit follows the data).
@@ -35,7 +35,7 @@
 
 use std::collections::HashMap;
 
-use tt_isa::dm::{credit_word, op, record};
+use tensix_isa::dm::{credit_word, op, record};
 
 use super::distribute::Shared;
 use super::Share;
@@ -521,7 +521,7 @@ fn plan(
                     0,
                     0,
                 ]);
-                let max = tt_isa::noc::niu::MAX_REQUEST_BYTES;
+                let max = tensix_isa::noc::niu::MAX_REQUEST_BYTES;
                 let skew = 16 * u32::from(operand.misrouted());
                 for off in (0..g.bytes).step_by(max as usize) {
                     let at = g.slots + off;
@@ -638,8 +638,8 @@ mod tests {
     use super::{Operand, GATHER_ENTRIES};
     use crate::matmul::{Fidelity, SrcRoute};
     use crate::tensor::{self, BlockStream, DramAlloc, DramTensor, Elem, Reads, Reuse, Step};
-    use tt_isa::dm::{credit_word, op, record, CREDIT_WORDS};
-    use tt_isa::dram::Dram;
+    use tensix_isa::dm::{credit_word, op, record, CREDIT_WORDS};
+    use tensix_isa::dram::Dram;
 
     /// `[m, k, n]` on `units`, blocks `[mb, kq, nb]`, its units sharing with `reuse`: the work.
     fn product(
@@ -740,7 +740,7 @@ mod tests {
         let mut rng = seed
             .wrapping_mul(6364136223846793005)
             .wrapping_add(1442695040888963407);
-        let piece = tt_isa::noc::niu::MAX_REQUEST_BYTES;
+        let piece = tensix_isa::noc::niu::MAX_REQUEST_BYTES;
         loop {
             let runnable: Vec<usize> = (0..units)
                 .filter(|&u| match programs[u].get(pc[u]) {

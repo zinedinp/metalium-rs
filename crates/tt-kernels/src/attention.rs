@@ -23,9 +23,9 @@
 
 use std::sync::Arc;
 
-use tt_isa::dm::{op, record, TILE_DATA, TILE_SLOT};
-use tt_isa::format::TileFormat;
-use tt_isa::tile::L1Format;
+use tensix_isa::dm::{op, record, TILE_DATA, TILE_SLOT};
+use tensix_isa::format::TileFormat;
+use tensix_isa::tile::L1Format;
 
 use crate::matmul::{self, Fidelity, LiveRows, OutputTile, SrcRoute, Staging};
 use crate::sfpu::kernel as sk;
@@ -482,7 +482,7 @@ pub fn attention_rows(
                         gather.push([
                             op::READ,
                             src.channel().index() as u32,
-                            ((r + kk) % tt_isa::dram::PORTS as usize) as u32,
+                            ((r + kk) % tensix_isa::dram::PORTS as usize) as u32,
                             (src.offset()
                                 + TILE_DATA
                                 + (2 * (rr / 16) + half) * 1024

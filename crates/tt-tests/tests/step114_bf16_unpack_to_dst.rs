@@ -19,7 +19,7 @@
 //! read path; run last and alone).
 // The silicon arms use the rest of these.
 #![cfg_attr(not(feature = "silicon"), allow(unused_imports))]
-use tt_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::backend::{self, Before, ConfigWords};
 use tt_kernels::datapath::{
     bf16_flat_descriptor, config_program, pack_bf16_tile_from_dst16, set_adc_x_unpack,
     staged_bf16_image, state_id, thread_config, unpack_bf16_config, unpack_datums_to_dst,
@@ -49,11 +49,11 @@ fn patterns(count: usize) -> Vec<u16> {
 }
 
 fn widened(h: u16) -> u32 {
-    tt_isa::tile::bf16_to_fp32(h)
+    tensix_isa::tile::bf16_to_fp32(h)
 }
 
 /// BF16 -> `Dst` for `datums` raw patterns at `Dst` row 0, as in m08.
-fn unpack_program(datums: u32) -> Vec<tt_isa::isa::Instruction> {
+fn unpack_program(datums: u32) -> Vec<tensix_isa::isa::Instruction> {
     let descriptor = bf16_flat_descriptor(datums);
     let mut p = thread_config();
     let mut words = ConfigWords::new();
@@ -114,7 +114,7 @@ fn staged_patterns_are_raw_and_the_oracle_is_a_pure_shift() {
     let halves = patterns(128);
     let descriptor = bf16_flat_descriptor(128);
     let image = staged_bf16_image(descriptor, &halves);
-    let tile = tt_isa::tile::TileImage::new(descriptor, tt_isa::tile::L1Format::Bf16).unwrap();
+    let tile = tensix_isa::tile::TileImage::new(descriptor, tensix_isa::tile::L1Format::Bf16).unwrap();
     for (i, &h) in halves.iter().enumerate() {
         let at = tile.datum_bit_offset(i) / 8;
         assert_eq!(u16::from_le_bytes([image[at], image[at + 1]]), h);
@@ -184,7 +184,7 @@ fn bf16_unpack_to_dst_reads_back_widened() {
 #[cfg(feature = "silicon")]
 #[test]
 fn silicon_bf16_dst16_pack_round_trip() {
-    use tt_isa::dm::BF16_TILE_SLOT;
+    use tensix_isa::dm::BF16_TILE_SLOT;
     const TILES: usize = 16;
     let universe: Vec<u16> = (0..=u16::MAX).collect();
     for (run, block) in universe.chunks(TILES * TILE_DATUMS as usize).enumerate() {

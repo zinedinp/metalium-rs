@@ -15,7 +15,7 @@
 //!   (`probe_row_misroute`), a reader that is no holder reads poison, and the check sees it.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
 use tt_kernels::residency::RowScheme;
 use tt_kernels::session::{probe_row_misroute, RowLayout, Session, TileChoice};
 use tt_kernels::tensor::DramTensor;
@@ -127,7 +127,7 @@ fn src_for(layout: RowLayout, producers: usize) -> u64 {
 fn poison<T: tt_device::Transport>(s: &mut Session<T>, layout: RowLayout) {
     let w = s.device().alloc_window(WindowKind::FourGib).unwrap();
     for t in s.tiles() {
-        let fill = vec![POISON; (tt_isa::l1::DATA.end - layout.dst) as usize];
+        let fill = vec![POISON; (tensix_isa::l1::DATA.end - layout.dst) as usize];
         s.device().l1_write(&w, t, layout.dst, &fill).unwrap();
     }
 }

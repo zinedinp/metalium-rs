@@ -1,6 +1,6 @@
 //! TRNSPSRCB is a Src permutation, never a bit-preserving F32 transpose.
 //! This gate is simulator coverage until the isolated runner passes both cards.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::alu,
     isa::generated::encode,

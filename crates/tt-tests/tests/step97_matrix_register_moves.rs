@@ -170,7 +170,7 @@ fn elw_reference(
 /// Supported four-row moves use a loaded bank; SFPU writes preserve all F32
 /// bits until the move. One-row variants are silicon-only (divergence row 37).
 fn instruction_roundtrip(four: bool, address_case: u32) {
-    use tt_isa::{
+    use tensix_isa::{
         backend::{self, Before, ConfigWords},
         cfg::generated::{alu, thread},
         isa::generated::encode,
@@ -581,7 +581,7 @@ fn poisoned_padding_downstream_matmul_and_reduction() {
                         if tile / cols.div_ceil(32) * 32 + r >= rows
                             || tile % cols.div_ceil(32) * 32 + c >= cols
                         {
-                            let at = 16 + tt_isa::dm::face_index(r, c) * 4;
+                            let at = 16 + tensix_isa::dm::face_index(r, c) * 4;
                             bytes[at..at + 4].copy_from_slice(&0x7fc12345u32.to_le_bytes());
                         }
                     }
@@ -655,7 +655,7 @@ fn poisoned_padding_downstream_matmul_and_reduction() {
 
 #[test]
 fn safe_negative_controls_detect_register_reuse_errors() {
-    use tt_isa::{
+    use tensix_isa::{
         backend::{self, Before, ConfigWords},
         cfg::generated::{alu, thread},
         isa::generated::encode,
@@ -804,7 +804,7 @@ fn parent_view_and_alternating_precision_keep_state_and_padding() {
 
 #[test]
 fn pinned_move_models_preserve_raw_formats_and_masks() {
-    use tt_isa::matrix::moves::{self, Style};
+    use tensix_isa::matrix::moves::{self, Style};
     assert_eq!(moves::rows(1027, 71, true), (0, 7, 4));
     assert_eq!(moves::rows(1027, 71, false), (3, 7, 1));
     assert_eq!(

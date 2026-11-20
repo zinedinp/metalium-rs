@@ -5,7 +5,7 @@
 //! What the mover reads for an operand follows from its [`TileMap`] against the order a run
 //! walks the domain: items (the parallel iterators, row-major), then each item's
 //! [`TileOp::weight`] tiles (the reduction iterators). The mover's addressing modes are the
-//! architecture's (`tt_isa::dm::record::READ_RUN`); which one an operand takes is read off its
+//! architecture's (`tensix_isa::dm::record::READ_RUN`); which one an operand takes is read off its
 //! map, never off the op:
 //!
 //! | rows | cols | read |
@@ -34,9 +34,9 @@
 //! its terms a step, each chunk after the first a link of one form ([`WAIT_FOR_PARTIAL`], its
 //! reads, then [`reload`]) reloading the partial the last wrote to the result.
 
-use tt_isa::dm::record;
+use tensix_isa::dm::record;
 
-use tt_isa::format::TileFormat;
+use tensix_isa::format::TileFormat;
 
 use super::allocate;
 use super::distribute::Deal;
@@ -108,7 +108,7 @@ pub fn jobs(op: &TileOp, deal: &Deal, units: usize, first: usize) -> Result<Vec<
 
 /// A link of a chain of partials through GDDR after the first: first in its gather, the wait that
 /// orders its reload after the last link's write to the result.
-const WAIT_FOR_PARTIAL: [u32; 8] = [tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0];
+const WAIT_FOR_PARTIAL: [u32; 8] = [tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0];
 
 /// Last in such a link's gather, after its reads: the partial the last link wrote to the result's
 /// tile `tile` (`result`, its reference), reloaded into the slot `prior`.
@@ -224,7 +224,7 @@ fn run_record(first: usize, count: usize, at: u64, flags: u32, ct: usize, rt: u3
     ]
 }
 
-fn tiles_of(a: &Access) -> Result<tt_isa::dm::record::TensorRef> {
+fn tiles_of(a: &Access) -> Result<tensix_isa::dm::record::TensorRef> {
     match &a.layout {
         Layout::Tiles(r) | Layout::Packed { tiles: r, .. } => Ok(*r),
         Layout::PackedRow(_) => Err(TensorError::Shape(
@@ -356,7 +356,7 @@ fn block_reads(first: usize, count: usize, period: usize, at: u64, ct: usize) ->
             record::READ_RUN,
             t as u32,
             len as u32,
-            (at + n as u64 * tt_isa::dm::TILE_SLOT) as u32,
+            (at + n as u64 * tensix_isa::dm::TILE_SLOT) as u32,
             0,
             ct as u32,
             0,
@@ -442,7 +442,7 @@ fn contraction(op: &TileOp) -> Result<(Contraction, [usize; 3])> {
 }
 
 /// `record::gather_a_format` or `gather_b_format` of an edge read in its own format, 0 for FP32.
-fn edge_format(a: &Access, of: fn(tt_isa::tile::L1Format) -> Option<u32>) -> Result<u32> {
+fn edge_format(a: &Access, of: fn(tensix_isa::tile::L1Format) -> Option<u32>) -> Result<u32> {
     let f = a.format();
     if f == TileFormat::FP32 {
         return Ok(0);
@@ -657,7 +657,7 @@ fn block_jobs(op: &TileOp, deal: &Deal, units: usize, first: usize) -> Result<Ve
                 && row.is_none()
                 && tensor::probing_skip_block_gathers()
             {
-                gather = vec![[tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]];
+                gather = vec![[tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]];
             }
             if let (true, Some(prior)) = (
                 c > 0 && matches!(combine, Combine::GddrPartials { .. }),
@@ -706,8 +706,8 @@ fn block_jobs(op: &TileOp, deal: &Deal, units: usize, first: usize) -> Result<Ve
                 .flatten()
             {
                 gather.push([
-                    tt_isa::dm::op::WAIT,
-                    tt_isa::dm::WAIT_PREFETCH,
+                    tensix_isa::dm::op::WAIT,
+                    tensix_isa::dm::WAIT_PREFETCH,
                     0,
                     0,
                     0,

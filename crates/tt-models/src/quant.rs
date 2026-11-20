@@ -243,7 +243,7 @@ impl Plan {
 ///
 /// The rule is the packer's, written independently of the kernels: truncate to BF16, scale by the
 /// block's quantum `2^(exponent - 127 - 6)`, round to nearest, clamp to 127, drop the low bits the
-/// format has no room for (7, 3 or 1 magnitude bits), and decode with `tt_isa`'s model of the
+/// format has no room for (7, 3 or 1 magnitude bits), and decode with `tensix_isa`'s model of the
 /// unpacker. It is the oracle of `step92_bfp_formats`, as a function. Finite values only.
 pub fn bfp_round_trip(values: &[f32], cols: usize, format: Format) -> Vec<f32> {
     let width = format.bfp_width().expect("a block floating point format");
@@ -275,9 +275,9 @@ pub fn bfp_round_trip(values: &[f32], cols: usize, format: Format) -> Vec<f32> {
                     magnitude | (((bits >> 31) as u8) << (width - 1))
                 };
                 let decoded = match format {
-                    Format::Bfp8 => tt_isa::tile::bfp8_to_bf16(datum, exponent),
-                    Format::Bfp4 => tt_isa::tile::bfp4_to_bf16(datum, exponent),
-                    _ => tt_isa::tile::bfp2_to_bf16(datum, exponent),
+                    Format::Bfp8 => tensix_isa::tile::bfp8_to_bf16(datum, exponent),
+                    Format::Bfp4 => tensix_isa::tile::bfp4_to_bf16(datum, exponent),
+                    _ => tensix_isa::tile::bfp2_to_bf16(datum, exponent),
                 };
                 *dst = if decoded & 0x7f80 == 0 {
                     0.0

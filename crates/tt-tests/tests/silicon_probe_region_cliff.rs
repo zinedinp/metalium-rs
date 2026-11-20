@@ -25,7 +25,7 @@
 
 use std::time::Instant;
 
-use tt_isa::l1::DATA;
+use tensix_isa::l1::DATA;
 use tt_kernels::matmul::{Fidelity, SrcRoute, Staging};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::DramTensor;

@@ -1,4 +1,4 @@
-//! Host-encoded reads (`op::READ_ENCODED`, `tt_isa::dm::encoded`) and the two ways the
+//! Host-encoded reads (`op::READ_ENCODED`, `tensix_isa::dm::encoded`) and the two ways the
 //! B mover is built (firmware feature `fast-reads`; `cargo xtask silicon --feature
 //! fast-reads`, or `--features tt-tests/fast-reads` on ttsim).
 //!
@@ -23,7 +23,7 @@
 //! On silicon the entries sent past the host are only ones whose failure to be refused
 //! would still be a valid read into this test's own L1 and DRAM: a bad coordinate is the
 //! hang `AGENTS.md` warns of, so the refusal of those is held on ttsim and, for the guard's
-//! decision, by `tt_isa::dm::encoded`'s unit tests (the function the card runs).
+//! decision, by `tensix_isa::dm::encoded`'s unit tests (the function the card runs).
 //!
 //! In both modes NC refuses an encoded read, on the host and on the card.
 
@@ -31,10 +31,10 @@ use tt_device::tlb::WindowKind;
 #[cfg(feature = "fast-reads")]
 use tt_device::Transport;
 use tt_device::Window;
-use tt_isa::dm::{self, encoded, op, Mover};
+use tensix_isa::dm::{self, encoded, op, Mover};
 #[cfg(feature = "fast-reads")]
-use tt_isa::dram::PORTS;
-use tt_isa::noc::Noc0;
+use tensix_isa::dram::PORTS;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::{DataMover, DmError};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -61,7 +61,7 @@ fn start(d: &mut Dev<'_>, w: &Window, mover: Mover) -> DataMover<Noc0> {
     let dram = d.dram_grid(w).unwrap();
     let t = tile(d, GATE_TILE.0, GATE_TILE.1);
     let image = match mover.core {
-        tt_isa::tensix::Core::NC => tt_firmware_images::DM_NC.1,
+        tensix_isa::tensix::Core::NC => tt_firmware_images::DM_NC.1,
         _ => tt_firmware_images::DM_B.1,
     };
     DataMover::start_on(d, w, t, &dram, mover, image).unwrap()
@@ -111,7 +111,7 @@ fn nc_refuses_an_encoded_read() {
     });
 }
 
-/// A list's reads land in the data arena (`tt_isa::l1::DATA`), in both modes: one aimed at the mover's
+/// A list's reads land in the data arena (`tensix_isa::l1::DATA`), in both modes: one aimed at the mover's
 /// key, its list ring, its mailbox or the image is refused by the host before any PCIe, whatever the
 /// read would otherwise be (a valid, aligned, in-range one). The control: the same read into the arena runs.
 #[test]
@@ -127,7 +127,7 @@ fn a_read_cannot_be_aimed_at_the_movers_own_l1() {
             ("the mailbox", Mover::B.mailbox as u32),
             ("the list ring", Mover::B.list as u32),
             ("the image", Mover::B.image_base as u32),
-            ("past the arena's end", tt_isa::l1::DATA.end as u32 - 64),
+            ("past the arena's end", tensix_isa::l1::DATA.end as u32 - 64),
         ] {
             // 128 bytes: the last aligned unit of the arena and the one after it.
             let r = m.run_list(d, &w, &[plain(0, 0, off, l1 + off % 64, 128)]);

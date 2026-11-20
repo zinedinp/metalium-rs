@@ -28,8 +28,8 @@
 
 mod noc_support;
 
-use tt_isa::noc::niu::{initiator, Command, Endpoint, Niu, TxnId};
-use tt_isa::noc::probe;
+use tensix_isa::noc::niu::{initiator, Command, Endpoint, Niu, TxnId};
+use tensix_isa::noc::probe;
 use tt_tests::harness::{self, Dev};
 
 use noc_support::{partial, read_bytes, run_probe, snapshot, unicast, write_bytes};
@@ -219,7 +219,7 @@ fn a_request_in_the_model_writes_only_what_changed() {
 // ---------------------------------------------------------------------------
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::op;
+use tensix_isa::dm::op;
 use tt_kernels::dm::DataMover;
 
 /// Each channel's pattern, written at `DRAM_AT`, a MiB of it.

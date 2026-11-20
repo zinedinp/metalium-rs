@@ -171,7 +171,7 @@ fn empty_cursor_mask_is_a_noop_on_silicon() {
 #[test]
 #[cfg(not(feature = "silicon"))]
 fn simulator_refuses_empty_cursor_mask() {
-    use tt_isa::adc::{self, Coordinates, Targets, Xy};
+    use tensix_isa::adc::{self, Coordinates, Targets, Xy};
     use tt_tests::harness::{self, Run};
     assert!(!harness::survives(|dev| {
         let program = [
@@ -183,7 +183,7 @@ fn simulator_refuses_empty_cursor_mask() {
 }
 
 fn check_xy_masks(masks: std::ops::Range<u32>) {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Coordinates, Targets, Xy},
         backend::{self, Before, ConfigWords},
         cfg::generated::unpack1,
@@ -230,10 +230,10 @@ fn check_xy_masks(masks: std::ops::Range<u32>) {
                     .set(unpack1::UNP0_ADDR_CTRL_XY_REG_1_Ystride, 64)
                     .unwrap();
                 words
-                    .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                    .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                     .unwrap();
                 unpack.extend(dp::config_program(&words));
-                unpack.push(tt_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
+                unpack.push(tensix_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
                 unpack.push(backend::wait_for_matrix(Before::EVERYTHING).unwrap());
                 unpack.extend(dp::clear_unpacker0_adcs());
                 unpack.push(dp::set_adc_x_unpack(0, 15));
@@ -381,7 +381,7 @@ fn check_xy_masks(masks: std::ops::Range<u32>) {
 
 #[test]
 fn large_live_row_increments_match_documented_addressing() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Targets, Xy},
         backend::{self, Before, ConfigWords},
     };
@@ -667,7 +667,7 @@ fn benchmark_adc_rectangle_vs_native_repack() {
 
 #[test]
 fn unpacker1_and_packer_targets_select_their_own_counters() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Coordinates, Targets, Xy},
         backend::{self, Before, ConfigWords},
         isa::generated::encode,
@@ -697,7 +697,7 @@ fn unpacker1_and_packer_targets_select_their_own_counters() {
                 4,
             );
             words
-                .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                 .unwrap();
             unpack.extend(dp::config_program(&words));
             unpack.push(
@@ -860,7 +860,7 @@ fn unpacker1_and_packer_targets_select_their_own_counters() {
 
 #[test]
 fn adc_mutations_are_local_to_the_issuing_thread() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Coordinates, Targets, Xy},
         backend::{self, Before, ConfigWords},
         sync,
@@ -871,7 +871,7 @@ fn adc_mutations_are_local_to_the_issuing_thread() {
     let ready = req.semaphore("counter initialized", 0, 0..1);
     let mutated = req.semaphore("other thread mutated", 0, 0..1);
     let copied = req.semaphore("copy complete", 0, 0..1);
-    let plan = req.plan(tt_isa::l1::DATA).unwrap();
+    let plan = req.plan(tensix_isa::l1::DATA).unwrap();
     let (ready, mutated, copied) = (
         plan.semaphore(ready),
         plan.semaphore(mutated),

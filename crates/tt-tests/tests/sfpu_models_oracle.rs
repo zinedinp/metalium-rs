@@ -1,4 +1,4 @@
-//! Are `tt_isa::numerics::sfpu`'s ports really the pages' models?
+//! Are `tensix_isa::numerics::sfpu`'s ports really the pages' models?
 //!
 //! `build.rs` extracts each ported function's C from the pinned instruction
 //! page and compiles it; this compares the two over every input that can reach
@@ -9,7 +9,7 @@
 
 #![cfg(have_sfpu_models)]
 
-use tt_isa::numerics::sfpu::{
+use tensix_isa::numerics::sfpu::{
     approx_exp, approx_recip, lut16_to_fp32, lut8_to_fp32, sign_mag_is_smaller,
 };
 

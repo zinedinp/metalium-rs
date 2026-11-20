@@ -1,7 +1,7 @@
 //! The instruction corpus: encode a program on the host, run it, check every datum.
 //!
 //! Step 4 proved one instruction stream produces one answer. This is the general
-//! form: the host encodes a program with `tt_isa::isa`, the generic `corpus`
+//! form: the host encodes a program with `tensix_isa::isa`, the generic `corpus`
 //! firmware pushes it and copies `Dst` back, and the host checks the result against
 //! a reimplementation of the page's functional model. Adding an instruction is a
 //! case in this file, not a firmware change.
@@ -10,7 +10,7 @@
 //!
 //! Encoding is checked exhaustively elsewhere — `cargo xtask gen-isa` compares every
 //! one of the 148 encodings against the specification's two independent descriptions
-//! of it, and `tt_isa::isa`'s tests check the table's structure. That is a different
+//! of it, and `tensix_isa::isa`'s tests check the table's structure. That is a different
 //! claim from *this* one, which is that ttsim executes the encoding and agrees with
 //! the documented model.
 //!
@@ -32,9 +32,9 @@
 //! is no unpack or pack to hand work to, so the three-thread split the datapath
 //! gates use (`harness::Roles`) would add two idle roles and nothing else.
 
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::sfpu::{self, loadi_mode, store_format};
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::sfpu::{self, loadi_mode, store_format};
 use tt_tests::harness::{self, in_device, Dev, Run, SENTINEL};
 
 /// Run `program` and return the first `rows` rows of `Dst`, 16 datums each.

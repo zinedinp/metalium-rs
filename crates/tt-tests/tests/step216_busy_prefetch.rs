@@ -479,7 +479,7 @@ fn what_a_product_reads_ahead_is_counted_as_its_own() {
         let x = s.upload(&values(10, K), 1, K).unwrap();
         let warm = forward(s, &w, &x);
         s.free(warm).unwrap();
-        let weights = ns.map(|n| ((K / 32) * n.div_ceil(32)) as u64 * tt_isa::dm::TILE_SLOT);
+        let weights = ns.map(|n| ((K / 32) * n.div_ceil(32)) as u64 * tensix_isa::dm::TILE_SLOT);
         for idle in [false, true] {
             s.set_weight_prefetch(idle);
             let off = counted(s, &w, &x, false);

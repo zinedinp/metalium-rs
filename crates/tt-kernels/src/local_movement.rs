@@ -6,7 +6,7 @@ use crate::{
     tensor::{Job, Placement, Result, Step, TensorError},
 };
 use std::sync::Arc;
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{thcon, thread},
     dm::{op, TILE_DATA},
@@ -211,7 +211,7 @@ impl Local {
         Arc::new([self.program, vec![], publish])
     }
 }
-fn transfer(range: tt_isa::dram::DramRange, read: bool, l1: u64, bytes: u32) -> [u32; 8] {
+fn transfer(range: tensix_isa::dram::DramRange, read: bool, l1: u64, bytes: u32) -> [u32; 8] {
     [
         if read { op::READ } else { op::WRITE },
         range.channel().index() as u32,
@@ -413,7 +413,7 @@ mod tests {
         for bytes in [2, 4] {
             for dims in [[1, 1], [1, 17], [17, 31], [32, 32], [33, 65], [97, 99]] {
                 for copy in [false, true] {
-                    let mut alloc = DramAlloc::new(&tt_isa::dram::Dram::FULL);
+                    let mut alloc = DramAlloc::new(&tensix_isa::dram::Dram::FULL);
                     let input =
                         DramTensor::alloc_elem(&mut alloc, dims[0], dims[1], Elem::F32).unwrap();
                     let output =
@@ -441,7 +441,7 @@ mod tests {
                         let slot = 1024 * bytes as usize + 64;
                         let local = Local::new(slot as u64).unwrap();
                         let src = local.plan.addr(local.source) as usize;
-                        let mut memory = vec![0xa5; tt_isa::l1::DATA.end as usize];
+                        let mut memory = vec![0xa5; tensix_isa::l1::DATA.end as usize];
                         let source: Vec<_> = (0..slot)
                             .map(|i| ((i * 37 + tile * 19) % 251) as u8)
                             .collect();

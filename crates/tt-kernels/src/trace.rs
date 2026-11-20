@@ -5,7 +5,7 @@
 //! `Session::begin_trace` ... `Session::end_trace` around any ops captures what
 //! the session enqueued on every unit -- and runs it, so the capture is also
 //! the first run. `Session::replay` runs it again: one list per unit, a single
-//! `CALL` entry (`tt_isa::dm::op::CALL`), and each data mover streams the
+//! `CALL` entry (`tensix_isa::dm::op::CALL`), and each data mover streams the
 //! captured entries from GDDR. Between replays, `Session::write` puts new
 //! values into the tensors the trace reads (an inference's input), and the
 //! tensors it wrote hold the results.
@@ -41,9 +41,9 @@
 //! [`Session::write`]: crate::session::Session::write
 //! [`FreeSnapshot`]: crate::tensor::FreeSnapshot
 
-use tt_isa::dm::{self, op, record};
+use tensix_isa::dm::{self, op, record};
 
-use tt_isa::mailbox::{self, role::Mailbox, DESCRIPTOR_WORDS};
+use tensix_isa::mailbox::{self, role::Mailbox, DESCRIPTOR_WORDS};
 
 use crate::tensor::{FreeSnapshot, Placement};
 
@@ -266,7 +266,7 @@ pub struct UnitFootprint {
 #[derive(Default)]
 pub(crate) struct UnitCapture {
     /// The captured barriers this unit's stream accounts for so far: those it arrived at, and
-    /// those a wait in it stands for (`tt_isa::dm::BARRIER_STANDS_FOR`).
+    /// those a wait in it stands for (`tensix_isa::dm::BARRIER_STANDS_FOR`).
     pub(crate) barriers_accounted: u32,
     /// What the sections so far are made of.
     pub(crate) sections_composition: Composition,

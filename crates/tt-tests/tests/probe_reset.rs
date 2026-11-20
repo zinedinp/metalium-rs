@@ -3,8 +3,8 @@
 // Reads ttsim's reset state; on silicon the reset state is whatever the last process left.
 #![cfg(not(feature = "silicon"))]
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::noc::{Noc0, NocCoord};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::noc::{Noc0, NocCoord};
+use tensix_isa::tensix::{self, Core};
 use tt_ttsim::{fork_scope, Simulator};
 
 #[test]

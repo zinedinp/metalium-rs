@@ -12,7 +12,7 @@
 //! * the host definition, applied tuple by tuple in index order over raw words;
 //! * Flex for the same inputs. `Min`/`Max` only compare and move, so Flex equals the device bit for
 //!   bit over every special (signed zeros, subnormals, infinities, NaN payloads, extremes). Float
-//!   `Mul` is held to the specification's `SFPMAD` multiply (`tt_isa::numerics::mul_bh`) chained in
+//!   `Mul` is held to the specification's `SFPMAD` multiply (`tensix_isa::numerics::mul_bh`) chained in
 //!   index order, because that is the arithmetic the device runs; on ordinary normals Flex's IEEE
 //!   `*=` agrees bit for bit, and the gate says so. I32 `Mul` wraps modulo 2^32: the host reference
 //!   uses `wrapping_mul`, Flex is compared on products that cannot overflow.
@@ -23,7 +23,7 @@
 use burn::tensor::{backend::Backend, IndexingUpdateOp, Int, Tensor, TensorData, TensorPrimitive};
 use burn_flex::{Flex, FlexDevice};
 use burn_tt::{tensor_traffic, TtBackend, TtDevice};
-use tt_isa::numerics;
+use tensix_isa::numerics;
 use tt_tests::burn_device::{assert_native_model, with_device, Config};
 use tt_tests::data::{float_data, lcg};
 

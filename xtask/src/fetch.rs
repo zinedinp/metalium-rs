@@ -99,38 +99,6 @@ fn fetch_ttsim_asset(asset: &pin::TtsimAsset, force: bool) -> Result<(), String>
     Ok(())
 }
 
-pub fn fetch_cfg_defines(dest: &Path) -> Result<(), String> {
-    let url = format!(
-        "https://raw.githubusercontent.com/tenstorrent/tt-metal/{}/tt_metal/hw/inc/blackhole/cfg_defines.h",
-        pin::TT_METAL_REV
-    );
-    println!("fetching {url}");
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("creating {}: {e}", parent.display()))?;
-    }
-    let tmp = dest.with_extension("h.partial");
-    let status = Command::new("curl")
-        .args([
-            "--fail",
-            "--location",
-            "--silent",
-            "--show-error",
-            "--max-time",
-            "120",
-            "-o",
-        ])
-        .arg(&tmp)
-        .arg(&url)
-        .status()
-        .map_err(|e| format!("could not run curl: {e}"))?;
-    if !status.success() {
-        let _ = std::fs::remove_file(&tmp);
-        return Err(format!("curl failed downloading {url}"));
-    }
-    std::fs::rename(&tmp, dest).map_err(|e| format!("renaming into place: {e}"))
-}
-
 /// Download and verify the pinned ISA specification tree.
 ///
 /// Unlike the other two pinned inputs this is a whole repository rather than one

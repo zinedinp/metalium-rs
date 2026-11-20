@@ -18,7 +18,7 @@
 use std::collections::VecDeque;
 
 use tt_device::{Device, Transport, TransportError, Window};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::{Noc0, NocCoord};
 
 use crate::link::{Dest, Dir, Link, LinkError, Mover, Source};
 use crate::matmul::{self, Fidelity, SrcRoute, MATMUL_OUT, MATMUL_STAGE};
@@ -273,7 +273,7 @@ impl<T: Transport> Fabric<T> {
             let [rt, ct] = t.grid();
             // Coalesce consecutive slots on the same source/destination
             // channels, up to one Ethernet packet's payload capacity.
-            let mut ranges: Vec<(tt_isa::dram::DramRange, tt_isa::dram::DramRange)> = Vec::new();
+            let mut ranges: Vec<(tensix_isa::dram::DramRange, tensix_isa::dram::DramRange)> = Vec::new();
             for r in 0..rt {
                 for c in 0..ct {
                     let (src, dst) = (t.tile(r, c), out.tile(r, c));
@@ -282,7 +282,7 @@ impl<T: Transport> Fabric<T> {
                             && b.channel() == dst.channel()
                             && a.offset() + a.len() == src.offset()
                             && b.offset() + b.len() == dst.offset()
-                            && a.len() + src.len() <= u64::from(tt_isa::eth::mover::MAX_LEN)
+                            && a.len() + src.len() <= u64::from(tensix_isa::eth::mover::MAX_LEN)
                     }) {
                         *a = a
                             .channel()
@@ -321,7 +321,7 @@ impl<T: Transport> Fabric<T> {
     pub(crate) fn run_hops(
         &mut self,
         route: &[usize],
-        ranges: &[(tt_isa::dram::DramRange, tt_isa::dram::DramRange)],
+        ranges: &[(tensix_isa::dram::DramRange, tensix_isa::dram::DramRange)],
     ) -> Result<(), ShardError> {
         for &(source, destination) in ranges {
             for hop in 0..route.len() - 1 {
@@ -494,7 +494,7 @@ impl<T: Transport> Fabric<T> {
         let route = self.routes[chip]
             .clone()
             .ok_or(ShardError::Unreachable(chip))?;
-        let max = tt_isa::eth::mover::MAX_LEN as usize;
+        let max = tensix_isa::eth::mover::MAX_LEN as usize;
         for (i, piece) in data.chunks(max).enumerate() {
             let at = addr + (i * max) as u32;
             let len = piece.len() as u32;
@@ -538,7 +538,7 @@ impl<T: Transport> Fabric<T> {
             .clone()
             .ok_or(ShardError::Unreachable(chip))?;
         route.reverse();
-        let max = tt_isa::eth::mover::MAX_LEN as usize;
+        let max = tensix_isa::eth::mover::MAX_LEN as usize;
         let mut out = vec![0u8; len];
         for off in (0..len).step_by(max) {
             let n = max.min(len - off) as u32;
@@ -706,7 +706,7 @@ impl<T: Transport> Fabric<T> {
         use crate::sfpu::ops::{kind_sfpu, program};
         use crate::sfpu::reduce::{math_programs, plan_layout, roles, Axis, ReduceOp};
         use crate::sfpu::{Format, LReg, LoopPolicy, Program};
-        use tt_isa::dm::{TILE_DATA, TILE_SLOT};
+        use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
 
         let [rt, ct] = [rows.div_ceil(32), cols.div_ceil(32)];
         let (outputs, per, last, dims) = match axis {

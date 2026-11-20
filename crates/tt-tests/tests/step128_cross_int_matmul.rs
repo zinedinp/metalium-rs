@@ -4,7 +4,7 @@
 //!
 //! Flex's composition (three slices of each operand, six products, three
 //! differences, a concatenation) over the device's `SFPMAD` mul and add. The oracle
-//! is the specification's functional model (`tt_isa::numerics::{mul_bh, add_bh}`, a
+//! is the specification's functional model (`tensix_isa::numerics::{mul_bh, add_bh}`, a
 //! difference being `add_bh(x, y ^ sign)`): not fused, denormals flushed, NaN
 //! canonicalised. The device must match it bit for bit on every element. Flex's
 //! IEEE result must also match wherever the model's per-operation rounding equals
@@ -23,7 +23,7 @@
 use burn::tensor::{Int, Tensor, TensorData, TensorPrimitive};
 use burn_flex::{Flex, FlexDevice};
 use burn_tt::{tensor_traffic, InputPayload, TileChoice, TracedInference, TtBackend, TtDevice};
-use tt_isa::numerics;
+use tensix_isa::numerics;
 use tt_tests::burn_device::{assert_native_model, with_device, Config};
 use tt_tests::data::{float_data, lcg, panic_message};
 

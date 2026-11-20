@@ -1,6 +1,6 @@
 //! Phase 9.7c gate: kernel programs resident in L1.
 //!
-//! Each tile keeps the programs it has run in `tt_isa::l1::PROGRAM_CACHE`,
+//! Each tile keeps the programs it has run in `tensix_isa::l1::PROGRAM_CACHE`,
 //! mirrored on the host by `tt_kernels::program_cache::ProgramCache`, and a
 //! `KERNEL` list entry names which one each role runs. The claims:
 //!

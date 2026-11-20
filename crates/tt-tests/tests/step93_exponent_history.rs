@@ -1,7 +1,7 @@
 //! CLREXPHIST is histogram reset, independently of BFP exponent selection.
 //! Pinned ttsim refuses ENABLE_ACC_STATS (SETC16 register 45).
 #![cfg(feature = "silicon")]
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{thcon, thread},
     isa::generated::encode,

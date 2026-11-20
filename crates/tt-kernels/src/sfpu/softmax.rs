@@ -20,7 +20,7 @@
 //! column 0 broadcast ([`Program::broadcast_col0`]), here once a kernel into a row no unpacker
 //! writes per tile ([`MAX_ROW`], [`SUM_ROW`]).
 
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::Instruction;
 
 use super::kernel::{A_ROW, B_ROW, C_ROW, OUT_ROW};
 use super::ops::{chain_link, exact_in_place, kind_sfpu};
@@ -210,7 +210,7 @@ fn reference_in(
     written: bool,
 ) -> (Vec<f32>, Vec<f32>, Vec<f32>, Vec<f32>) {
     use super::interp::Vector;
-    use tt_isa::dm::face_index;
+    use tensix_isa::dm::face_index;
     assert!(rows % 32 == 0 && cols % 32 == 0 && chunk > 0);
     let (rt, ct) = (rows / 32, cols / 32);
     let tile = |v: &dyn Fn(usize) -> u32, i: usize, j: usize| -> Vec<u32> {

@@ -2,7 +2,7 @@
 //!
 //! # Two oracles, two claims -- as in step 8
 //!
-//! `tt_isa::numerics::mvmul_reference` ports the documented fidelity-phase model
+//! `tensix_isa::numerics::mvmul_reference` ports the documented fidelity-phase model
 //! (`MVMUL.md`, `MatrixUnit.md:143-165`) and says what each output datum is, bit
 //! for bit. It refuses to answer unless every product and sum is exact, because
 //! `MVMUL.md` calls its float model "a rough guide" to order and precision; the
@@ -17,14 +17,14 @@
 //! a leftover of the tile-header off-by-one (divergence rows 30 and 35) that
 //! row 0 on both targets retired.
 
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::cfg::generated::thread;
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::matrix::{Banks, Loaded};
-use tt_isa::numerics::mvmul_reference;
-use tt_isa::sfpu;
-use tt_isa::tile::fp32_to_tf32;
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::cfg::generated::thread;
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::matrix::{Banks, Loaded};
+use tensix_isa::numerics::mvmul_reference;
+use tensix_isa::sfpu;
+use tensix_isa::tile::fp32_to_tf32;
 use tt_tests::datapath::{
     self, config_program, pack_config, set_adc_x, thread_entry, Unpacker, OUT, STAGE,
 };
@@ -1254,7 +1254,7 @@ fn zeroacc_one_row_with_an_odd_addr_mod() {
 /// Independent exact-domain broadcast, destination and assignment probes.
 #[test]
 fn elw_broadcast_assignment_and_destination_fields() {
-    use tt_isa::{
+    use tensix_isa::{
         matrix::SrcBroadcast,
         numerics::{elw_reference, MatrixEltwiseOp},
     };
@@ -1303,7 +1303,7 @@ fn elw_broadcast_assignment_and_destination_fields() {
 
 #[test]
 fn elw_oracles_reject_safe_instruction_mutants() {
-    use tt_isa::{
+    use tensix_isa::{
         matrix::SrcBroadcast as B,
         numerics::{elw_reference, MatrixEltwiseOp as O},
     };

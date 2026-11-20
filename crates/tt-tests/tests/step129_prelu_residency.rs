@@ -8,14 +8,14 @@
 //! reduction or matmul of it afterwards reads the right padding.
 //!
 //! The oracle is Flex's `if x >= 0 { x } else { a * x }` with the device's multiply
-//! (`tt_isa::numerics::mul_bh`: not fused, denormals flushed, NaN canonicalised).
+//! (`tensix_isa::numerics::mul_bh`: not fused, denormals flushed, NaN canonicalised).
 //! Flex's IEEE result is also compared wherever the model rounds as IEEE does.
 //! Negative controls: the branch swapped (the slope on the non-negative side), and
 //! the identity slope, must both differ from the device on the gate's data.
 use burn::tensor::{activation, Tensor, TensorData, TensorPrimitive};
 use burn_flex::{Flex, FlexDevice};
 use burn_tt::{tensor_traffic, TtBackend};
-use tt_isa::numerics;
+use tensix_isa::numerics;
 use tt_tests::burn_device::{assert_native_model, with_device, Config};
 use tt_tests::data::{float_data, lcg};
 

@@ -223,10 +223,10 @@ fn the_sort_kernel_refuses_what_it_cannot_do_by_name() {
 /// request's first probe: documented (`SFPSWAP.md`), the other mode in use
 /// (min/max) already measured.
 mod swap_probe {
-    use tt_isa::backend::{self, Before, ConfigWords};
-    use tt_isa::isa::generated::encode;
-    use tt_isa::isa::Instruction;
-    use tt_isa::tile::{L1Format, TileImage};
+    use tensix_isa::backend::{self, Before, ConfigWords};
+    use tensix_isa::isa::generated::encode;
+    use tensix_isa::isa::Instruction;
+    use tensix_isa::tile::{L1Format, TileImage};
     use tt_kernels::datapath::{
         config_program, pack_tile_from_dst, state_id, thread_config, tile_descriptor,
         tile_unpack_config, unpack_tile_to_dst, OUT, STAGE,
@@ -235,7 +235,7 @@ mod swap_probe {
     use tt_kernels::sfpu::{Cond, Format, LReg, LoopPolicy, Program};
     use tt_tests::harness::{self, Roles, Run};
 
-    const STAGE_B: u64 = STAGE + tt_isa::dm::TILE_SLOT;
+    const STAGE_B: u64 = STAGE + tensix_isa::dm::TILE_SLOT;
 
     fn image(datums: &[u32]) -> Vec<u8> {
         let img = TileImage::new(tile_descriptor(), L1Format::Fp32).unwrap();

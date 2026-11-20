@@ -395,7 +395,7 @@ fn session_open_breakdown() {
                     x,
                     y,
                     0,
-                    tt_isa::tensix::SOFT_RESET_0,
+                    tensix_isa::tensix::SOFT_RESET_0,
                     tt_kernels::session::ALL_BABIES_HELD,
                 )
                 .unwrap()
@@ -644,7 +644,7 @@ fn softmax_parts() {
 #[test]
 #[ignore = "benchmark"]
 fn mover_read_shapes() {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     use tt_kernels::dm::DataMover;
     on_card(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
@@ -681,7 +681,7 @@ fn mover_read_shapes() {
                 .map(|i| entry(ch_of(i), port_of(i), i * len, L1 + (i * len) % L1_SPAN, len))
                 .collect::<Vec<_>>()
         };
-        let time = |d: &mut Dev<'_>, m: &mut DataMover<tt_isa::noc::Noc0>, list: &[[u32; 8]]| {
+        let time = |d: &mut Dev<'_>, m: &mut DataMover<tensix_isa::noc::Noc0>, list: &[[u32; 8]]| {
             let mut v = Vec::new();
             for _ in 0..REPS {
                 let t0 = Instant::now();
@@ -754,7 +754,7 @@ fn mover_read_shapes() {
 #[test]
 #[ignore = "benchmark"]
 fn mover_read_fast_path() {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     use tt_kernels::dm::DataMover;
     on_card(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
@@ -795,7 +795,7 @@ fn mover_read_fast_path() {
                 .map(|i| entry(ch_of(i), port_of(i), i * len, L1 + (i * len) % L1_SPAN, len))
                 .collect::<Vec<_>>()
         };
-        let time = |d: &mut Dev<'_>, m: &mut DataMover<tt_isa::noc::Noc0>, list: &[[u32; 8]]| {
+        let time = |d: &mut Dev<'_>, m: &mut DataMover<tensix_isa::noc::Noc0>, list: &[[u32; 8]]| {
             let t0 = Instant::now();
             m.submit_list(d, &w, list).unwrap();
             m.wait(d, &w).unwrap();
@@ -884,7 +884,7 @@ fn mover_read_fast_path() {
 #[ignore = "benchmark"]
 #[cfg(feature = "profile")]
 fn role_push_rate() {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     use tt_kernels::matmul::{Fidelity, SrcRoute};
     let spans = |trace: &[tt_device::trace::TraceEvent]| {
         let mut out = [[0u64; 3]; 3];
@@ -897,7 +897,7 @@ fn role_push_rate() {
         out.map(|[s, p, r]| (p.saturating_sub(s), r.saturating_sub(p)))
     };
     tt_tests::harness::in_device(|dev| {
-        let nops = vec![tt_isa::sfpu::nop(); 4000];
+        let nops = vec![tensix_isa::sfpu::nop(); 4000];
         let out = tt_tests::harness::run(
             dev,
             &tt_tests::harness::Run::roles(tt_tests::harness::Roles {

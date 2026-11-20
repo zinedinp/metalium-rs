@@ -24,7 +24,7 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{self, op};
+use tensix_isa::dm::{self, op};
 use tt_kernels::dm::DataMover;
 use tt_tests::bench::{median, on_card, pattern, report, Stats, REPS};
 use tt_tests::harness::Dev;
@@ -71,7 +71,7 @@ fn interpreter_cap_sweep() {
                 })
                 .collect()
         };
-        let time = |d: &mut Dev<'_>, m: &mut DataMover<tt_isa::noc::Noc0>, l: &[[u32; 8]]| {
+        let time = |d: &mut Dev<'_>, m: &mut DataMover<tensix_isa::noc::Noc0>, l: &[[u32; 8]]| {
             let t0 = Instant::now();
             m.submit_list(d, &w, l).unwrap();
             m.wait(d, &w).unwrap();
@@ -108,7 +108,7 @@ fn interpreter_cap_sweep() {
                 );
             }
         }
-        m.set_in_flight_cap(d, &w, tt_isa::dm::TILE_IN_FLIGHT_CAP)
+        m.set_in_flight_cap(d, &w, tensix_isa::dm::TILE_IN_FLIGHT_CAP)
             .unwrap();
         m.stop(d, &w).unwrap();
     });
@@ -132,9 +132,9 @@ const CYCLES_PER_US: f64 = 1350.0;
 #[test]
 #[ignore = "benchmark"]
 fn bare_loop_against_interpreter() {
-    use tt_isa::mailbox::{self, status as mbox};
-    use tt_isa::noc::niu::{DramMove, Niu, TxnId};
-    use tt_isa::noc::read_loop::{self as rl, mode};
+    use tensix_isa::mailbox::{self, status as mbox};
+    use tensix_isa::noc::niu::{DramMove, Niu, TxnId};
+    use tensix_isa::noc::read_loop::{self as rl, mode};
     on_card(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let w4 = d.alloc_window(WindowKind::FourGib).unwrap();
@@ -158,7 +158,7 @@ fn bare_loop_against_interpreter() {
                 .next()
                 .unwrap()
         };
-        let words = |r: tt_isa::noc::niu::DramRequest| {
+        let words = |r: tensix_isa::noc::niu::DramRequest| {
             [r.targ, r.targ_hi, r.ret, r.ret_hi, r.tag, r.ctrl, r.len]
         };
         let names = ["stepped", "fast", "table", "decoded"];
@@ -343,7 +343,7 @@ fn bare_loop_against_interpreter() {
                 );
             }
         }
-        mv.set_in_flight_cap(d, &w, tt_isa::dm::TILE_IN_FLIGHT_CAP)
+        mv.set_in_flight_cap(d, &w, tensix_isa::dm::TILE_IN_FLIGHT_CAP)
             .unwrap();
         mv.stop(d, &w).unwrap();
     });
@@ -483,7 +483,7 @@ fn encoded_entries_against_plain_entries() {
 #[test]
 #[ignore = "benchmark"]
 fn records_against_entries() {
-    use tt_isa::dm::record::{self, TensorRef};
+    use tensix_isa::dm::record::{self, TensorRef};
     on_card(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let w4 = d.alloc_window(WindowKind::FourGib).unwrap();
@@ -644,7 +644,7 @@ fn records_against_entries() {
 #[test]
 #[ignore = "benchmark"]
 fn what_bounds_one_tiles_read_rate() {
-    use tt_isa::mailbox::{TRACE_BUFFER, TRACE_BUFFER_BYTES};
+    use tensix_isa::mailbox::{TRACE_BUFFER, TRACE_BUFFER_BYTES};
     const LEN: u32 = 4096;
     on_card(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();

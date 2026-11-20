@@ -11,9 +11,9 @@
 //! word for word, is its unit tests'; this is the hardware agreeing with the
 //! model the claim is made against.
 
-use tt_isa::backend::{self, Before};
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
+use tensix_isa::backend::{self, Before};
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
 use tt_kernels::datapath::{pack_tile_from_dst, state_id, thread_config, OUT};
 use tt_kernels::loops::{lower, Item, LoopForm};
 use tt_kernels::sfpu::{Format, LReg, LoopPolicy, Program};
@@ -38,7 +38,7 @@ fn math(middle: &[Instruction]) -> Vec<Instruction> {
 fn on_device(
     dev: &mut harness::Dev<'_>,
     math: &[Instruction],
-    mop: Option<tt_isa::frontend::mop::MopConfig>,
+    mop: Option<tensix_isa::frontend::mop::MopConfig>,
 ) -> Vec<u32> {
     let unpack = thread_config();
     let mut m = vec![state_id()];

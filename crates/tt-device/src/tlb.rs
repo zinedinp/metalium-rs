@@ -7,7 +7,7 @@
 //! Spec: `BlackholeA0/PCIExpressTile/HostToDeviceTLBs.md`, cross-checked against
 //! the worked example in `BlackholeA0/EthernetTile/Samples/ethdump/ethdump.c`.
 
-use tt_isa::noc::{NocCoord, NocId};
+use tensix_isa::noc::{NocCoord, NocId};
 
 use crate::{Bar, Transport, TransportError};
 
@@ -316,7 +316,7 @@ pub fn write_config<T: Transport, N: NocId>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::noc::{Noc0, Noc1};
+    use tensix_isa::noc::{Noc0, Noc1};
 
     fn c(x: u8, y: u8) -> NocCoord<Noc0> {
         NocCoord::new(x, y).unwrap()

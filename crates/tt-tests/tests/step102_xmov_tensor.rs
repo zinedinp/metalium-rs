@@ -54,7 +54,7 @@ fn bits(n: usize, elem: Elem) -> Vec<u32> {
 }
 fn physical(
     s: &mut Session<tt_kmd::Kmd>,
-    slots: impl Iterator<Item = tt_isa::dram::DramRange>,
+    slots: impl Iterator<Item = tensix_isa::dram::DramRange>,
     dims: [usize; 2],
     bytes: usize,
 ) -> Vec<Vec<u8>> {
@@ -73,7 +73,7 @@ fn physical(
                     if tile / dims[1].div_ceil(32) * 32 + r >= dims[0]
                         || tile % dims[1].div_ceil(32) * 32 + c >= dims[1]
                     {
-                        let off = 16 + tt_isa::dm::face_index(r, c) * bytes;
+                        let off = 16 + tensix_isa::dm::face_index(r, c) * bytes;
                         assert!(
                             data[off..off + bytes].iter().all(|&b| b == 0),
                             "nonzero padding tile {tile} row {r} col {c}"
@@ -100,7 +100,7 @@ fn poison_padding(s: &mut Session<tt_kmd::Kmd>, t: &DramTensor) {
                 if tile / t.cols.div_ceil(32) * 32 + r >= t.rows
                     || tile % t.cols.div_ceil(32) * 32 + c >= t.cols
                 {
-                    let off = 16 + tt_isa::dm::face_index(r, c) * 4;
+                    let off = 16 + tensix_isa::dm::face_index(r, c) * 4;
                     data[off..off + 4].copy_from_slice(&0x7fc12345u32.to_le_bytes());
                 }
             }
@@ -283,7 +283,7 @@ fn invalid_shapes_and_failed_construction_leave_session_usable() {
             before,
             "submission must release allocated outputs"
         );
-        s.limit_program_cache(tt_isa::l1::PROGRAM_CACHE.len())
+        s.limit_program_cache(tensix_isa::l1::PROGRAM_CACHE.len())
             .unwrap();
         s.free(input).unwrap();
         s.free_bf16(bf16).unwrap();

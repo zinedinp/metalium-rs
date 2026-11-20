@@ -5,7 +5,7 @@
 #![no_main]
 
 /// As `icache_b`'s, 256 bytes on (`mailbox::icache_results`).
-const RESULTS: u64 = tt_isa::mailbox::icache_results(1);
+const RESULTS: u64 = tensix_isa::mailbox::icache_results(1);
 
 /// Each code block's size.
 const BLOCK: u32 = 8192;

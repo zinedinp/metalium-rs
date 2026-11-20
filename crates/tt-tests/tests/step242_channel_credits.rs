@@ -30,9 +30,9 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{self, op, Mover};
-use tt_isa::noc::niu::Niu;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, Mover};
+use tensix_isa::noc::niu::Niu;
+use tensix_isa::noc::Noc0;
 use tt_kernels::channel::{self, Ring, Slots, Stall};
 use tt_kernels::dm::{DataMover, DmError, L1Writes};
 use tt_tests::backend::GATE_TILE;
@@ -59,7 +59,7 @@ const OUT: u32 = 0x6_0000;
 const WINDOW_LEN: u64 = 128 << 10;
 
 fn window() -> std::ops::Range<u64> {
-    tt_isa::l1::DATA.end - WINDOW_LEN..tt_isa::l1::DATA.end
+    tensix_isa::l1::DATA.end - WINDOW_LEN..tensix_isa::l1::DATA.end
 }
 
 /// The credit words: `received` on every consumer, `freed` on the producer, each alone in its 16
@@ -80,7 +80,7 @@ fn pages() -> (u32, u32) {
     }
 }
 const _: () = assert!(SRC + SOURCES * (20 << 10) <= OUT);
-const _: () = assert!(OUT as u64 + 24 * (20 << 10) <= tt_isa::l1::DATA.end - WINDOW_LEN);
+const _: () = assert!(OUT as u64 + 24 * (20 << 10) <= tensix_isa::l1::DATA.end - WINDOW_LEN);
 
 /// The bytes page `k` carries.
 fn page(source: &[u8], k: u32, page_bytes: u32) -> &[u8] {
@@ -428,7 +428,7 @@ fn a_malformed_credit_is_refused() {
                 "a wait on the streams' counters",
                 [
                     op::WAIT_CREDIT,
-                    tt_isa::dataflow::INPUT as u32,
+                    tensix_isa::dataflow::INPUT as u32,
                     1,
                     0,
                     0,

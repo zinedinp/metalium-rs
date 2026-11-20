@@ -13,7 +13,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::noc::{niu, Noc0, NocCoord};
+use tensix_isa::noc::{niu, Noc0, NocCoord};
 use tt_ttsim::{fork_scope, Simulator};
 
 /// Candidate Ethernet coordinates: row 1, skipping the non-memory and DRAM
@@ -190,7 +190,7 @@ fn host_driven_tt_link_l1_write() {
 #[test]
 #[ignore = "exploratory"]
 fn bh_x4_link_map() {
-    use tt_isa::eth::{self, Ethernet, PortStatus};
+    use tensix_isa::eth::{self, Ethernet, PortStatus};
     let r = fork_scope(|| {
         let mut sim = Simulator::open_path(tt_ttsim::x4_lib_path()).unwrap();
         println!("chips: {}", sim.chip_count());

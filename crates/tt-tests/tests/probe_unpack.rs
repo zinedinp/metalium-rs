@@ -33,13 +33,13 @@
 // the silicon build.
 #![cfg_attr(feature = "silicon", allow(dead_code, unused_imports))]
 
-use tt_isa::backend::{self, ConfigWords, ThreadConfigEntry};
-use tt_isa::cfg::generated::{thcon, thread, unpack1};
-use tt_isa::isa::generated::{defs, encode};
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox;
-use tt_isa::sfpu;
-use tt_isa::tile::{L1Format, TileDescriptor, TileImage};
+use tensix_isa::backend::{self, ConfigWords, ThreadConfigEntry};
+use tensix_isa::cfg::generated::{thcon, thread, unpack1};
+use tensix_isa::isa::generated::{defs, encode};
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox;
+use tensix_isa::sfpu;
+use tensix_isa::tile::{L1Format, TileDescriptor, TileImage};
 use tt_tests::harness::{self, in_device, survives, Run, SENTINEL};
 
 const SCRATCH_GPR: u32 = 8;
@@ -405,7 +405,7 @@ fn try_format_pair(in_code: u32, out_code: u32, datums: u32) -> FormatOutcome {
 /// The two questions this answers at once.
 ///
 /// **What the 4-bit format codes mean.** They appear in neither the specification
-/// tree nor `cfg_defines.h`, which is why `tt_isa::tile::L1Format` carries no
+/// tree nor `cfg_defines.h`, which is why `tensix_isa::tile::L1Format` carries no
 /// numeric encoding and why the checklist's open question 9 exists. ttsim validates
 /// pairs and prints `in_data_format=%d incompatible with out_data_format=%d`, so
 /// which pairs run is measurable; and since the staged datums are known FP32, what
@@ -649,7 +649,7 @@ fn ttsim_does_not_model_state_reset_en() {
         p.extend(sfpu::load_f32(0, 1.5f32.to_bits()).unwrap());
         p.push(sfpu::store(0, sfpu::store_format::FP32, 0, 0).unwrap());
     };
-    let mut reset = tt_isa::backend::reset_config(SCRATCH_GPR).unwrap().to_vec();
+    let mut reset = tensix_isa::backend::reset_config(SCRATCH_GPR).unwrap().to_vec();
     tail(&mut reset);
     assert!(!survives(|dev| {
         let _ = run(dev, &[], &reset, 1);

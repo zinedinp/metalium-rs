@@ -19,8 +19,8 @@
 use std::time::{Duration, Instant};
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::record::{self, TensorRef};
-use tt_isa::dm::{self, op, Mover};
+use tensix_isa::dm::record::{self, TensorRef};
+use tensix_isa::dm::{self, op, Mover};
 use tt_kernels::dm::{DataMover, WriteNoc};
 use tt_tests::bench::{median, on_card, pattern, report, Stats, REPS};
 use tt_tests::harness::Dev;

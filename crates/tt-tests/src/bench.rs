@@ -395,7 +395,7 @@ mod silicon {
     use crate::harness::Dev;
     use tt_device::telemetry::TelemetryTable;
     use tt_device::tlb::WindowKind;
-    use tt_isa::noc::{Noc0, NocCoord};
+    use tensix_isa::noc::{Noc0, NocCoord};
     use tt_ttsim::fork_scope;
 
     /// One card (`TT_SILICON_DEVICE`, default 0), opened and scrubbed after, in
@@ -428,7 +428,7 @@ mod silicon {
         /// Read the chip's clocks and memory from its ARC, and time `tile`'s
         /// counter against the host over 100 ms.
         pub fn measure(d: &mut Dev<'_>, card: u16, tile: NocCoord<Noc0>) -> Conditions {
-            use tt_isa::arc::tag;
+            use tensix_isa::arc::tag;
             let w = d.alloc_window(WindowKind::TwoMib).unwrap();
             let table = TelemetryTable::read(d, &w).unwrap();
             let mut read = |t| table.read_tag(d, &w, t).unwrap();

@@ -57,7 +57,7 @@ fn packed_bf16_matmul_masks_local_padding_and_preserves_parent_bits() {
                             if tile / cols.div_ceil(32) * 32 + r >= rows
                                 || tile % cols.div_ceil(32) * 32 + c >= cols
                             {
-                                let at = 16 + tt_isa::dm::face_index(r, c) * 2;
+                                let at = 16 + tensix_isa::dm::face_index(r, c) * 2;
                                 image[at..at + 2].copy_from_slice(&0x7fc1u16.to_le_bytes());
                             }
                         }

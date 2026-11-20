@@ -1,4 +1,4 @@
-//! RISCV NC's entry log (`tt_isa::dm::nc_log`), the half of the profile mode's sender-side meter
+//! RISCV NC's entry log (`tensix_isa::dm::nc_log`), the half of the profile mode's sender-side meter
 //! that runs on ttsim: the stamp stream does not (divergence row 54), but NC's log is plain stores
 //! to L1 and the clock it reads is modelled. Plan: `docs/plans/prefill-operand-reuse.md` (W2's
 //! sender-side meter).
@@ -21,8 +21,8 @@
 #![cfg(feature = "profile")]
 
 use tt_device::trace::TraceEvent;
-use tt_isa::dataflow::{Action, Stream};
-use tt_isa::dm::nc_log as l;
+use tensix_isa::dataflow::{Action, Stream};
+use tensix_isa::dm::nc_log as l;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::profile::Event;
 use tt_kernels::session::{Session, TileChoice};

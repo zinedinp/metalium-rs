@@ -6,7 +6,7 @@ use crate::{
     tensor::{DramAlloc, DramTensor, Elem, Job, Pad, Placement, Result, Step, TensorError, Work},
 };
 use std::sync::Arc;
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::{alu, thcon},
     dm::{op, TILE_DATA},
@@ -262,7 +262,7 @@ pub(crate) fn compress(
                         true,
                         0,
                         layout.a_at,
-                        tt_isa::dm::TILE_SLOT as u32,
+                        tensix_isa::dm::TILE_SLOT as u32,
                     )],
                 },
                 kernel_step(&layout, &roles),

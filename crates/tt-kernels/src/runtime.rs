@@ -1,7 +1,7 @@
 //! Running a three-role kernel on one Tensix tile.
 //!
 //! Stage the operands, stage each role's program in its slot
-//! (`tt_isa::mailbox::PROGRAM_REGION`), start the three role images, wait for
+//! (`tensix_isa::mailbox::PROGRAM_REGION`), start the three role images, wait for
 //! all three to report `DONE`, and read back what was asked for.
 //!
 //! # Two schedules
@@ -30,14 +30,14 @@ use tt_device::tlb::WindowKind;
 use tt_device::trace::TraceEvent;
 
 use tt_device::{Device, Traffic, Transport, TransportError};
-use tt_isa::backend::{self, Before};
-use tt_isa::isa::Instruction;
-use tt_isa::mailbox::role::Mailbox;
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::{NocCoord, NocId};
-use tt_isa::sfpu;
-use tt_isa::sync::Semaphore;
-use tt_isa::tensix::Core;
+use tensix_isa::backend::{self, Before};
+use tensix_isa::isa::Instruction;
+use tensix_isa::mailbox::role::Mailbox;
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::{NocCoord, NocId};
+use tensix_isa::sfpu;
+use tensix_isa::sync::Semaphore;
+use tensix_isa::tensix::Core;
 
 /// A semaphore's starting `Value` and `Max`, set before a concurrent run.
 pub type SemaphoreInit = (Semaphore, u8, u8);
@@ -92,9 +92,9 @@ pub struct Kernel<'a> {
     /// (`mailbox::UNWEDGE`): a tile reset on silicon.
     pub unwedge: bool,
     /// Each role's MOP Expander configuration for this run, loaded by its
-    /// runner before the program is pushed (`tt_isa::frontend::mop`,
+    /// runner before the program is pushed (`tensix_isa::frontend::mop`,
     /// `mailbox::MOP_CFG`). `None` leaves the expander as it is.
-    pub mop: [Option<tt_isa::frontend::mop::MopConfig>; 3],
+    pub mop: [Option<tensix_isa::frontend::mop::MopConfig>; 3],
     /// Each role's block repeats over its program (`crate::code`,
     /// `mailbox::LOOPS`): the runner pushes each range `count` times.
     pub loops: [&'a [crate::code::Loop]; 3],
@@ -281,7 +281,7 @@ pub enum RunError {
     /// Role `thread`'s MOP Expander configuration was refused.
     Mop {
         thread: usize,
-        reason: tt_isa::frontend::mop::MopError,
+        reason: tensix_isa::frontend::mop::MopError,
     },
     /// Role `thread`'s block repeats were refused (`crate::code::check`).
     Loops {
@@ -399,7 +399,7 @@ fn assemble(kernel: &Kernel<'_>) -> Result<(Option<Vec<Instruction>>, Vec<Instru
         Schedule::Concurrent(init) => {
             let mut setup = clear;
             for &(sem, value, max) in init {
-                setup.push(tt_isa::sync::init(sem, value, max).map_err(|_| {
+                setup.push(tensix_isa::sync::init(sem, value, max).map_err(|_| {
                     RunError::Transport(TransportError::Hazard {
                         address: 0,
                         reason: "a semaphore value or max does not fit in four bits",
@@ -604,7 +604,7 @@ pub struct Resident<N: NocId> {
     /// A setup program already in the program cache, as its words and address: the next setup run
     /// of exactly those words runs from there, and writes no fixed slot. A capture's own run sets
     /// it ([`Resident::setup_from_cache`]): the slots are trace data while a capture plans into them
-    /// (`tt_isa::l1::TRACE_ARENA`).
+    /// (`tensix_isa::l1::TRACE_ARENA`).
     setup_from: Option<(Vec<u32>, u32)>,
     /// The semaphores the tile is known to hold, as `(semaphore, value, max)`:
     /// set by a setup run, kept by kernels that restore theirs, dropped by
@@ -849,7 +849,7 @@ impl<N: NocId> Resident<N> {
     }
 
     /// Stage `kernel` to be run `count` times by the tile's data mover rather
-    /// than by the host (`tt_isa::dm::op::KERNEL`), and return the generations
+    /// than by the host (`tensix_isa::dm::op::KERNEL`), and return the generations
     /// to post, in order: `first..first + count`. Nothing runs until the mover
     /// posts them; [`Resident::reserved_done`] closes the reservation once the
     /// mover's list has finished.
@@ -981,7 +981,7 @@ impl<N: NocId> Resident<N> {
     }
 
     /// What the fixed program slots hold is no longer known: a trace plans into them
-    /// (`tt_isa::l1::TRACE_ARENA`), so after a replay or a capture the next fixed-slot kernel
+    /// (`tensix_isa::l1::TRACE_ARENA`), so after a replay or a capture the next fixed-slot kernel
     /// writes its programs again.
     pub fn forget_program_slots(&mut self) {
         self.slots.borrow_mut().iter_mut().for_each(Vec::clear);

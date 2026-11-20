@@ -10,7 +10,7 @@
 //! nearest with ties toward +infinity. Measured over HiFi4 with TF32 operands; not for subnormals,
 //! NaN or infinity.
 
-use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
 
 /// The measured rules, with the three knobs the negative controls turn.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 //! Phase 10 gate (X4b): a barrier across data movers by NoC atomics.
 //!
-//! `tt_isa::dm::op::BARRIER`: each mover waits for its own moves, adds one to
+//! `tensix_isa::dm::op::BARRIER`: each mover waits for its own moves, adds one to
 //! a counter in the coordinating tile's L1 with a NoC atomic increment, and
 //! polls the counter over the NoC until every unit has arrived. The claim:
 //! work on one tile after a barrier sees what another tile did before it --
@@ -11,8 +11,8 @@
 //! B's barrier is its packet's trailer, run once NC's write is acknowledged.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dataflow::{Action, Stream};
-use tt_isa::dm::{self, op};
+use tensix_isa::dataflow::{Action, Stream};
+use tensix_isa::dm::{self, op};
 use tt_kernels::dm::{DataMover, WriteNoc};
 use tt_tests::harness::{in_device, tensix_grid};
 
@@ -76,7 +76,7 @@ fn work_after_a_barrier_sees_another_tile_s_work_before_it() {
         let w4 = d.alloc_window(WindowKind::FourGib).unwrap();
         let dram = d.dram_grid(&w).unwrap();
         let grid = tensix_grid(d);
-        let mut tiles = grid.tiles::<tt_isa::noc::Noc0>();
+        let mut tiles = grid.tiles::<tensix_isa::noc::Noc0>();
         let (ta, tb) = (tiles.next().unwrap(), tiles.next().unwrap());
         let (_, image, _) = tt_firmware_images::DM_B;
         let mut a = DataMover::start(d, &w, ta, &dram, image).unwrap();
@@ -160,7 +160,7 @@ fn queued_lists_run_in_order_without_waiting() {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let w4 = d.alloc_window(WindowKind::FourGib).unwrap();
         let dram = d.dram_grid(&w).unwrap();
-        let t = tensix_grid(d).tiles::<tt_isa::noc::Noc0>().next().unwrap();
+        let t = tensix_grid(d).tiles::<tensix_isa::noc::Noc0>().next().unwrap();
         let (_, image, _) = tt_firmware_images::DM_B;
         let mut m = DataMover::start(d, &w, t, &dram, image).unwrap();
         let nc = DataMover::start_on(d, &w, t, &dram, dm::Mover::NC, tt_firmware_images::DM_NC.1)
@@ -178,7 +178,7 @@ fn queued_lists_run_in_order_without_waiting() {
         let mut last = 0;
         for k in 0..lists {
             let (from, to) = (region(k), region(k + 1));
-            let e = |o: u32, r: tt_isa::dram::DramRange| {
+            let e = |o: u32, r: tensix_isa::dram::DramRange| {
                 [o, ch.index() as u32, 0, r.offset() as u32, L1_AT, LEN, 0, 0]
             };
             // B reads, NC writes (a transfer packet, which B reports done once

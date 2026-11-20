@@ -1,5 +1,5 @@
 //! Healthy-bank explicit publication; no recovery or opcode sweeps.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before},
     isa::generated::encode,
     matrix::{Banks, ShiftBMode},
@@ -403,18 +403,18 @@ fn bisect_one_bank(handover: Handover) {
 // hypothesis. Mode 0x1e9 is measured non-clearing DVALID publication.
 // All stream controls are zero. Do not use the Wormhole skeleton.
 fn llk_candidate(
-    mut seq: [tt_isa::isa::Instruction; 3],
+    mut seq: [tensix_isa::isa::Instruction; 3],
     mode: u32,
-) -> [tt_isa::isa::Instruction; 3] {
+) -> [tensix_isa::isa::Instruction; 3] {
     let which = seq[2].operand("WhichUnpacker").unwrap();
     let word = 0x43000000 | mode | (which << 23);
     eprintln!("Blackhole LLK candidate word={word:08x}");
-    seq[2] = tt_isa::isa::Instruction::new(word, seq[2].def());
+    seq[2] = tensix_isa::isa::Instruction::new(word, seq[2].def());
     seq
 }
 
 fn bisect_one_bank_with_waits(handover: Handover, wait_only: Option<Selection>, llk: Option<u32>) {
-    use tt_isa::{
+    use tensix_isa::{
         backend::ConfigWords,
         cfg::generated::{alu, thread},
     };
@@ -425,7 +425,7 @@ fn bisect_one_bank_with_waits(handover: Handover, wait_only: Option<Selection>, 
     let mut req = Requirements::new(1);
     let image = TileImage::new(datapath::flat_descriptor(512), L1Format::Fp32).unwrap();
     let buffer = req.scratch("bisect source", image.total_bytes() as u64, 16, 0..1);
-    let plan = req.plan(tt_isa::l1::DATA).unwrap();
+    let plan = req.plan(tensix_isa::l1::DATA).unwrap();
     let input = plan.addr(buffer);
     let mut staged = vec![0; image.total_bytes()];
     for i in 0..16 {
@@ -611,7 +611,7 @@ fn simulator_refuses_explicit_forms_with_surviving_regular_control() {
 
 #[test]
 fn handover_release_feeds_matmul_pooling_and_changed_input_replay() {
-    use tt_isa::{
+    use tensix_isa::{
         backend::{self, Before},
         sync::{self, Unit},
     };
@@ -653,7 +653,7 @@ fn handover_release_feeds_matmul_pooling_and_changed_input_replay() {
                 let mut req = Requirements::new(1);
                 let b = req.scratch("downstream Src inputs", 2 * 2048 + 32, 16, 0..1);
                 let plan = req
-                    .plan(tt_isa::l1::Region {
+                    .plan(tensix_isa::l1::Region {
                         name: "downstream source arena",
                         base: p.input + 4096,
                         end: p.input + 16384,
@@ -788,7 +788,7 @@ fn llk_nonclearing_dvalid_b() {
 #[cfg(feature = "silicon")]
 #[test]
 fn explicit_b_resets_source_row_to_nonzero_base() {
-    use tt_isa::{
+    use tensix_isa::{
         backend::ConfigWords,
         cfg::generated::{alu, thcon, thread},
         sync::{self, Unit},
@@ -799,7 +799,7 @@ fn explicit_b_resets_source_row_to_nonzero_base() {
     let buf = req.scratch("row reset inputs", 2 * image.total_bytes() as u64, 16, 0..1);
     let ready = req.semaphore("row reset loaded", 0, 0..1);
     let released = req.semaphore("row reset released", 0, 0..1);
-    let plan = req.plan(tt_isa::l1::DATA).unwrap();
+    let plan = req.plan(tensix_isa::l1::DATA).unwrap();
     let input = plan.addr(buf);
     let ready = plan.semaphore(ready);
     let released = plan.semaphore(released);

@@ -20,8 +20,8 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use tt_device::trace::TraceEvent;
-use tt_isa::mailbox::trace as ev;
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::mailbox::trace as ev;
+use tensix_isa::noc::{Noc0, NocCoord};
 
 /// One unit's stream: every event drained from its tile since profiling
 /// started, in order, and how its counter relates to the host's clock.
@@ -52,8 +52,8 @@ pub enum Event {
     /// The data mover began or ended a list of `entries` entries.
     List { begin: bool, entries: u32 },
     /// The data mover began or ended a list entry or op record whose first
-    /// word is `op` (`tt_isa::dm::op` or `tt_isa::dm::record`); `arg` tells entries of one op
-    /// apart (`tt_isa::dm::entry_detail`: a `CB`'s stream and action, a credit's word), 0 for
+    /// word is `op` (`tensix_isa::dm::op` or `tensix_isa::dm::record`); `arg` tells entries of one op
+    /// apart (`tensix_isa::dm::entry_detail`: a `CB`'s stream and action, a credit's word), 0 for
     /// most.
     Entry { begin: bool, op: u32, arg: u32 },
     /// The data mover posted `generation` to the roles (`kick`), or saw all
@@ -65,29 +65,29 @@ pub enum Event {
     /// After a kernel's `ROLES_DONE`: the math role's totals for it, `amount`
     /// a multiple of 64.
     RolePush { what: RoleTotal, amount: u64 },
-    /// RISCV B's GDDR read bytes issued since its last such mark (`tt_isa::mailbox::trace::READ_BYTES`).
+    /// RISCV B's GDDR read bytes issued since its last such mark (`tensix_isa::mailbox::trace::READ_BYTES`).
     ReadBytes { bytes: u64 },
     /// After a kernel's `ROLES_DONE`: RISCV B logged T0's and T2's batch tables as the record at
-    /// word `record` of its batch log (`tt_isa::mailbox::trace::BATCH_BASE`), or, `log_full`, did
+    /// word `record` of its batch log (`tensix_isa::mailbox::trace::BATCH_BASE`), or, `log_full`, did
     /// not. The host replaces it with the record ([`crate::profile_mode::splice_batch_log`]).
     BatchBase { record: u32, log_full: bool },
     /// The host's, in place of an [`Event::BatchBase`]: its record's header, `batches` with
     /// `truncated` if the run had more and `mismatched` if the two roles counted different
-    /// numbers (`tt_isa::mailbox::trace::BATCH_TABLE`). Its [`Event::BatchTime`]s follow.
+    /// numbers (`tensix_isa::mailbox::trace::BATCH_TABLE`). Its [`Event::BatchTime`]s follow.
     BatchTable {
         batches: u32,
         truncated: bool,
         mismatched: bool,
     },
     /// The host's: one clock read of a batch table, the event's counter
-    /// (`tt_isa::mailbox::trace::BATCH_TIME`).
+    /// (`tensix_isa::mailbox::trace::BATCH_TIME`).
     BatchTime,
-    /// The host's: a repeated copy of an [`Event::BatchBase`] (`tt_isa::mailbox::trace::BATCH_REPEAT`).
+    /// The host's: a repeated copy of an [`Event::BatchBase`] (`tensix_isa::mailbox::trace::BATCH_REPEAT`).
     BatchRepeat,
-    /// The host's: one record of RISCV NC's entry log, at its time (`tt_isa::dm::nc_log`,
-    /// `tt_isa::mailbox::trace::NC_RECORD`); `tag` is the record's.
+    /// The host's: one record of RISCV NC's entry log, at its time (`tensix_isa::dm::nc_log`,
+    /// `tensix_isa::mailbox::trace::NC_RECORD`); `tag` is the record's.
     NcRecord { tag: u32 },
-    /// The host's: NC's entry log lost `records` records (`tt_isa::mailbox::trace::NC_LOST`).
+    /// The host's: NC's entry log lost `records` records (`tensix_isa::mailbox::trace::NC_LOST`).
     NcLost { records: u32 },
     /// Anything else: a token no firmware of this build writes.
     Unknown(u32),
@@ -164,15 +164,15 @@ impl Event {
             },
             (ev::MOVER, ev::ENTRY_BEGIN | ev::ENTRY_END) => Event::Entry {
                 begin: event == ev::ENTRY_BEGIN,
-                op: tt_isa::dm::entry_op(detail),
-                arg: tt_isa::dm::entry_arg(detail),
+                op: tensix_isa::dm::entry_op(detail),
+                arg: tensix_isa::dm::entry_arg(detail),
             },
             _ => Event::Unknown(token),
         }
     }
 }
 
-/// What an [`Event::RolePush`] counts (`tt_isa::mailbox::PUSH_CYCLES` and its neighbours).
+/// What an [`Event::RolePush`] counts (`tensix_isa::mailbox::PUSH_CYCLES` and its neighbours).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RoleTotal {
     /// Cycles pushing instruction words.
@@ -185,7 +185,7 @@ pub enum RoleTotal {
 
 /// The name a mover entry's first word goes by.
 pub fn op_name(op: u32) -> &'static str {
-    use tt_isa::dm::{op, record};
+    use tensix_isa::dm::{op, record};
     match op {
         op::READ => "read",
         op::WRITE => "write",
@@ -500,7 +500,7 @@ impl DeviceProfile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::dm::{op, record};
+    use tensix_isa::dm::{op, record};
 
     fn e(source: u32, event: u32, detail: u32, cycles: u64) -> TraceEvent {
         TraceEvent {

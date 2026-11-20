@@ -21,7 +21,7 @@
 #![cfg(feature = "silicon")]
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::TILE_SLOT;
+use tensix_isa::dm::TILE_SLOT;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, Spread, StreamOrder, TileChoice};
 use tt_kernels::tensor::DramTensor;
@@ -64,7 +64,7 @@ fn bits(v: &[f32]) -> Vec<u32> {
 fn landed(s: &mut Card, w: &DramTensor, u: usize, tiles: &[[usize; 2]]) {
     let tile = s.tiles()[u];
     let window = s.device().alloc_window(WindowKind::FourGib).unwrap();
-    let at = tt_isa::l1::DATA.end - WINDOW as u64 * TILE_SLOT;
+    let at = tensix_isa::l1::DATA.end - WINDOW as u64 * TILE_SLOT;
     let mut l1 = vec![0u8; tiles.len() * TILE_SLOT as usize];
     s.device().l1_read(&window, tile, at, &mut l1).unwrap();
     for (n, &[i, j]) in tiles.iter().enumerate() {

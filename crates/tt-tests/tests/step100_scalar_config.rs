@@ -1,6 +1,6 @@
 //! Scalar/configuration foundation; independent models from pinned instruction
 //! pseudocode. Diagnostic descriptors never reach a memory engine.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, ConfigOperation as Alu, MaskMode, Scratch},
     cfg::generated::{global, thcon, thread},
     isa::Instruction,

@@ -2,7 +2,7 @@
 use crate::tensor::{
     runs, DramTensor, Elem, Job, Placement, Result, Step, TensorError, TransferBatch,
 };
-use tt_isa::dm::{fill, op, record, TILE_DATA, TILE_SLOT};
+use tensix_isa::dm::{fill, op, record, TILE_DATA, TILE_SLOT};
 
 pub(crate) fn jobs(
     input: &Placement,
@@ -36,7 +36,7 @@ pub(crate) fn jobs(
         layout.addr(dst),
         layout.addr(zero),
     );
-    let transfer = |range: tt_isa::dram::DramRange, at, read| {
+    let transfer = |range: tensix_isa::dram::DramRange, at, read| {
         [
             if read { op::READ } else { op::WRITE },
             range.channel().index() as u32,
@@ -220,9 +220,9 @@ pub(crate) fn select_taps_jobs(
     // The mover does not check that `SELECT_ROWS`'s slots are in the data
     // arena (`record::SELECT_ROWS`); they come from its plan, and this is the
     // check that says so.
-    if !tt_isa::l1::DATA.contains(idx, 2 * TILE_SLOT)
-        || !tt_isa::l1::DATA.contains(stage, 2 * SELECT_TILES as u64 * TILE_SLOT)
-        || (half && !tt_isa::l1::DATA.contains(aside, aside_bytes))
+    if !tensix_isa::l1::DATA.contains(idx, 2 * TILE_SLOT)
+        || !tensix_isa::l1::DATA.contains(stage, 2 * SELECT_TILES as u64 * TILE_SLOT)
+        || (half && !tensix_isa::l1::DATA.contains(aside, aside_bytes))
     {
         return Err(TensorError::Shape(
             "the row select's slots are outside the data arena".into(),
@@ -316,7 +316,7 @@ pub(crate) fn select_taps_jobs(
                         [
                             op::WRITE,
                             to.channel().index() as u32,
-                            (k - k0) as u32 % tt_isa::dram::PORTS as u32,
+                            (k - k0) as u32 % tensix_isa::dram::PORTS as u32,
                             (to.offset() + TILE_DATA) as u32,
                             (slot + TILE_DATA) as u32,
                             if half { 2048 } else { 4096 },
@@ -436,8 +436,8 @@ pub(crate) fn scatter_rows_jobs(
     // The mover does not check that `SCATTER_ROWS`'s slots are in the data
     // arena (`record::SCATTER_ROWS`); they come from this plan, and this is
     // the check that says so.
-    if !tt_isa::l1::DATA.contains(idx, 2 * TILE_SLOT)
-        || !tt_isa::l1::DATA.contains(stage, 2 * SCATTER_TILES as u64 * TILE_SLOT)
+    if !tensix_isa::l1::DATA.contains(idx, 2 * TILE_SLOT)
+        || !tensix_isa::l1::DATA.contains(stage, 2 * SCATTER_TILES as u64 * TILE_SLOT)
     {
         return Err(TensorError::Shape(
             "the row scatter's slots are outside the data arena".into(),
@@ -481,11 +481,11 @@ pub(crate) fn scatter_rows_jobs(
         } else {
             0
         };
-    let read = |range: tt_isa::dram::DramRange, at: u64, port: usize| {
+    let read = |range: tensix_isa::dram::DramRange, at: u64, port: usize| {
         [
             op::READ,
             range.channel().index() as u32,
-            (port % tt_isa::dram::PORTS as usize) as u32,
+            (port % tensix_isa::dram::PORTS as usize) as u32,
             range.offset() as u32,
             at as u32,
             range.len() as u32,
@@ -600,7 +600,7 @@ pub(crate) fn zero_tile_row_jobs(out: &DramTensor, tile_row: usize) -> Result<Ve
                     [
                         op::WRITE,
                         to.channel().index() as u32,
-                        k as u32 % tt_isa::dram::PORTS as u32,
+                        k as u32 % tensix_isa::dram::PORTS as u32,
                         (to.offset() + TILE_DATA) as u32,
                         (zero + TILE_DATA) as u32,
                         4096,

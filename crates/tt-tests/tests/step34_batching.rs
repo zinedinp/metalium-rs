@@ -312,7 +312,7 @@ fn barriers_count_from_zero_whatever_an_earlier_session_left() {
         {
             let d = s.device();
             let w = d.alloc_window(WindowKind::TwoMib).unwrap();
-            d.write32(&w, coordinator, tt_isa::dm::BARRIER_COUNTER, stale)
+            d.write32(&w, coordinator, tensix_isa::dm::BARRIER_COUNTER, stale)
                 .unwrap();
         }
         let v: Vec<f32> = (0..256 * 128).map(|i| i as f32).collect();
@@ -332,7 +332,7 @@ fn barriers_count_from_zero_whatever_an_earlier_session_left() {
         let d = s.device();
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let count = d
-            .read32(&w, coordinator, tt_isa::dm::BARRIER_COUNTER)
+            .read32(&w, coordinator, tensix_isa::dm::BARRIER_COUNTER)
             .unwrap();
         // Two barriers -- the upload's (queued by the card's DMA, as an op
         // is) and the op's -- four arrivals each, from zero.

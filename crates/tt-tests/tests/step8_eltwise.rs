@@ -6,7 +6,7 @@
 //!
 //! # The tolerance policy, concretely
 //!
-//! There is no tolerance. `tt_isa::numerics::fma_bh` is a port of
+//! There is no tolerance. `tensix_isa::numerics::fma_bh` is a port of
 //! `Miscellaneous/FMA/fma.c`'s `fma_model_bh`, which
 //! `Miscellaneous/FMA/README.md` says matches "Blackhole Tensix Vector Unit (SFPU)
 //! `SFPMAD` family of instructions". `tests/fma_oracle.rs` checks the port against
@@ -20,11 +20,11 @@
 //! unpacker on the simulator at all. The BF16 kernel is silicon-only until the
 //! packer offers another route into `Dst`.
 
-use tt_isa::backend;
-use tt_isa::isa::Instruction;
-use tt_isa::numerics;
-use tt_isa::sfpu::{self, mod0_fmt, DST_ODD_COLUMNS};
-use tt_isa::tile::TileDescriptor;
+use tensix_isa::backend;
+use tensix_isa::isa::Instruction;
+use tensix_isa::numerics;
+use tensix_isa::sfpu::{self, mod0_fmt, DST_ODD_COLUMNS};
+use tensix_isa::tile::TileDescriptor;
 use tt_tests::datapath::{flat_descriptor, staged_image};
 use tt_tests::harness::in_device;
 
@@ -32,7 +32,7 @@ mod eltwise_support;
 use eltwise_support::{datum_at_dst_flat, run_kernel, DATUMS, GROUP_DATUMS};
 
 /// `LReg` indices this file uses. `LReg[8]` upwards are constants, so the working
-/// set is 0..=7 (`tt_isa::sfpu::MAX_WRITABLE_LREG`).
+/// set is 0..=7 (`tensix_isa::sfpu::MAX_WRITABLE_LREG`).
 const A: u32 = 0;
 const B: u32 = 1;
 const RESULT: u32 = 2;
@@ -82,7 +82,7 @@ fn binary_kernel(
 /// `staged[i] = values[i]`, as an L1 tile image.
 fn staged_values(descriptor: TileDescriptor, values: &[f32]) -> Vec<u8> {
     let mut bytes = staged_image(descriptor, 0);
-    let image = tt_isa::tile::TileImage::new(descriptor, tt_isa::tile::L1Format::Fp32).unwrap();
+    let image = tensix_isa::tile::TileImage::new(descriptor, tensix_isa::tile::L1Format::Fp32).unwrap();
     for (i, v) in values.iter().enumerate() {
         let off = image.datum_bit_offset(i) / 8;
         bytes[off..off + 4].copy_from_slice(&v.to_bits().to_le_bytes());
@@ -319,7 +319,7 @@ fn each_role_waits_for_its_unit() {
 /// produces, bit for bit, and is what every gate above asserts against. Burn says
 /// which pairs there should be — the shape, the ordering, the composition — which
 /// is the part a bit-exact scalar model cannot check and the part that will matter
-/// once `tt_layout::Layout` drives a real tiled tensor rather than a flat run.
+/// once `tensix_layout::Layout` drives a real tiled tensor rather than a flat run.
 ///
 /// The two are made to agree deliberately: the operands are small integers, exactly
 /// representable in FP32 and with exactly-representable products, so Burn's IEEE

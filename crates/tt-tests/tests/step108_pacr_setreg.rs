@@ -10,7 +10,7 @@
 //! only record that ttsim refuses both instructions, with a surviving control on
 //! the same role and drain, so a later pin or simulator change is noticed.
 #![cfg(not(feature = "silicon"))]
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before},
     isa::{generated::encode, Instruction},
 };

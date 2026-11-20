@@ -27,14 +27,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
-use tt_isa::dm::{op, record};
+use tensix_isa::dm::{op, record};
 
 use crate::tensor::Placement;
 use crate::trace::{Capture, UnitCapture};
 
 /// Addresses in the region are multiples of this: a GDDR read's congruence unit, which a tile slot
 /// read into L1 keeps.
-pub const ALIGN: u64 = tt_isa::dram::ALIGN;
+pub const ALIGN: u64 = tensix_isa::dram::ALIGN;
 
 static PROBE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static PLANS: std::sync::Mutex<Vec<(Graph, Plan)>> = std::sync::Mutex::new(Vec::new());
@@ -60,7 +60,7 @@ pub fn take_plans() -> Vec<(Graph, Plan)> {
 /// Plan capture `c`, ending ([`probe_residency_plan`]), print it and keep it.
 pub(crate) fn probe(c: &Capture, allocs: &[Placement]) {
     let g = Graph::from_capture(c, allocs);
-    let plan = Plan::make(&g, tt_isa::l1::DATA.end, |_, _| true);
+    let plan = Plan::make(&g, tensix_isa::l1::DATA.end, |_, _| true);
     keep(g, plan);
 }
 
@@ -238,7 +238,7 @@ pub(crate) fn entries_with_sections(uc: &UnitCapture, r: &std::ops::Range<usize>
     // entries are few, a capture's calls many).
     let end = r.end.min(uc.stream.len());
     let sections: u64 = (r.start.min(end)..end)
-        .filter(|&at| uc.stream[at][0] == tt_isa::dm::op::PAIR_CALL)
+        .filter(|&at| uc.stream[at][0] == tensix_isa::dm::op::PAIR_CALL)
         .filter_map(|at| uc.pair_at(at))
         .map(|i| u64::from(uc.sections[2 * i] + uc.sections[2 * i + 1]))
         .sum();
@@ -694,7 +694,7 @@ fn neediest(g: &Graph) -> (Option<usize>, u64) {
         .filter(|(_, o)| o.l1_top != 0)
         .map(|(k, o)| (Some(k), o.l1_need))
         .max_by_key(|&(k, need)| (need, std::cmp::Reverse(k)))
-        .unwrap_or((None, tt_isa::l1::DATA.base))
+        .unwrap_or((None, tensix_isa::l1::DATA.base))
 }
 
 /// Union-find over tensors.
@@ -1623,7 +1623,7 @@ impl Applied {
                     let (x, y) = self.coords[src];
                     let mut done = 0;
                     while done < len {
-                        let n = (len - done).min(tt_isa::noc::niu::MAX_REQUEST_BYTES);
+                        let n = (len - done).min(tensix_isa::noc::niu::MAX_REQUEST_BYTES);
                         push_read(
                             &mut out,
                             [x as u32, y as u32, from as u32 + done, w[4] + done, n],
@@ -1665,7 +1665,7 @@ impl Applied {
                             } else {
                                 [
                                     op::WRITE_L1_MCAST,
-                                    tt_isa::dm::mcast_corners(s, e),
+                                    tensix_isa::dm::mcast_corners(s, e),
                                     0,
                                     to,
                                     w[4],
@@ -1691,7 +1691,7 @@ fn push_read(out: &mut Vec<[u32; 8]>, [x, y, from, to, len]: [u32; 5]) {
             && (last[1], last[2]) == (x, y)
             && last[3] + last[5] == from
             && last[4] + last[5] == to
-            && last[5] + len <= tt_isa::noc::niu::MAX_REQUEST_BYTES
+            && last[5] + len <= tensix_isa::noc::niu::MAX_REQUEST_BYTES
         {
             last[5] += len;
             return;
@@ -1748,7 +1748,7 @@ pub enum RowScheme {
     /// rectangles' multicasts serialized).
     Multicast,
     /// 2f (c): [`RowScheme::Multicast`], its multicasts marked as runs
-    /// ([`tt_isa::dm::MCAST_RUN_ACKS`]): a producer's acknowledgements counted once, after its last.
+    /// ([`tensix_isa::dm::MCAST_RUN_ACKS`]): a producer's acknowledgements counted once, after its last.
     MulticastRunAcks,
     /// 2f (a): each producer writes each face row to `h` holders among the readers ([`holders`]);
     /// each reader pulls the row whole from its holder, one `READ_L1` a request.
@@ -2336,7 +2336,7 @@ fn assign(g: &Graph, classes: &[Vec<usize>]) -> (Vec<u64>, u64) {
 mod tests {
     use super::*;
 
-    const SLOT: u64 = tt_isa::dm::TILE_SLOT;
+    const SLOT: u64 = tensix_isa::dm::TILE_SLOT;
 
     /// `(tensor, unit, writes, tiles)`.
     type Access<'a> = (usize, usize, bool, &'a [u32]);
@@ -2558,8 +2558,8 @@ mod tests {
                 label: "",
                 what: "op",
                 signature: sig.to_string(),
-                l1_top: tt_isa::l1::DATA.base + 4096,
-                l1_need: tt_isa::l1::DATA.base + 4096,
+                l1_top: tensix_isa::l1::DATA.base + 4096,
+                l1_need: tensix_isa::l1::DATA.base + 4096,
                 tensors: order,
                 external: [0, 0],
             });
@@ -2629,7 +2629,7 @@ mod tests {
     #[test]
     fn the_residual_stream_alternates_two_slots_the_same_in_every_layer() {
         let g = residual(4);
-        let p = Plan::make(&g, tt_isa::l1::DATA.end, |_, _| true);
+        let p = Plan::make(&g, tensix_isa::l1::DATA.end, |_, _| true);
         p.check(&g).expect("the plan keeps its rules");
         assert_eq!(p.resident().count(), g.tensors.len());
         let xs: Vec<u64> = (0..=4).map(|i| offset(&p, 5 * i)).collect();
@@ -2651,8 +2651,8 @@ mod tests {
     fn a_plan_is_the_same_each_time() {
         let (a, b) = (residual(5), residual(5));
         let (pa, pb) = (
-            Plan::make(&a, tt_isa::l1::DATA.end, |_, _| true),
-            Plan::make(&b, tt_isa::l1::DATA.end, |_, _| true),
+            Plan::make(&a, tensix_isa::l1::DATA.end, |_, _| true),
+            Plan::make(&b, tensix_isa::l1::DATA.end, |_, _| true),
         );
         assert_eq!(pa.place, pb.place);
         assert_eq!(pa.signature(&a), pb.signature(&b));
@@ -2663,7 +2663,7 @@ mod tests {
     #[test]
     fn a_mutated_plan_is_refused() {
         let g = residual(4);
-        let good = Plan::make(&g, tt_isa::l1::DATA.end, |_, _| true);
+        let good = Plan::make(&g, tensix_isa::l1::DATA.end, |_, _| true);
         good.check(&g).unwrap();
         let x = offset(&good, 5);
         let moved = |t: usize, to: u64| {
@@ -2698,8 +2698,8 @@ mod tests {
     #[test]
     fn what_does_not_fit_leaves_costliest_first() {
         let g = residual(4);
-        let full = Plan::make(&g, tt_isa::l1::DATA.end, |_, _| true);
-        let need = tt_isa::l1::DATA.base + 4096;
+        let full = Plan::make(&g, tensix_isa::l1::DATA.end, |_, _| true);
+        let need = tensix_isa::l1::DATA.base + 4096;
         let tight = Plan::make(&g, need + full.region - 1, |_, _| true);
         tight.check(&g).unwrap();
         assert!(tight.region < full.region);
@@ -2812,7 +2812,7 @@ mod tests {
     fn outputs_and_ops_without_a_path_stay_in_gddr() {
         let mut g = residual(2);
         g.tensors[10].internal = false;
-        let p = Plan::make(&g, tt_isa::l1::DATA.end, |_, _| true);
+        let p = Plan::make(&g, tensix_isa::l1::DATA.end, |_, _| true);
         // The last `x` is the graph's output. Pinned, every `x` would share its address and stay
         // in GDDR with it; the plan without the pinning spares more, so it is the one kept.
         assert_eq!(p.place[10], Place::Gddr(Reason::Output));
@@ -2821,7 +2821,7 @@ mod tests {
         assert!(matches!(p.place[3], Place::Resident { .. }));
         p.check(&g).unwrap();
         // No L1 path for `f`: what it touches stays.
-        let p = Plan::make(&g, tt_isa::l1::DATA.end, |o, _| o.signature != "f");
+        let p = Plan::make(&g, tensix_isa::l1::DATA.end, |o, _| o.signature != "f");
         assert_eq!(p.place[2], Place::Gddr(Reason::NoPath));
         assert_eq!(p.place[1], Place::Gddr(Reason::NoPath));
         assert!(matches!(p.place[4], Place::Resident { .. }));
@@ -2839,7 +2839,7 @@ mod tests {
                 ("c", &[(1, 0, false, &[0])]),
             ],
         );
-        let p = Plan::make(&g, tt_isa::l1::DATA.end, |_, _| true);
+        let p = Plan::make(&g, tensix_isa::l1::DATA.end, |_, _| true);
         assert_eq!(p.place[0], Place::Gddr(Reason::ReadFirst));
         assert_eq!(p.place[1], Place::Gddr(Reason::ReadAndWritten));
     }
@@ -2900,7 +2900,7 @@ mod tests {
     /// A packed twin (2 tiles, tensor 0) written by units 0-3 a tile each and read whole by units
     /// 0-7, its rewrite applied with `rows`: the `Applied`, the twin and the `Index` of its GDDR.
     fn twin_applied(rows: Rows) -> (Applied, crate::tensor::DramTensor, Index) {
-        let mut alloc = crate::tensor::DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = crate::tensor::DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         alloc.start_log();
         let twin = crate::tensor::DramTensor::alloc(&mut alloc, 64, 32).unwrap();
         let index = Index::new(alloc.logged());
@@ -2912,7 +2912,7 @@ mod tests {
         let plan = Plan::make_rows(&g, 96 << 10, rows, |_, _| true);
         plan.check(&g).unwrap();
         let coords = [1u8, 2, 3, 4, 5, 6, 7, 10].map(|x| (x, 2)).to_vec();
-        let base = tt_isa::l1::DATA.end - (96 << 10);
+        let base = tensix_isa::l1::DATA.end - (96 << 10);
         let applied = Applied::new(g, plan, vec![0, 0], base, coords).expect("the twin resident");
         (applied, twin, index)
     }
@@ -2993,7 +2993,7 @@ mod tests {
     /// each reader reads its tile from its own region.
     #[test]
     fn a_scatter_writes_into_its_readers_l1() {
-        let mut alloc = crate::tensor::DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = crate::tensor::DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         alloc.start_log();
         let c = crate::tensor::DramTensor::alloc(&mut alloc, 32, 128).unwrap();
         let index = Index::new(alloc.logged());
@@ -3022,7 +3022,7 @@ mod tests {
         plan.check(&g).unwrap();
         assert!(plan.held.is_empty(), "a sharded output is not held");
         let coords = [1u8, 2, 3, 4, 5, 6].map(|x| (x, 2)).to_vec();
-        let base = tt_isa::l1::DATA.end - (96 << 10);
+        let base = tensix_isa::l1::DATA.end - (96 << 10);
         let a = Applied::new(g, plan, vec![0, 0], base, coords).expect("the output resident");
         let at = |u: usize, tile: u32| a.address(0, u, tile).unwrap() as u32;
         let to = |u: usize, tile: u32, from: u32| {
@@ -3099,7 +3099,7 @@ mod tests {
     /// by the rewrite, and a plan dropping a tensor that is read by the check.
     #[test]
     fn a_never_read_tensor_s_writes_are_dropped() {
-        let mut alloc = crate::tensor::DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = crate::tensor::DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         alloc.start_log();
         let twin = crate::tensor::DramTensor::alloc(&mut alloc, 64, 32).unwrap();
         let tiles = crate::tensor::DramTensor::alloc(&mut alloc, 1, 64).unwrap();
@@ -3112,7 +3112,7 @@ mod tests {
         assert_eq!(plan.dropped, BTreeSet::from([1]));
         plan.check(&g).unwrap();
         let coords = [1u8, 2, 3, 4, 5, 6, 7, 10].map(|x| (x, 2)).to_vec();
-        let base = tt_isa::l1::DATA.end - (96 << 10);
+        let base = tensix_isa::l1::DATA.end - (96 << 10);
         let a = Applied::new(g.clone(), plan.clone(), vec![0, 0], base, coords).unwrap();
         // The tile writes of tensor 1 (a `WRITE_RUN`) vanish; the twin's face rows do not.
         let mut list = vec![[record::WRITE_RUN, 0, 2, 0x4_0000, 0, 2, 0, 0]];
@@ -3188,7 +3188,7 @@ mod tests {
     /// starts nearer the address, is dead once `b` overlaps it.
     #[test]
     fn an_address_is_the_tensor_that_held_it_at_the_op() {
-        let mut alloc = crate::tensor::DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = crate::tensor::DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         alloc.start_log();
         alloc.start_pool();
         let n = alloc.channel_count();

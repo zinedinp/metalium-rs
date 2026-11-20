@@ -7,8 +7,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
-use tt_isa::noc::{niu, ChipId, NocCoord, NocId, TileType};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::noc::{niu, ChipId, NocCoord, NocId, TileType};
+use tensix_isa::tensix::{self, Core};
 
 use crate::tlb::{
     self, TlbConfig, WindowKind, KERNEL_RESERVED_WINDOW, NUM_2MIB_WINDOWS, NUM_WINDOWS,
@@ -239,7 +239,7 @@ fn refuse_non_l1<N: NocId>(coord: NocCoord<N>, address: u64, len: usize) -> Resu
     let in_l1 = address
         .checked_add(len as u64)
         .is_some_and(|end| end <= tensix::L1_SIZE);
-    if !tt_isa::noc::grid::is_tensix_geometry(coord.x(), coord.y()) || !in_l1 {
+    if !tensix_isa::noc::grid::is_tensix_geometry(coord.x(), coord.y()) || !in_l1 {
         return Err(TransportError::Hazard {
             address,
             reason: "the bulk (write-combining) path is for Tensix L1 and GDDR only; \
@@ -682,7 +682,7 @@ impl<T: Transport> Device<T> {
         Ok(Some(Tile {
             coord,
             kind: TileType::from_endpoint_id(endpoint),
-            index: tt_isa::noc::endpoint_tile_index(endpoint),
+            index: tensix_isa::noc::endpoint_tile_index(endpoint),
             harvested: cfg & niu::NIU_CFG_0_HARVESTED != 0,
         }))
     }
@@ -728,7 +728,7 @@ pub const USABLE_2MIB_WINDOWS: u16 = NUM_2MIB_WINDOWS - 1;
 mod tests {
     use super::*;
     use crate::{Bar, ConfigOffset};
-    use tt_isa::noc::Noc0;
+    use tensix_isa::noc::Noc0;
 
     /// A transport that models just enough of the chip to test windowing: it
     /// decodes TLB configuration writes and routes data accesses to a per-tile

@@ -7,15 +7,15 @@
 //! more operands through each `Src` than there are banks, so the unpack role
 //! has to wait for the math role to hand banks back, and the math role has to
 //! tell the pack role when `Dst` is ready. `harness::Run::concurrent` releases
-//! all three together, and `tt_isa::sync` carries the `Dst` hand-off.
+//! all three together, and `tensix_isa::sync` carries the `Dst` hand-off.
 
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::isa::generated::encode;
-use tt_isa::isa::Instruction;
-use tt_isa::matrix::Banks;
-use tt_isa::numerics::mvmul_reference;
-use tt_isa::sync::{self, Semaphore, Unit};
-use tt_isa::tile::L1Format;
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::isa::generated::encode;
+use tensix_isa::isa::Instruction;
+use tensix_isa::matrix::Banks;
+use tensix_isa::numerics::mvmul_reference;
+use tensix_isa::sync::{self, Semaphore, Unit};
+use tensix_isa::tile::L1Format;
 use tt_tests::datapath::{self, config_program, pack_config, set_adc_x, Unpacker, OUT, STAGE};
 use tt_tests::harness::{self, Roles, Run, SemaphoreInit};
 use tt_tests::matmul::{self, stage_operand, Fidelity, ROW, SRC_A_ROW, SRC_B_ROW, TF32_CODE};
@@ -309,7 +309,7 @@ fn flat(m: &Tile) -> Vec<f32> {
     m.iter().flatten().copied().collect()
 }
 
-/// `C = A @ B` for 32x32 tiles staged by `tt_layout` in `in_fmt`, converted to
+/// `C = A @ B` for 32x32 tiles staged by `tensix_layout` in `in_fmt`, converted to
 /// `out_fmt` in `Src`, through [`matmul::tile_roles`], de-tiled on the host.
 fn run_tile(a: &Tile, b: &Tile, in_fmt: L1Format, out_fmt: u32) -> Vec<f32> {
     run_tile_at(a, b, in_fmt, out_fmt, Fidelity::Lo)
@@ -351,13 +351,13 @@ fn run_tile_at(a: &Tile, b: &Tile, in_fmt: L1Format, out_fmt: u32, fidelity: Fid
     matmul::detilize_packed(&packed, 32, 32)
 }
 
-/// A whole 32x32 tile, from `tt_layout`'s tile images to `tt_layout`'s
+/// A whole 32x32 tile, from `tensix_layout`'s tile images to `tensix_layout`'s
 /// de-tiling: every datum matches the face-composed model and Burn, which must
 /// agree with each other first.
 ///
 /// This is also where the `Z`-plane-to-face convention stops being a choice:
 /// the unpacker takes face `z` as the `z`-th 256 datums of the image (its `Z`
-/// ADC, `UNPACR_Regular.md:182`), and `tt_layout` puts face `(z / 2, z % 2)`
+/// ADC, `UNPACR_Regular.md:182`), and `tensix_layout` puts face `(z / 2, z % 2)`
 /// there. If either were transposed the product would be `A @ B` with two of
 /// its quadrants exchanged, which the transpose control below and the
 /// quadrant-distinct operands both rule out.
@@ -368,7 +368,7 @@ fn a_32x32_tile_matmul_matches_the_model_and_burn() {
     let device = burn_flex::FlexDevice;
 
     let (a, b) = tile_operands(0x7117);
-    let model = tt_isa::numerics::matmul_tile_reference(&[[0f32; 32]; 32], &a, &b, &[0])
+    let model = tensix_isa::numerics::matmul_tile_reference(&[[0f32; 32]; 32], &a, &b, &[0])
         .expect("small integers are exact");
     let ta = Tensor::<B, 2>::from_data(TensorData::new(flat(&a), [32, 32]), &device);
     let tb = Tensor::<B, 2>::from_data(TensorData::new(flat(&b), [32, 32]), &device);
@@ -398,7 +398,7 @@ fn a_32x32_tile_matmul_matches_the_model_and_burn() {
 #[test]
 fn a_32x32_tile_matmul_through_bf16_src() {
     let (a, b) = tile_operands(0xbf16);
-    let model = tt_isa::numerics::matmul_tile_reference(&[[0f32; 32]; 32], &a, &b, &[0])
+    let model = tensix_isa::numerics::matmul_tile_reference(&[[0f32; 32]; 32], &a, &b, &[0])
         .expect("small integers are exact");
     for (what, in_fmt) in [
         ("FP32 in L1", L1Format::Fp32),
@@ -459,7 +459,7 @@ fn a_32x32_tile_at_hifi4_recovers_the_exact_product() {
     let (a, b) = fidelity_tiles(0xf1f1);
     let reference = |phases: &[u32]| {
         flat(
-            &tt_isa::numerics::matmul_tile_reference(&zero, &a, &b, phases)
+            &tensix_isa::numerics::matmul_tile_reference(&zero, &a, &b, phases)
                 .expect("the operands keep every sum exact"),
         )
     };
@@ -696,7 +696,7 @@ fn m_by_n_output_tiles() {
     assert_matmul(64, 32, 96, matmul::SrcRoute::Tf32FromFp32, 3);
 }
 
-/// Shapes that are not multiples of the tile, padded with zeros by `tt_layout`
+/// Shapes that are not multiples of the tile, padded with zeros by `tensix_layout`
 /// on the way in and cropped on the way out.
 #[test]
 fn awkward_shapes_are_padded_and_cropped() {
@@ -756,8 +756,8 @@ fn ttsim_models_the_timestamper_clock_but_not_its_event_stream() {
         dev.configure_trace(
             &w,
             t,
-            tt_isa::mailbox::TRACE_BUFFER,
-            tt_isa::mailbox::TRACE_BUFFER_BYTES,
+            tensix_isa::mailbox::TRACE_BUFFER,
+            tensix_isa::mailbox::TRACE_BUFFER_BYTES,
         )
         .unwrap();
     });
@@ -780,7 +780,7 @@ fn ttsim_models_the_timestamper_clock_but_not_its_event_stream() {
 /// Each role's `(START, RETIRED)` interval, by thread, from a traced run.
 #[cfg(all(feature = "silicon", feature = "profile"))]
 fn role_intervals(trace: &[tt_device::trace::TraceEvent]) -> [(u64, u64); 3] {
-    use tt_isa::mailbox::trace as ev;
+    use tensix_isa::mailbox::trace as ev;
     let at = |thread: u32, event: u32| {
         let hits: Vec<u64> = trace
             .iter()

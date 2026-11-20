@@ -48,8 +48,8 @@ pub use simulator::*;
 #[cfg(not(feature = "silicon"))]
 mod simulator {
     use super::*;
-    use tt_isa::noc::grid::Tensix;
-    use tt_isa::noc::{Noc0, NocCoord};
+    use tensix_isa::noc::grid::Tensix;
+    use tensix_isa::noc::{Noc0, NocCoord};
     use tt_ttsim::{fork_scope, Simulator};
 
     /// Which Tensix tiles the simulator has: all of them.
@@ -144,9 +144,9 @@ mod simulator {
 #[cfg(feature = "silicon")]
 mod silicon {
     use super::*;
-    use tt_isa::noc::grid::Tensix;
-    use tt_isa::noc::{Noc0, NocCoord};
-    use tt_isa::tensix;
+    use tensix_isa::noc::grid::Tensix;
+    use tensix_isa::noc::{Noc0, NocCoord};
+    use tensix_isa::tensix;
     use tt_kmd::Kmd;
     use tt_ttsim::fork_scope;
 

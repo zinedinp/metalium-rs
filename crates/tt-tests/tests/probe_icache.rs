@@ -10,8 +10,8 @@
 //! nothing; run it on silicon.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::mailbox::{offset, status, MAILBOX_BASE};
-use tt_isa::tensix::Core;
+use tensix_isa::mailbox::{offset, status, MAILBOX_BASE};
+use tensix_isa::tensix::Core;
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile};
 
@@ -24,37 +24,37 @@ fn instruction_cache_size_by_timing() {
     in_device(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let t = tile(d, GATE_TILE.0, GATE_TILE.1);
-        let role = |t: u64| tt_isa::mailbox::role::BASE + t * tt_isa::mailbox::role::STRIDE;
+        let role = |t: u64| tensix_isa::mailbox::role::BASE + t * tensix_isa::mailbox::role::STRIDE;
         for (core, image, mailbox, results) in [
             (
                 Core::B,
                 tt_firmware_images::ICACHE_B,
                 MAILBOX_BASE,
-                tt_isa::mailbox::icache_results(0),
+                tensix_isa::mailbox::icache_results(0),
             ),
             (
                 Core::NC,
                 tt_firmware_images::ICACHE_NC,
-                tt_isa::dm::nc::MAILBOX_BASE,
-                tt_isa::mailbox::icache_results(1),
+                tensix_isa::dm::nc::MAILBOX_BASE,
+                tensix_isa::mailbox::icache_results(1),
             ),
             (
                 Core::T0,
                 tt_firmware_images::ICACHE_T[0],
                 role(0),
-                tt_isa::mailbox::icache_results(2),
+                tensix_isa::mailbox::icache_results(2),
             ),
             (
                 Core::T1,
                 tt_firmware_images::ICACHE_T[1],
                 role(1),
-                tt_isa::mailbox::icache_results(3),
+                tensix_isa::mailbox::icache_results(3),
             ),
             (
                 Core::T2,
                 tt_firmware_images::ICACHE_T[2],
                 role(2),
-                tt_isa::mailbox::icache_results(4),
+                tensix_isa::mailbox::icache_results(4),
             ),
         ] {
             d.write32(&w, t, mailbox + offset::STATUS, 0).unwrap();
@@ -112,13 +112,13 @@ fn instruction_cache_geometry_by_aliasing() {
     in_device(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let t = tile(d, GATE_TILE.0, GATE_TILE.1);
-        let results = tt_isa::mailbox::ICACHE_ALIAS_RESULTS;
+        let results = tensix_isa::mailbox::ICACHE_ALIAS_RESULTS;
         for (core, image, mailbox) in [
             (Core::B, tt_firmware_images::ICACHE_ALIAS_B, MAILBOX_BASE),
             (
                 Core::NC,
                 tt_firmware_images::ICACHE_ALIAS_NC,
-                tt_isa::dm::nc::MAILBOX_BASE,
+                tensix_isa::dm::nc::MAILBOX_BASE,
             ),
         ] {
             for k in 0..ROWS {

@@ -8,8 +8,8 @@
 #![cfg(not(feature = "silicon"))]
 
 use tt_device::{tlb::WindowKind, Device};
-use tt_isa::eth::{self, EthTile, Ethernet, PortStatus};
-use tt_isa::mailbox::offset;
+use tensix_isa::eth::{self, EthTile, Ethernet, PortStatus};
+use tensix_isa::mailbox::offset;
 use tt_ttsim::{fork_scope, Simulator};
 
 type Dev<'a> = Device<tt_ttsim::LibTtsim<'a>>;
@@ -161,7 +161,7 @@ fn rust_runs_on_e1() {
         let t = tile(2);
         a.load_and_start_e1(&w, t, tt_firmware_images::ETH_E1)
             .unwrap_or_else(|e| panic!("{e}"));
-        a.wait_for_e1_status(&w, t, 200_000, |s| s == tt_isa::mailbox::status::RUNNING)
+        a.wait_for_e1_status(&w, t, 200_000, |s| s == tensix_isa::mailbox::status::RUNNING)
             .unwrap()
             .unwrap();
         let mut last = 0;
@@ -193,7 +193,7 @@ fn e1_held_in_reset_does_nothing() {
 
 mod mover {
     use super::*;
-    use tt_isa::noc::{Noc0, NocCoord};
+    use tensix_isa::noc::{Noc0, NocCoord};
     use tt_kernels::link::{Dest, Dir, Link, LinkError, Mover, Source};
 
     fn link() -> Link {
@@ -205,7 +205,7 @@ mod mover {
     }
 
     fn tensix(x: u8, y: u8) -> NocCoord<Noc0> {
-        assert!(tt_isa::noc::grid::is_tensix_geometry(x, y));
+        assert!(tensix_isa::noc::grid::is_tensix_geometry(x, y));
         NocCoord::new(x, y).unwrap()
     }
 

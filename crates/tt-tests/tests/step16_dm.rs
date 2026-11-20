@@ -1,14 +1,14 @@
 //! Phase 9 gate: a Tensix tile moves data between GDDR and its own L1.
 //!
-//! The `dm_b` data mover (`tt_isa::dm`) runs resident on the gate tile's RISCV B.
+//! The `dm_b` data mover (`tensix_isa::dm`) runs resident on the gate tile's RISCV B.
 //! The host puts a pattern in DRAM, asks the mover to pull it into L1, and reads
 //! L1; then the reverse. Every channel, every endpoint port, and transfers that
 //! span several NoC requests. What crosses PCIe for each move is a descriptor,
 //! and that is asserted, not assumed: it is the point of the phase.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm;
-use tt_isa::dram::{Dram, PORTS};
+use tensix_isa::dm;
+use tensix_isa::dram::{Dram, PORTS};
 use tt_kernels::dm::{DataMover, DmError};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -27,7 +27,7 @@ fn pattern(len: usize, seed: u32) -> Vec<u8> {
 
 const L1_AT: u32 = 0x2_0000;
 
-fn with_mover(f: impl FnOnce(&mut Dev<'_>, &mut DataMover<tt_isa::noc::Noc0>, &Dram)) {
+fn with_mover(f: impl FnOnce(&mut Dev<'_>, &mut DataMover<tensix_isa::noc::Noc0>, &Dram)) {
     in_device(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let dram = d.dram_grid(&w).unwrap();
@@ -53,7 +53,7 @@ fn dram_reaches_l1_through_every_channel_and_port() {
                 let data = pattern(len, ch.index() as u32 * 7 + port as u32);
                 let r = ch.range(off, len as u64).unwrap();
                 d.dram_write(&w4, r, &data).unwrap();
-                let l1 = L1_AT + (off % tt_isa::dram::ALIGN) as u32;
+                let l1 = L1_AT + (off % tensix_isa::dram::ALIGN) as u32;
                 let before = d.traffic();
                 m.read(d, &w, r, port, l1).unwrap();
                 let moved = d.traffic() - before;

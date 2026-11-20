@@ -1,4 +1,4 @@
-//! RISCV NC's data mover writes GDDR through NoC #1 (`tt_isa::dm::WRITE_NOC`)
+//! RISCV NC's data mover writes GDDR through NoC #1 (`tensix_isa::dm::WRITE_NOC`)
 //! while RISCV B reads through NoC #0, and every byte lands as it does with
 //! both on NoC #0. B writes on NoC #0 only: it refuses the other modes.
 //!
@@ -15,10 +15,10 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{op, Mover};
-use tt_isa::dram::PORTS;
-use tt_isa::noc::niu::{self, Niu};
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{op, Mover};
+use tensix_isa::dram::PORTS;
+use tensix_isa::noc::niu::{self, Niu};
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::{DataMover, DmError, WriteNoc};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -39,9 +39,9 @@ const L1_AT: u32 = 0x2_0000;
 /// Where each pattern sits in its channel.
 const DRAM_AT: u64 = 96 << 20;
 /// Three NoC requests per entry, the last one short; 24 of them (8 channels,
-/// 3 ports) fit the data arena below the mailboxes (`tt_isa::l1::DATA`).
+/// 3 ports) fit the data arena below the mailboxes (`tensix_isa::l1::DATA`).
 const LEN: usize = 32 * 1024 + 64;
-const _: () = assert!(L1_AT as u64 + 24 * LEN as u64 <= tt_isa::l1::DATA.end);
+const _: () = assert!(L1_AT as u64 + 24 * LEN as u64 <= tensix_isa::l1::DATA.end);
 
 /// NoC #1 first, then back to NoC #0, then taking turns: every switch.
 const WRITE_NOCS: [WriteNoc; 4] = [
@@ -55,7 +55,7 @@ const WRITE_NOCS: [WriteNoc; 4] = [
 fn movers(
     d: &mut Dev<'_>,
     w: &Window,
-    dram: &tt_isa::dram::Dram,
+    dram: &tensix_isa::dram::Dram,
 ) -> (DataMover<Noc0>, DataMover<Noc0>) {
     let t = tile(d, GATE_TILE.0, GATE_TILE.1);
     let b = DataMover::start(d, w, t, dram, tt_firmware_images::DM_B.1).unwrap();
@@ -102,7 +102,7 @@ fn noc1_translates_coordinates_as_noc0_does() {
 }
 
 /// One entry per channel and port: each its own slot of L1 and of GDDR.
-fn list(dram: &tt_isa::dram::Dram, kind: u32) -> Vec<[u32; 8]> {
+fn list(dram: &tensix_isa::dram::Dram, kind: u32) -> Vec<[u32; 8]> {
     let mut out = Vec::new();
     for ch in dram.channels() {
         for port in 0..PORTS {
@@ -315,7 +315,7 @@ fn noc1s_cap_holds_on_its_own_counter() {
         m.set_write_noc(d, &w, Niu::Noc1).unwrap();
         for (cap, what) in [
             (0u32, "the maximum cap"),
-            (tt_isa::dm::TILE_IN_FLIGHT_CAP, "the tile movers' cap"),
+            (tensix_isa::dm::TILE_IN_FLIGHT_CAP, "the tile movers' cap"),
             (1, "a cap of one"),
         ] {
             d.dram_write(&w4, region, &vec![0u8; want.len()]).unwrap();
@@ -335,7 +335,7 @@ fn noc1s_cap_holds_on_its_own_counter() {
                 );
             }
         }
-        m.set_in_flight_cap(d, &w, tt_isa::dm::TILE_IN_FLIGHT_CAP)
+        m.set_in_flight_cap(d, &w, tensix_isa::dm::TILE_IN_FLIGHT_CAP)
             .unwrap();
         m.set_write_noc(d, &w, Niu::Noc0).unwrap();
         m.stop(d, &w).unwrap();

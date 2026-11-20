@@ -22,10 +22,10 @@
 
 use std::sync::Arc;
 
-use tt_isa::backend::{self, Before, ConfigWords};
-use tt_isa::dm::{record, TILE_DATA, TILE_SLOT};
-use tt_isa::isa::Instruction;
-use tt_isa::sync::{self, Semaphore, Unit};
+use tensix_isa::backend::{self, Before, ConfigWords};
+use tensix_isa::dm::{record, TILE_DATA, TILE_SLOT};
+use tensix_isa::isa::Instruction;
+use tensix_isa::sync::{self, Semaphore, Unit};
 
 use crate::code::{Code, Loop, LoopedRoles};
 use crate::datapath::{
@@ -134,7 +134,7 @@ pub struct Layout {
 /// Plan a job's slots for chunks of `kq` tiles in the current arena (`crate::l1::arena`).
 pub fn plan(kq: usize) -> std::result::Result<Layout, PlanError> {
     let mut req = Requirements::new(1);
-    let align = tt_isa::dram::ALIGN;
+    let align = tensix_isa::dram::ALIGN;
     let run = kq as u64 * TILE_SLOT;
     let x = [
         req.scratch("softmax x, half 0", run, align, 0..1),
@@ -427,7 +427,7 @@ pub fn softmax_rows(
     let l = layout_for(ct)?;
     let out = DramTensor::alloc_elem(alloc, x.rows, x.cols, Elem::F32)?;
     let (xr, mr, or) = (x.tensor_ref(), mask.tensor_ref(), out.tensor_ref());
-    let read = |first: usize, count: usize, at: u64, t: &tt_isa::dm::record::TensorRef| {
+    let read = |first: usize, count: usize, at: u64, t: &tensix_isa::dm::record::TensorRef| {
         [
             [
                 record::READ_RUN,

@@ -180,7 +180,7 @@ fn probe_the_model_on_a_full_mantissa_product() {
 #[test]
 #[ignore = "parked (docs/plans/long-context.md Part 2): the Matrix Unit model is not bit for bit on full-mantissa operands"]
 fn probe_group_rule_variants() {
-    use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+    use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
     fn exp2(x: f32) -> i32 {
         f64::from(x.abs()).log2().floor() as i32
     }
@@ -281,7 +281,7 @@ fn probe_group_rule_variants() {
 #[test]
 #[ignore = "parked (docs/plans/long-context.md Part 2): the Matrix Unit model is not bit for bit on full-mantissa operands"]
 fn probe_accumulation_variants() {
-    use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+    use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
     fn exp2(x: f32) -> i32 {
         f64::from(x.abs()).log2().floor() as i32
     }
@@ -398,7 +398,7 @@ fn probe_accumulation_variants() {
 #[test]
 #[ignore = "parked (docs/plans/long-context.md Part 2): the Matrix Unit model is not bit for bit on full-mantissa operands"]
 fn probe_phase_orders() {
-    use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+    use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
     fn exp2(x: f32) -> i32 {
         f64::from(x.abs()).log2().floor() as i32
     }
@@ -511,7 +511,7 @@ fn probe_phase_orders() {
 #[test]
 #[ignore = "parked (docs/plans/long-context.md Part 2): the Matrix Unit model is not bit for bit on full-mantissa operands"]
 fn probe_product_rounding() {
-    use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+    use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
     fn exp2(x: f32) -> i32 {
         f64::from(x.abs()).log2().floor() as i32
     }
@@ -627,7 +627,7 @@ fn probe_product_rounding() {
 #[test]
 #[ignore = "parked (docs/plans/long-context.md Part 2): the Matrix Unit model is not bit for bit on full-mantissa operands"]
 fn probe_per_phase_rounding() {
-    use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+    use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
     fn exp2(x: f32) -> i32 {
         f64::from(x.abs()).log2().floor() as i32
     }
@@ -727,7 +727,7 @@ fn probe_per_phase_rounding() {
 #[test]
 #[ignore = "parked (docs/plans/long-context.md Part 2): the Matrix Unit model is not bit for bit on full-mantissa operands"]
 fn probe_dst_alignment() {
-    use tt_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
+    use tensix_isa::numerics::{src_a_fidelity_bits, src_b_fidelity_bits};
     fn exp2(x: f32) -> i32 {
         f64::from(x.abs()).log2().floor() as i32
     }

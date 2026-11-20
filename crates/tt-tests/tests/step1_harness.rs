@@ -10,7 +10,7 @@
 #![cfg(not(feature = "silicon"))]
 
 use tt_device::{Bar, ConfigOffset, Transport};
-use tt_isa::noc::ChipId;
+use tensix_isa::noc::ChipId;
 use tt_ttsim::{fork_scope, Simulator};
 
 /// Run a simulator test body in its own process, failing the test if it does not

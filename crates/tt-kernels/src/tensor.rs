@@ -4,7 +4,7 @@
 //! and write it there, so what crosses PCIe per op is descriptors, not data.
 //!
 //! A [`DramTensor`] is a row-major `[rows, cols]` FP32 matrix stored as 32x32
-//! tiles, one `tt_isa::dm::TILE_SLOT` each, interleaved across the chip's
+//! tiles, one `tensix_isa::dm::TILE_SLOT` each, interleaved across the chip's
 //! usable channels: tile `t` of the row-major tile grid lives on channel
 //! `channels[t % n]`, slot `t / n` of the tensor's region there. Spreading tiles
 //! over channels is what lets later work read them in parallel; for now it also
@@ -25,11 +25,11 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use tt_device::{Device, Transport, TransportError, Window};
-use tt_isa::dm::record::{self, TensorRef};
-use tt_isa::dm::{TILE_DATA, TILE_SLOT};
-use tt_isa::dram::{Dram, DramChannel, DramRange, CHANNEL_BYTES};
-use tt_isa::format::TileFormat;
-use tt_isa::isa::Instruction;
+use tensix_isa::dm::record::{self, TensorRef};
+use tensix_isa::dm::{TILE_DATA, TILE_SLOT};
+use tensix_isa::dram::{Dram, DramChannel, DramRange, CHANNEL_BYTES};
+use tensix_isa::format::TileFormat;
+use tensix_isa::isa::Instruction;
 
 use crate::dm::DmError;
 use crate::matmul::{self, Fidelity, SrcRoute, Staging};
@@ -121,10 +121,10 @@ pub enum Layout {
     #[default]
     Interleaved,
     /// A weight laid by column (`docs/plans/decode-bytes-in-flight.md` Phase C1,
-    /// [`tt_isa::dm::record::REF_BY_COLUMN`]): column `c`'s tiles consecutive on channel `c % n`,
+    /// [`tensix_isa::dm::record::REF_BY_COLUMN`]): column `c`'s tiles consecutive on channel `c % n`,
     /// from slot `(c / n) * rows` there. A decode product reads each of its columns in large
     /// pieces; a block reads it a tile at a time, as it reads an interleaved one. Only a
-    /// [`tt_isa::dm::record::GATHER`] reads it on the card; host paths address it by
+    /// [`tensix_isa::dm::record::GATHER`] reads it on the card; host paths address it by
     /// [`Placement::slot`].
     ByColumn,
 }
@@ -200,10 +200,10 @@ impl Placement {
         // it. A packed tensor laid by column, or of BFP slots, names none: only a `GATHER` reads
         // those, by its format flags.
         let slot = if col_tiles == 0
-            && self.slot_bytes == tt_isa::dm::BF16_TILE_SLOT
+            && self.slot_bytes == tensix_isa::dm::BF16_TILE_SLOT
             && PROBE_UNNAMED_SLOT.load(std::sync::atomic::Ordering::Relaxed) != self.serial + 1
         {
-            tt_isa::dm::BF16_TILE_SLOT as u32
+            tensix_isa::dm::BF16_TILE_SLOT as u32
         } else {
             0
         };
@@ -273,7 +273,7 @@ impl Placement {
 
     /// [`Placement::extents`] as the ranges a host copy reads and writes. Every channel's range
     /// has the same length (`slots * slot_bytes`), including a by-column layout's empty columns.
-    pub(crate) fn extent_ranges(&self) -> Vec<tt_isa::dram::DramRange> {
+    pub(crate) fn extent_ranges(&self) -> Vec<tensix_isa::dram::DramRange> {
         self.channels
             .iter()
             .zip(&self.base)
@@ -604,7 +604,7 @@ impl DramAlloc {
     /// Format-aware tile allocation. The slot includes its header/alignment;
     /// it must preserve the NoC's 64-byte read alignment on every channel.
     pub(crate) fn alloc_slots(&mut self, tiles: usize, slot_bytes: u64) -> Result<Placement> {
-        if slot_bytes == 0 || slot_bytes % tt_isa::dram::ALIGN != 0 {
+        if slot_bytes == 0 || slot_bytes % tensix_isa::dram::ALIGN != 0 {
             return Err(TensorError::Shape("unaligned physical tile slot".into()));
         }
         let n = self.channels.len();
@@ -831,7 +831,7 @@ impl DramTensor {
         [self.rows.div_ceil(32), self.cols.div_ceil(32)]
     }
 
-    /// This tensor as an op record names it (`tt_isa::dm::record::TensorRef`).
+    /// This tensor as an op record names it (`tensix_isa::dm::record::TensorRef`).
     pub fn tensor_ref(&self) -> TensorRef {
         self.placement.tensor_ref(self.grid()[1])
     }
@@ -910,11 +910,11 @@ impl DramTensor {
 
     /// Allocate a `[rows, cols]` tensor of `elem`, contents undefined. A BF16 tensor takes BF16
     /// slots (2,112 bytes a tile, half an FP32 tile's), which its reference names
-    /// ([`tt_isa::dm::record::TensorRef::slot`]); every other elem an FP32 tile's.
+    /// ([`tensix_isa::dm::record::TensorRef::slot`]); every other elem an FP32 tile's.
     pub fn alloc_elem(alloc: &mut DramAlloc, rows: usize, cols: usize, elem: Elem) -> Result<Self> {
         let tiles = rows.div_ceil(32).max(1) * cols.div_ceil(32).max(1);
         let slot = match elem {
-            Elem::BF16 => tt_isa::dm::BF16_TILE_SLOT,
+            Elem::BF16 => tensix_isa::dm::BF16_TILE_SLOT,
             _ => TILE_SLOT,
         };
         let t = DramTensor {
@@ -1254,10 +1254,10 @@ impl DramTensor {
 /// Tile slots a unit stages a [`host_dma_jobs`] batch in: two halves of
 /// this many, a batch moving in or out of one while the other's moves go on.
 pub const HOST_DMA_BATCH: usize = 64;
-const _: () = assert!(2 * HOST_DMA_BATCH as u64 * TILE_SLOT <= tt_isa::l1::DATA.len());
+const _: () = assert!(2 * HOST_DMA_BATCH as u64 * TILE_SLOT <= tensix_isa::l1::DATA.len());
 
 /// Moves between host memory and tiles `tiles` of the tensor `x`, by the
-/// card (`tt_isa::dm::op::HOST_READ` / `HOST_WRITE`), one job a unit, each
+/// card (`tensix_isa::dm::op::HOST_READ` / `HOST_WRITE`), one job a unit, each
 /// unit a contiguous run of the tiles. In host memory tile `k` is at
 /// `host + (k - tiles.start) * TILE_SLOT`, its datums `TILE_DATA` in -- the
 /// same stride and offset as tile slots in L1, so a batch is one host move of
@@ -1281,10 +1281,10 @@ pub fn host_dma_jobs(
     host: u64,
     units: usize,
 ) -> Vec<Job> {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     let len = tiles.len();
     let units = units.max(1).min(len.max(1));
-    let base = tt_isa::l1::DATA.base;
+    let base = tensix_isa::l1::DATA.base;
     let at = |b: usize| base + ((b % 2) * HOST_DMA_BATCH) as u64 * TILE_SLOT;
     let host_move = |first: usize, n: usize, l1: u64| {
         let h = host + (first - tiles.start) as u64 * TILE_SLOT;
@@ -1422,7 +1422,7 @@ pub fn row_major_dma_jobs(
     host: u64,
     units: usize,
 ) -> Vec<Job> {
-    use tt_isa::dm::{fill, op};
+    use tensix_isa::dm::{fill, op};
     let (rt, ct) = (rows.div_ceil(32).max(1), cols.div_ceil(32).max(1));
     let stride = row_major_stride(cols) as u64;
     let row_bytes = (cols * 4) as u64;
@@ -1437,7 +1437,7 @@ pub fn row_major_dma_jobs(
         })
         .collect();
     let units = units.max(1).min(chunks.len());
-    let slots = tt_isa::l1::DATA.base;
+    let slots = tensix_isa::l1::DATA.base;
     let band = slots + (TILIZE_CHUNK as u64) * TILE_SLOT;
     let wait = [op::WAIT, 0, 0, 0, 0, 0, 0, 0];
     (0..units)
@@ -1549,13 +1549,13 @@ pub fn row_major_dma_jobs(
 /// for any matrix whose padded row fits the band (a wider one goes a chunk
 /// at a time, a move a row).
 pub const TILIZE_CHUNK: usize = 96;
-const _: () = assert!(TILIZE_CHUNK as u64 * (TILE_SLOT + 32 * 128) <= tt_isa::l1::DATA.len());
+const _: () = assert!(TILIZE_CHUNK as u64 * (TILE_SLOT + 32 * 128) <= tensix_isa::l1::DATA.len());
 
 /// One step of a [`Job`], run on one tile.
 #[derive(Clone, Debug)]
 pub enum Step {
-    /// A data-mover list on the tile's RISCV B: entries (`tt_isa::dm::Entry`)
-    /// and op records (`tt_isa::dm::record`), which the mover expands. Any
+    /// A data-mover list on the tile's RISCV B: entries (`tensix_isa::dm::Entry`)
+    /// and op records (`tensix_isa::dm::record`), which the mover expands. Any
     /// length: the session splits it into lists the mover takes, never inside
     /// a record.
     List {
@@ -1573,7 +1573,7 @@ pub enum Step {
         init: Vec<crate::runtime::SemaphoreInit>,
         /// Each role's MOP Expander configuration (`runtime::Kernel::mop`):
         /// the kernels of one list share it, so a list ends where it changes.
-        mop: Box<[Option<tt_isa::frontend::mop::MopConfig>; 3]>,
+        mop: Box<[Option<tensix_isa::frontend::mop::MopConfig>; 3]>,
         /// Each role's block repeats (`runtime::Kernel::loops`): shared by a
         /// list's kernels as `mop` is, since the table is a descriptor word.
         loops: Arc<[Vec<crate::code::Loop>; 3]>,
@@ -1584,7 +1584,7 @@ pub enum Step {
         half: Option<u8>,
     },
     /// A standalone transfer through L1: B reads each batch in and NC writes
-    /// it out, one credit a batch (`tt_isa::dataflow::Stream::Transfer`).
+    /// it out, one credit a batch (`tensix_isa::dataflow::Stream::Transfer`).
     /// Consecutive transfers of the same depth on a tile share one shared
     /// packet (`dm::op::PAIR`) with no kernel in it, so B only reads and NC
     /// only writes GDDR.
@@ -1611,7 +1611,7 @@ pub struct TransferBatch {
 }
 
 /// Most entries either side of a [`TransferBatch`] may hold: with its two
-/// credits, a batch's side stays under half a packet (`tt_isa::dm::LIST_MAX`).
+/// credits, a batch's side stays under half a packet (`tensix_isa::dm::LIST_MAX`).
 pub const TRANSFER_SIDE_MAX: usize = 240;
 
 /// Steps that must run in order on one tile, from one L1 staging area. The
@@ -1873,7 +1873,7 @@ pub(crate) fn probe_gather(
 ) -> Vec<[u32; 8]> {
     if packed_a && probing_skip_weights() {
         if gather.is_empty() {
-            gather.push([tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
+            gather.push([tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
         }
     } else {
         gather.extend(record);
@@ -1903,7 +1903,7 @@ pub fn probe_contiguous_b(entry_bytes: Option<u32>) {
     use std::sync::atomic::Ordering::SeqCst;
     let entry = entry_bytes.unwrap_or(0);
     assert!(
-        entry % tt_isa::dram::ALIGN as u32 == 0,
+        entry % tensix_isa::dram::ALIGN as u32 == 0,
         "a contiguous read's entry is whole 64-byte units: {entry}"
     );
     PROBE_CONTIGUOUS_B.store(entry, SeqCst);
@@ -1959,7 +1959,7 @@ pub(crate) fn contiguous_b_bytes(header: &[u32; 8]) -> Result<Option<(u64, u32)>
 /// A weight stream's `B`, `bytes` from L1 `b_at` on, as plain `READ`s of `entry` bytes from
 /// `(channel, off)` on: contiguous in GDDR and in L1 (the record lands tile `(kk, j)` at
 /// `b_at + (kk * cols + j) * slot`, one span), the last read shorter, the port rotating as
-/// `GATHER`'s does. Each read stays inside [`tt_isa::l1::LISTED`] and keeps the NoC's 64-byte
+/// `GATHER`'s does. Each read stays inside [`tensix_isa::l1::LISTED`] and keeps the NoC's 64-byte
 /// congruence.
 pub(crate) fn contiguous_b_reads(
     b_at: u32,
@@ -1967,8 +1967,8 @@ pub(crate) fn contiguous_b_reads(
     (channel, off): (u32, u64),
     entry: u32,
 ) -> Result<Vec<[u32; 8]>> {
-    let align = tt_isa::dram::ALIGN;
-    let listed = tt_isa::l1::LISTED;
+    let align = tensix_isa::dram::ALIGN;
+    let listed = tensix_isa::l1::LISTED;
     let end = b_at as u64 + bytes;
     if entry == 0 || entry as u64 % align != 0 {
         return Err(TensorError::Shape(format!(
@@ -1995,7 +1995,7 @@ pub(crate) fn contiguous_b_reads(
     while at < bytes {
         let len = (bytes - at).min(entry as u64);
         reads.push([
-            tt_isa::dm::op::READ,
+            tensix_isa::dm::op::READ,
             channel,
             (reads.len() % 3) as u32,
             (off + at) as u32,
@@ -2235,7 +2235,7 @@ pub fn thin_rows(m: usize, a_transposed: bool) -> u32 {
 /// face ([`crate::matmul::packed_a_pairs`]). Only FP32 and BF16 rows are packed.
 pub const fn packed_row_bytes(format: TileFormat) -> u64 {
     match format.l1() {
-        tt_isa::tile::L1Format::Bf16 => 32,
+        tensix_isa::tile::L1Format::Bf16 => 32,
         _ => 64,
     }
 }
@@ -2269,7 +2269,7 @@ pub(crate) fn packed_row_tensor(
 }
 
 pub fn pack_row(alloc: &mut DramAlloc, t: &DramTensor, units: usize) -> Result<Work> {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     let row_bytes = match t.elem {
         Elem::F32 | Elem::BF16 => packed_row_bytes(t.format()),
         other => {
@@ -2303,7 +2303,7 @@ pub fn pack_row(alloc: &mut DramAlloc, t: &DramTensor, units: usize) -> Result<W
                 read.push([
                     op::READ,
                     src.channel().index() as u32,
-                    (kk % tt_isa::dram::PORTS as usize) as u32,
+                    (kk % tensix_isa::dram::PORTS as usize) as u32,
                     (src.offset() + TILE_DATA) as u32,
                     (slot + TILE_DATA) as u32,
                     (face + row_bytes) as u32,
@@ -2773,8 +2773,8 @@ fn packed_k_block(
             )
             .iter()
             .all(|p| {
-                p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize
-                    && p.len() * 4 <= tt_isa::l1::PROGRAM_CACHE.len() as usize / 2
+                p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize
+                    && p.len() * 4 <= tensix_isa::l1::PROGRAM_CACHE.len() as usize / 2
             })
         });
         if fits {
@@ -2826,8 +2826,8 @@ pub(crate) fn stream_chunks(
             )
             .iter()
             .all(|p| {
-                p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize
-                    && p.len() * 4 <= tt_isa::l1::PROGRAM_CACHE.len() as usize / 2
+                p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize
+                    && p.len() * 4 <= tensix_isa::l1::PROGRAM_CACHE.len() as usize / 2
             })
         });
         if fits {
@@ -2855,8 +2855,8 @@ pub(crate) fn k_block_size(mut kc: usize, route: SrcRoute, fidelity: Fidelity) -
                 )
                 .iter()
                 .all(|p| {
-                    p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize
-                        && p.len() * 4 <= tt_isa::l1::PROGRAM_CACHE.len() as usize / 2
+                    p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize
+                        && p.len() * 4 <= tensix_isa::l1::PROGRAM_CACHE.len() as usize / 2
                 })
             });
             if fits {
@@ -3384,7 +3384,7 @@ fn block_stream_programs_fit(
                     loops: l.clone(),
                 };
                 code.stored().is_ok_and(|(words, _)| {
-                    words.len() <= tt_isa::mailbox::PROGRAM_MAX as usize
+                    words.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize
                         && crate::program_cache::admitted(words.len())
                 })
             })
@@ -3806,7 +3806,7 @@ fn arena_group(want: usize) -> usize {
 
 fn staging(name: &'static str, slots: usize) -> Result<u64> {
     let mut req = crate::l1::Requirements::new(1);
-    let b = req.scratch(name, slots as u64 * TILE_SLOT, tt_isa::dram::ALIGN, 0..1);
+    let b = req.scratch(name, slots as u64 * TILE_SLOT, tensix_isa::dram::ALIGN, 0..1);
     let plan = req
         .plan(crate::l1::arena())
         .map_err(|e| TensorError::Shape(e.to_string()))?;
@@ -4135,7 +4135,7 @@ pub(crate) fn twin_one_row_scatters(jobs: &mut [Job], c: &DramTensor, twin: &Dra
 /// for an FP32 twin, 32 for a BF16 one (a BF16 result's tiles are packed as BF16, their faces
 /// 512 bytes apart; roadmap W1).
 pub fn packed_twin_writes(twin: &DramTensor, first: usize, count: usize, at: u64) -> Vec<[u32; 8]> {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     let row = packed_row_bytes(twin.format());
     let face = 16 * row;
     (0..count)
@@ -4230,7 +4230,7 @@ fn sfpu_divide(
         kernel,
         ops::{self, Broadcast},
     };
-    use tt_isa::dm::op as mover;
+    use tensix_isa::dm::op as mover;
     if bcast == Broadcast::Block {
         return Err(TensorError::Shape(format!(
             "integer division {:#x} by a block of rows repeated: not implemented",
@@ -4286,8 +4286,8 @@ fn sfpu_divide(
                     for col in [0, 16] {
                         gather.push([
                             mover::COPY_WORDS,
-                            (b_at + TILE_DATA + tt_isa::dm::face_index(0, col) as u64 * 4) as u32,
-                            (b_at + TILE_DATA + tt_isa::dm::face_index(row, col) as u64 * 4) as u32,
+                            (b_at + TILE_DATA + tensix_isa::dm::face_index(0, col) as u64 * 4) as u32,
+                            (b_at + TILE_DATA + tensix_isa::dm::face_index(row, col) as u64 * 4) as u32,
                             16,
                             4,
                             4,
@@ -4358,7 +4358,7 @@ pub(crate) fn metadata(
     dims: [usize; 2],
     elem: Elem,
 ) -> Result<Work> {
-    use tt_isa::dm::{fill, op};
+    use tensix_isa::dm::{fill, op};
     let [rows, cols] = dims;
     if rows == 0 || cols == 0 || rows.checked_mul(cols) != Some(bits.len()) {
         return Err(TensorError::Shape("invalid metadata dimensions".into()));
@@ -4379,7 +4379,7 @@ pub(crate) fn metadata(
             for c in 0..32.min(cols - tile % ct * 32) {
                 positions.push((
                     bits[(tile / ct * 32 + r) * cols + tile % ct * 32 + c],
-                    tt_isa::dm::face_index(r, c),
+                    tensix_isa::dm::face_index(r, c),
                 ));
             }
         }
@@ -4561,7 +4561,7 @@ fn measure_sfpu_group(
     // `DATA`, whatever the arena, and not noted as the op's.
     let lens = |n: usize| -> [usize; 3] {
         let layout = crate::l1::unnoted(|| {
-            crate::sfpu::kernel::plan_layout_in(n, operands, tt_isa::l1::DATA)
+            crate::sfpu::kernel::plan_layout_in(n, operands, tensix_isa::l1::DATA)
         })
         .expect("two tiles always fit DATA");
         let (_, math) = crate::sfpu::ops::code_for_rows_as(
@@ -4580,7 +4580,7 @@ fn measure_sfpu_group(
     // (`sfpu::kernel::roles_looped`), so nothing grows a tile, and the bound is
     // only the arena's; a role that did grow is bounded by its slot.
     let (two, three) = (lens(2), lens(3));
-    let max = tt_isa::mailbox::PROGRAM_MAX as usize;
+    let max = tensix_isa::mailbox::PROGRAM_MAX as usize;
     let by_program = (0..3)
         .map(|r| {
             let per = three[r].saturating_sub(two[r]);
@@ -4736,7 +4736,7 @@ pub fn sfpu_rms(alloc: &mut DramAlloc, a: &DramTensor, eps: f32) -> Result<Work>
     let fits = |roles: &[Vec<_>; 3]| {
         roles
             .iter()
-            .all(|p| p.len() <= tt_isa::mailbox::PROGRAM_MAX as usize)
+            .all(|p| p.len() <= tensix_isa::mailbox::PROGRAM_MAX as usize)
     };
     let last = match a.rows % 32 {
         0 => whole.clone().expect("a whole tile row"),
@@ -4919,7 +4919,7 @@ pub(crate) fn select_add_rows_jobs(
 ) -> Result<Vec<Job>> {
     use crate::sfpu::kernel::{self as sk, Operands};
     use crate::sfpu::ops::{code_for_rows, Broadcast};
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     let n = indices.rows;
     out.expect("a select-add's table", Elem::F32)?;
     values.expect("a select-add's values", Elem::F32)?;
@@ -4945,11 +4945,11 @@ pub(crate) fn select_add_rows_jobs(
     let width = ct
         .div_ceil(units.max(1))
         .clamp(1, room.min(SELECT_ADD_TILES));
-    let base = tt_isa::l1::DATA.base;
+    let base = tensix_isa::l1::DATA.base;
     let (idx_at, pos_at) = (base, base + TILE_SLOT);
     let slots = width as u64 * TILE_SLOT;
     let [a_at, b_at, o_at] = [0, 1, 2].map(|k| base + 2 * TILE_SLOT + k * slots);
-    if !tt_isa::l1::DATA.contains(base, 2 * TILE_SLOT + 3 * slots) {
+    if !tensix_isa::l1::DATA.contains(base, 2 * TILE_SLOT + 3 * slots) {
         return Err(TensorError::Shape(
             "a select-add's slots are outside the data arena".into(),
         ));
@@ -4963,11 +4963,11 @@ pub(crate) fn select_add_rows_jobs(
     )
     .ok_or_else(|| TensorError::Shape("no ADD program".into()))?;
     let (out_ref, values_ref) = (out.tensor_ref().encode(), values.tensor_ref().encode());
-    let read_tile = |range: tt_isa::dram::DramRange, at: u64, port: u32| {
+    let read_tile = |range: tensix_isa::dram::DramRange, at: u64, port: u32| {
         [
             op::READ,
             range.channel().index() as u32,
-            port % tt_isa::dram::PORTS as u32,
+            port % tensix_isa::dram::PORTS as u32,
             range.offset() as u32,
             at as u32,
             range.len() as u32,
@@ -5127,7 +5127,7 @@ pub fn add_rms_divide(
             "a residual norm's packed rows of {pt} tiles leave no slots"
         )));
     }
-    let base = tt_isa::l1::DATA.base;
+    let base = tensix_isa::l1::DATA.base;
     let packed_slots = pt as u64 * TILE_SLOT;
     let [pa_at, pb_at, ps_at] = [0, 1, 2].map(|k| base + k * packed_slots);
     let stat_layout = reduce::plan_layout(1, pt).map_err(|e| TensorError::Shape(e.to_string()))?;
@@ -5406,8 +5406,8 @@ pub fn rms_divide(
     }
     let stat_layout = reduce::plan_layout(1, pt).map_err(|e| TensorError::Shape(e.to_string()))?;
     let stat_layout = reduce::Layout {
-        in_at: tt_isa::l1::DATA.base,
-        out_at: tt_isa::l1::DATA.base + pt as u64 * TILE_SLOT,
+        in_at: tensix_isa::l1::DATA.base,
+        out_at: tensix_isa::l1::DATA.base + pt as u64 * TILE_SLOT,
         ..stat_layout
     };
     let a_at = stat_layout.out_at + TILE_SLOT;
@@ -5647,7 +5647,7 @@ pub fn rope_blocks(
     for run in runs(rt * ct, units, group) {
         let len = run.len();
         let slots = len as u64 * TILE_SLOT;
-        let base = tt_isa::l1::DATA.base;
+        let base = tensix_isa::l1::DATA.base;
         let [x_at, c_at, r_at, s_at, p_at, o_at] = std::array::from_fn(|k| base + k as u64 * slots);
         crate::l1::note_planned_top(o_at + slots);
         let planned = |operands| {
@@ -5704,9 +5704,9 @@ pub fn rope_blocks(
                 .tensor
                 .tile(x.at[0] / 32 + i, x.at[1] / 32 + h * dt + (k + half) % dt);
             gather.push([
-                tt_isa::dm::op::READ,
+                tensix_isa::dm::op::READ,
                 src.channel().index() as u32,
-                (n % tt_isa::dram::PORTS as usize) as u32,
+                (n % tensix_isa::dram::PORTS as usize) as u32,
                 src.offset() as u32,
                 (r_at + n as u64 * TILE_SLOT) as u32,
                 TILE_SLOT as u32,
@@ -5863,7 +5863,7 @@ fn argmax_combine_job(
     tiles: std::ops::Range<usize>,
     out: &DramTensor,
     at: usize,
-    finish: &[tt_isa::isa::Instruction],
+    finish: &[tensix_isa::isa::Instruction],
 ) -> Result<Vec<Step>> {
     use crate::sfpu::{reduce, select};
     let (len, pt) = (tiles.len(), partials.grid()[1]);
@@ -6017,7 +6017,7 @@ pub fn sfpu_scan(
             let layout = if r == 0 { &first_layout } else { &next_layout };
             let mut gather = read(a, tile, layout.a_at);
             if r > 0 {
-                gather.insert(0, [tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
+                gather.insert(0, [tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
                 gather.extend(read(&out, tile - ct, layout.b_at.expect("continuation B")));
             }
             steps.push(Step::List {
@@ -6077,7 +6077,7 @@ fn finishing(
     op: crate::sfpu::reduce::ReduceOp,
     axis: crate::sfpu::reduce::Axis,
     then: ReduceThen,
-) -> Option<Vec<tt_isa::isa::Instruction>> {
+) -> Option<Vec<tensix_isa::isa::Instruction>> {
     let mut fin = crate::sfpu::reduce::finish(op, axis);
     if let Some((kind, s)) = then {
         fin.extend(crate::sfpu::ops::exact_in_place(
@@ -6163,7 +6163,7 @@ fn measure_reduce_group(
         let (code, loops) = roles_code(&layout, &inputs, &fin);
         Some(std::array::from_fn(|t| code[t].len() + loops[t].len() + 1))
     };
-    let max = tt_isa::mailbox::PROGRAM_MAX as usize;
+    let max = tensix_isa::mailbox::PROGRAM_MAX as usize;
     let one = lens(1)?;
     if one.iter().any(|&l| l > max) {
         return None;
@@ -6293,7 +6293,7 @@ pub fn sum_rows(
             let mut gather = Vec::new();
             if i > 0 {
                 // Require NC release before reloading the prior sums.
-                gather.push([tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
+                gather.push([tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
                 // The last chunk's sums, read back from the output.
                 gather.extend([
                     [
@@ -6384,7 +6384,7 @@ fn chunk_group() -> Option<usize> {
             let c = plan_chunk_layout(n).ok()?;
             Some(chunk_roles(&c, true, ROW_CHUNK, 32).map(|p| p.len()))
         };
-        let max = tt_isa::mailbox::PROGRAM_MAX as usize;
+        let max = tensix_isa::mailbox::PROGRAM_MAX as usize;
         let one = lens(1)?;
         if by_slots == 0 || one.iter().any(|&l| l > max) {
             return None;
@@ -6828,7 +6828,7 @@ pub fn repack_many(
     sources: &[(usize, [usize; 2])],
     [rows, cols]: [usize; 2],
 ) -> Result<Work> {
-    use tt_isa::dm::{face_index, op, TILE_DATA};
+    use tensix_isa::dm::{face_index, op, TILE_DATA};
     let t = inputs
         .first()
         .ok_or_else(|| TensorError::Shape("repack has no inputs".into()))?;
@@ -7004,7 +7004,7 @@ pub const GATHER_DEAL_ROWS: usize = 4;
 /// 1024 + (r % 16) 64`, `h` the half), each congruent to `TILE_DATA` mod 64
 /// in every slot, so any source row's face-row moves straight into any
 /// output row's with one 64-byte [`dm::op::READ`] -- the mod-64 congruence a
-/// GDDR read needs (`tt_isa::dram::ALIGN`), whatever the rows. Output tiles
+/// GDDR read needs (`tensix_isa::dram::ALIGN`), whatever the rows. Output tiles
 /// are built in staging slots (64-aligned) by B, then written out by NC, a few
 /// tiles to a batch ([`Step::Transfer`]). Two read entries a row a tile
 /// column, ~316 cycles each on the mover. Rows past the last in the last tile row are left as the
@@ -7019,7 +7019,7 @@ pub fn gather_rows(
     cols: usize,
     units: usize,
 ) -> Result<Work> {
-    use tt_isa::dm::{op, TILE_DATA};
+    use tensix_isa::dm::{op, TILE_DATA};
     const GROUP: usize = 64;
     let Some(first) = sources.first() else {
         return Err(TensorError::Shape("a row gather with no source".into()));
@@ -7046,7 +7046,7 @@ pub fn gather_rows(
         )));
     }
     let stage = staging("row gather slots", GROUP)?;
-    if stage % tt_isa::dram::ALIGN != 0 {
+    if stage % tensix_isa::dram::ALIGN != 0 {
         return Err(TensorError::Shape(
             "row gather staging not 64-aligned".into(),
         ));
@@ -7079,7 +7079,7 @@ pub fn gather_rows(
                     read.push([
                         op::READ,
                         from.channel().index() as u32,
-                        (q % tt_isa::dram::PORTS as usize) as u32,
+                        (q % tensix_isa::dram::PORTS as usize) as u32,
                         (from.offset() + face_row(sr % 32, 0)) as u32,
                         (slot + face_row(r, 0)) as u32,
                         1024 + 64,
@@ -7138,7 +7138,7 @@ pub fn gather_rows(
                             read.push([
                                 op::READ,
                                 from.channel().index() as u32,
-                                n % tt_isa::dram::PORTS as u32,
+                                n % tensix_isa::dram::PORTS as u32,
                                 (from.offset() + face_row(sr % 32, h)) as u32,
                                 (slot + face_row(r, h)) as u32,
                                 64,
@@ -7152,7 +7152,7 @@ pub fn gather_rows(
                     write.push([
                         op::WRITE,
                         to.channel().index() as u32,
-                        k as u32 % tt_isa::dram::PORTS as u32,
+                        k as u32 % tensix_isa::dram::PORTS as u32,
                         (to.offset() + TILE_DATA) as u32,
                         (slot + TILE_DATA) as u32,
                         4096,
@@ -7186,7 +7186,7 @@ pub fn write_rows(
     rows: &[(usize, usize)],
     units: usize,
 ) -> Result<Vec<Job>> {
-    use tt_isa::dm::{op, TILE_DATA};
+    use tensix_isa::dm::{op, TILE_DATA};
     const GROUP: usize = 64;
     if !dst.placement.owned {
         return Err(TensorError::Shape(
@@ -7246,7 +7246,7 @@ pub fn write_rows(
                         read.push([
                             op::READ,
                             from.channel().index() as u32,
-                            (2 * k + h) as u32 % tt_isa::dram::PORTS as u32,
+                            (2 * k + h) as u32 % tensix_isa::dram::PORTS as u32,
                             (from.offset() + face_row(s % 32, h)) as u32,
                             (slot + face_row(r, h)) as u32,
                             64,
@@ -7256,7 +7256,7 @@ pub fn write_rows(
                         write.push([
                             op::WRITE,
                             to.channel().index() as u32,
-                            (2 * k + h) as u32 % tt_isa::dram::PORTS as u32,
+                            (2 * k + h) as u32 % tensix_isa::dram::PORTS as u32,
                             (to.offset() + face_row(d % 32, h)) as u32,
                             (slot + face_row(r, h)) as u32,
                             64,
@@ -7381,7 +7381,7 @@ mod tests {
     /// on a channel that has room it lands there as before.
     #[test]
     fn a_stream_goes_to_another_channel_when_its_own_is_full() {
-        let mut alloc = DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         let room = |a: &DramAlloc, c: usize| a.free[c].values().copied().max().unwrap_or(0);
         let stream = 64 * TILE_SLOT;
         // Fill channel 0 until less than the stream is left.
@@ -7411,7 +7411,7 @@ mod tests {
     /// freed while the trace lived.
     #[test]
     fn a_placement_allocated_after_a_snapshot_was_free_then() {
-        let mut alloc = DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         let a = alloc.alloc(64).unwrap();
         let snapshot = alloc.snapshot();
         assert!(!snapshot.was_free(&a), "in use then");
@@ -7421,9 +7421,9 @@ mod tests {
         assert!(snapshot.was_free(&b));
         assert!(!snapshot.was_free(&a), "what was in use then still was");
     }
-    use tt_isa::dm::TILE_DATA;
-    use tt_isa::dm::{fill, op, record};
-    use tt_isa::dram::Dram;
+    use tensix_isa::dm::TILE_DATA;
+    use tensix_isa::dm::{fill, op, record};
+    use tensix_isa::dram::Dram;
 
     /// The transfer batches of `metadata` for one `rows x cols` of `bits`, and how many words
     /// (single-word copies) they move.
@@ -8119,7 +8119,7 @@ mod tests {
         use crate::matmul::{Fidelity, SrcRoute};
         let (units, spread, k, n) = (96, 120, 2048, 16384);
         let prefetch: Vec<usize> = (units..spread).collect();
-        let busy = vec![Some(tt_isa::l1::DATA.base); units];
+        let busy = vec![Some(tensix_isa::l1::DATA.base); units];
         let built = |deal: Option<&[u32]>| {
             let mut alloc = DramAlloc::new(&Dram::FULL);
             let a = DramTensor::alloc(&mut alloc, 1, k).unwrap();
@@ -8431,8 +8431,8 @@ mod tests {
     #[test]
     fn a_packed_bf16_a_is_read_in_k_over_1024_tiles() {
         use crate::matmul::{Fidelity, SrcRoute};
-        use tt_isa::dm::BF16_TILE_SLOT;
-        use tt_isa::format::TileFormat;
+        use tensix_isa::dm::BF16_TILE_SLOT;
+        use tensix_isa::format::TileFormat;
         let units = 64;
         let route = SrcRoute::edges(TileFormat::BF16, TileFormat::FP32).unwrap();
         assert_eq!(route.packed_row_bytes(), 32);
@@ -8525,7 +8525,7 @@ mod tests {
     #[test]
     fn a_units_first_job_reads_its_b_ahead_where_the_ops_before_plan_below_it() {
         use crate::matmul::{Fidelity, SrcRoute};
-        use tt_isa::dm::{op, TILE_SLOT, WAIT_PREFETCH};
+        use tensix_isa::dm::{op, TILE_SLOT, WAIT_PREFETCH};
         let units = 8;
         let (k, n) = (2048, 1024);
         let mut alloc = DramAlloc::new(&Dram::FULL);
@@ -8570,7 +8570,7 @@ mod tests {
         };
         let ahead =
             |job: &Job| matches!(&job[0], Step::List { what, .. } if *what == super::BUSY_PREFETCH);
-        let data = tt_isa::l1::DATA;
+        let data = tensix_isa::l1::DATA;
         // Every unit free below the arena's top: each unit's first job, and only it, reads ahead.
         let all = jobs(&vec![Some(data.base); units], false);
         assert!(all.len() > units, "more than a job a unit");
@@ -8682,7 +8682,7 @@ mod tests {
                     let mut counted = crate::profile_mode::OpBytes::default();
                     counted.count(gather);
                     assert_eq!(counted.a, 0);
-                    b_tiles += counted.b / tt_isa::dm::TILE_SLOT;
+                    b_tiles += counted.b / tensix_isa::dm::TILE_SLOT;
                 }
             }
             assert_eq!(b_tiles, (kt * nt) as u64, "[{k}, {n}]: every B tile once");
@@ -8697,7 +8697,7 @@ mod tests {
         let tiles = |entries: &[[u32; 8]]| {
             let mut counted = crate::profile_mode::OpBytes::default();
             counted.count(entries);
-            counted.b / tt_isa::dm::TILE_SLOT
+            counted.b / tensix_isa::dm::TILE_SLOT
         };
         // `down` (1.7B), and a short `K` under a block limit with fewer columns than idle units;
         // a streamed product takes at most its own count (40) of the 56.
@@ -8791,7 +8791,7 @@ mod tests {
     #[test]
     fn decode_products_jobs_rounds_and_bytes() {
         use crate::matmul::{Fidelity, SrcRoute};
-        use tt_isa::dm::TILE_SLOT;
+        use tensix_isa::dm::TILE_SLOT;
         let units = 120;
         // name, [k, n], B transposed (the tied head reads the table transposed)
         let shapes = [
@@ -8892,11 +8892,11 @@ mod tests {
 #[cfg(test)]
 mod reference {
     //! The list builders as they were before op records (9.7a), kept as the
-    //! specification `tt_isa::dm::record::expand` is held to: every record
+    //! specification `tensix_isa::dm::record::expand` is held to: every record
     //! must expand to exactly the entries these built, with an `op::WAIT`
     //! wherever one of their lists ended inside a job.
     use super::*;
-    use tt_isa::dm;
+    use tensix_isa::dm;
 
     #[allow(clippy::too_many_arguments)]
     pub fn matmul_dram(
@@ -8947,7 +8947,7 @@ mod reference {
             [
                 op,
                 ch.index() as u32,
-                (i + j) as u32 % tt_isa::dram::PORTS as u32,
+                (i + j) as u32 % tensix_isa::dram::PORTS as u32,
                 slot.offset() as u32,
                 to as u32,
                 TILE_SLOT as u32,
@@ -9012,7 +9012,7 @@ mod reference {
                         back.push([
                             dm::op::WRITE,
                             data.channel().index() as u32,
-                            (i + j) as u32 % tt_isa::dram::PORTS as u32,
+                            (i + j) as u32 % tensix_isa::dram::PORTS as u32,
                             data.offset() as u32,
                             out as u32,
                             4096,
@@ -9410,7 +9410,7 @@ mod contiguous_b {
     #[test]
     fn a_contiguous_weight_stream_tiles_its_slots_exactly() {
         use super::contiguous_b_reads;
-        use tt_isa::dm::op;
+        use tensix_isa::dm::op;
         let (b_at, slot) = (0x2_0000u32, 2112u64);
         for (kt, cols, entry) in [
             (64u64, 2u64, 16_384u32),
@@ -9451,7 +9451,7 @@ mod contiguous_b {
             "an entry not of whole 64-byte units"
         );
         assert!(!ok(b_at, 4224, 0, 0), "an empty entry");
-        let listed = tt_isa::l1::LISTED;
+        let listed = tensix_isa::l1::LISTED;
         assert!(
             !ok(listed.base as u32 - 64, 4224, 0, 2112),
             "below the listed L1"
@@ -9467,8 +9467,8 @@ mod contiguous_b {
     #[test]
     fn only_a_weight_stream_is_moved_to_contiguous_reads() {
         use super::contiguous_b_bytes;
-        use tt_isa::dm::record;
-        let bf16 = record::gather_b_format(tt_isa::tile::L1Format::Bf16).unwrap();
+        use tensix_isa::dm::record;
+        let bf16 = record::gather_b_format(tensix_isa::tile::L1Format::Bf16).unwrap();
         let header = |flags: u32| {
             [
                 record::GATHER,
@@ -9517,7 +9517,7 @@ mod contiguous_b {
 #[cfg(test)]
 mod by_column_tests {
     use super::*;
-    use tt_isa::dram::Dram;
+    use tensix_isa::dram::Dram;
 
     /// Phase C1's placement (`docs/plans/decode-bytes-in-flight.md`): a grid laid by column puts
     /// tile `(r, c)` on channel `c % n` at slot `(c / n) * rows + r` of the region there (the

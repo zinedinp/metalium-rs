@@ -20,7 +20,7 @@
 #![cfg(feature = "silicon")]
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{op, Mover};
+use tensix_isa::dm::{op, Mover};
 use tt_kernels::dm::{DataMover, WriteNoc};
 use tt_tests::bench::on_card;
 
@@ -80,7 +80,7 @@ fn short_writes_land_exactly() {
                         [
                             op::WRITE,
                             ch,
-                            (n % tt_isa::dram::PORTS as usize) as u32,
+                            (n % tensix_isa::dram::PORTS as usize) as u32,
                             region + off,
                             L1 + off,
                             len,

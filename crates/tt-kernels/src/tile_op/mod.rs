@@ -17,10 +17,10 @@
 
 use std::sync::Arc;
 
-use tt_isa::dm::record::TensorRef;
-use tt_isa::format::TileFormat;
-use tt_isa::frontend::mop::MopConfig;
-use tt_isa::isa::Instruction;
+use tensix_isa::dm::record::TensorRef;
+use tensix_isa::format::TileFormat;
+use tensix_isa::frontend::mop::MopConfig;
+use tensix_isa::isa::Instruction;
 
 use crate::runtime::SemaphoreInit;
 use crate::tensor::{DramAlloc, DramTensor, Elem, Overlap, Result, TensorError, Work};
@@ -161,7 +161,7 @@ pub struct Access {
     pub map: TileMap,
     pub elem: Elem,
     /// A ragged last tile row is read only to the rows that hold data, where the mover can
-    /// (`tt_isa::dm::record::gather_rows`); otherwise whole tiles.
+    /// (`tensix_isa::dm::record::gather_rows`); otherwise whole tiles.
     pub live_rows: bool,
 }
 

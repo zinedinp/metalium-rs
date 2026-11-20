@@ -27,8 +27,8 @@ use std::time::Instant;
 
 use tt_device::tlb::WindowKind;
 use tt_device::trace::TraceEvent;
-use tt_isa::dm::{self, op};
-use tt_isa::mailbox::{trace as ev, TRACE_BUFFER, TRACE_BUFFER_BYTES};
+use tensix_isa::dm::{self, op};
+use tensix_isa::mailbox::{trace as ev, TRACE_BUFFER, TRACE_BUFFER_BYTES};
 use tt_kernels::dm::DataMover;
 use tt_kernels::profile::DeviceProfile;
 use tt_kernels::runtime::{Kernel, Resident, Schedule};
@@ -128,7 +128,7 @@ fn null_kernel() {
         r.set_profiling(true);
         d.write32(&w, t, dm::TRACE, 1).unwrap();
         for n in [0usize, 1, 64, 1024] {
-            let nops = vec![tt_isa::backend::nop(); n];
+            let nops = vec![tensix_isa::backend::nop(); n];
             let mut kernel = Kernel::new([&nops, &nops, &nops], Schedule::Concurrent(&[]));
             kernel.restores_semaphores = true;
             let mut by: BTreeMap<String, Vec<f64>> = BTreeMap::new();

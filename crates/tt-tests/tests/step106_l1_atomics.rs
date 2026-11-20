@@ -11,12 +11,12 @@
 //! forms with a producer on another thread and the deadline active.
 //!
 //! The models below are written from the page text and share nothing with
-//! `tt_isa::scalar::atomic`.
+//! `tensix_isa::scalar::atomic`.
 #[cfg(feature = "silicon")]
-use tt_isa::scalar::atomic::Region16;
-use tt_isa::{backend, isa::Instruction, scalar::atomic};
+use tensix_isa::scalar::atomic::Region16;
+use tensix_isa::{backend, isa::Instruction, scalar::atomic};
 #[cfg(feature = "silicon")]
-use tt_isa::{backend::Before, sync};
+use tensix_isa::{backend::Before, sync};
 use tt_tests::harness;
 
 // ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ fn atoms() -> Vec<(&'static str, Instruction)> {
 #[test]
 fn simulator_refuses_every_atomic_with_a_surviving_control() {
     use tt_tests::harness::Run;
-    let base = tt_isa::l1::DATA.base;
+    let base = tensix_isa::l1::DATA.base;
     for (name, atom) in atoms() {
         let setup = || {
             let mut p = Vec::new();
@@ -314,7 +314,7 @@ mod silicon_gates {
     use atomic::{
         FieldWidth, FifoAction, FifoCounters, FifoGeometry, FifoSide, HalfwordMask, Nibble, Word,
     };
-    use tt_isa::scalar::{self, OffsetHalf, OffsetIncrement as Inc, TransferWidth as Width};
+    use tensix_isa::scalar::{self, OffsetHalf, OffsetIncrement as Inc, TransferWidth as Width};
     use tt_kernels::{
         atomics::{self, Budget, GuardSpec, GuardedProgram, RoleProgram, RoleState, Spec},
         l1::{Plan, Requirements},
@@ -352,7 +352,7 @@ mod silicon_gates {
                 req.semaphore("T2 complete", 0, 0..1),
             ];
             let reached = req.semaphore("producer reached", 0, 0..1);
-            let plan = req.plan(tt_isa::l1::DATA).unwrap();
+            let plan = req.plan(tensix_isa::l1::DATA).unwrap();
             Mem {
                 arena: plan.addr(arena),
                 results: plan.addr(results),
@@ -700,7 +700,7 @@ mod silicon_gates {
 
     /// DIAGNOSTIC, asserts nothing. **This is the recorded evidence for the
     /// `[-]` exclusion of `ATSWAP`'s single-register form**: the checked API
-    /// (`tt_isa::scalar::atomic::masked_store`) offers only the four-GPR form, and
+    /// (`tensix_isa::scalar::atomic::masked_store`) offers only the four-GPR form, and
     /// the single form is built here through the raw generated encoder
     /// (`SingleDataReg` = 1) alone.
     ///
@@ -741,7 +741,7 @@ mod silicon_gates {
                         p.extend(backend::set_gpr(r, seed_value(r)).unwrap());
                     }
                     p.push(
-                        tt_isa::isa::generated::encode::atswap(single, mask as u32, reg, ADDR)
+                        tensix_isa::isa::generated::encode::atswap(single, mask as u32, reg, ADDR)
                             .unwrap(),
                     );
                     p.push(atomic::consume());
@@ -890,7 +890,7 @@ mod silicon_gates {
         consumer: &'a GuardedProgram,
         producer: &'a GuardedProgram,
         block: [u8; 16],
-    ) -> atomics::Launch<tt_isa::noc::Noc0> {
+    ) -> atomics::Launch<tensix_isa::noc::Noc0> {
         let init = m.plan.semaphore_init();
         let image = m.arena_image(block);
         let blank = vec![0x5au8; 16 * RESULT_BLOCKS];
@@ -945,9 +945,9 @@ mod silicon_gates {
     /// parked would make every later gate's reset fail.
     fn rescued(
         dev: &mut harness::Dev<'_>,
-        launch: &atomics::Launch<tt_isa::noc::Noc0>,
-        relief: impl FnOnce(&mut harness::Dev<'_>, &atomics::Launch<tt_isa::noc::Noc0>),
-        body: impl FnOnce(&mut harness::Dev<'_>, &atomics::Launch<tt_isa::noc::Noc0>),
+        launch: &atomics::Launch<tensix_isa::noc::Noc0>,
+        relief: impl FnOnce(&mut harness::Dev<'_>, &atomics::Launch<tensix_isa::noc::Noc0>),
+        body: impl FnOnce(&mut harness::Dev<'_>, &atomics::Launch<tensix_isa::noc::Noc0>),
     ) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body(dev, launch)));
         if let Err(payload) = result {
@@ -1019,7 +1019,7 @@ mod silicon_gates {
 
     /// Wait until both guarded roles are parked (the atomic's role reports
     /// BLOCKED at its deadline, the other at its `go` wait).
-    fn both_blocked(launch: &atomics::Launch<tt_isa::noc::Noc0>, dev: &mut harness::Dev<'_>) {
+    fn both_blocked(launch: &atomics::Launch<tensix_isa::noc::Noc0>, dev: &mut harness::Dev<'_>) {
         launch
             .wait(dev, budget(), "both roles to report BLOCKED", |dev, l| {
                 Ok(

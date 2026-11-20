@@ -211,7 +211,7 @@ fn empty_cursor_mask_is_a_noop_on_silicon() {
 #[test]
 #[cfg(not(feature = "silicon"))]
 fn simulator_refuses_empty_cursor_mask() {
-    use tt_isa::adc::{self, Targets, Zw, ZwCoordinates};
+    use tensix_isa::adc::{self, Targets, Zw, ZwCoordinates};
     use tt_tests::harness::{self, Run};
     assert!(!harness::survives(|dev| {
         let program = [
@@ -224,7 +224,7 @@ fn simulator_refuses_empty_cursor_mask() {
 }
 
 fn check_zw_masks(masks: std::ops::Range<u32>) {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Targets, Zw, ZwCoordinates},
         backend::{self, Before, ConfigWords},
         cfg::generated::unpack1,
@@ -268,13 +268,13 @@ fn check_zw_masks(masks: std::ops::Range<u32>) {
                         .set(unpack1::UNP0_ADDR_CTRL_ZW_REG_1_Zstride, 64)
                         .unwrap();
                     words
-                        .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                        .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                         .unwrap();
                     words
                         .set(unpack1::UNP0_ADDR_CTRL_ZW_REG_1_Wstride, 512)
                         .unwrap();
                     unpack.extend(dp::config_program(&words));
-                    unpack.push(tt_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
+                    unpack.push(tensix_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
                     unpack.push(backend::wait_for_matrix(Before::EVERYTHING).unwrap());
                     unpack.extend(dp::clear_unpacker0_adcs());
                     unpack.push(dp::set_adc_x_unpack(0, 15));
@@ -416,7 +416,7 @@ fn check_zw_masks(masks: std::ops::Range<u32>) {
 }
 #[test]
 fn zw_unpacker1_and_packer_targets_select_their_own_counters() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Targets, Zw, ZwCoordinates},
         backend::{self, Before, ConfigWords},
         isa::generated::encode,
@@ -449,7 +449,7 @@ fn zw_unpacker1_and_packer_targets_select_their_own_counters() {
                 4,
             );
             words
-                .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                 .unwrap();
             unpack.extend(dp::config_program(&words));
             unpack.push(
@@ -570,7 +570,7 @@ fn zw_unpacker1_and_packer_targets_select_their_own_counters() {
             pack.extend(dp::config_program(&words));
             words
                 .set(
-                    tt_isa::cfg::generated::pack0::PCK0_ADDR_CTRL_ZW_REG_0_Zstride,
+                    tensix_isa::cfg::generated::pack0::PCK0_ADDR_CTRL_ZW_REG_0_Zstride,
                     64,
                 )
                 .unwrap();
@@ -643,7 +643,7 @@ fn zw_unpacker1_and_packer_targets_select_their_own_counters() {
 
 #[test]
 fn zw_mutations_are_local_to_the_issuing_thread() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Targets, Zw, ZwCoordinates},
         backend::{self, Before, ConfigWords},
         sync,
@@ -654,7 +654,7 @@ fn zw_mutations_are_local_to_the_issuing_thread() {
     let ready = req.semaphore("counter initialized", 0, 0..1);
     let mutated = req.semaphore("other thread mutated", 0, 0..1);
     let copied = req.semaphore("copy complete", 0, 0..1);
-    let plan = req.plan(tt_isa::l1::DATA).unwrap();
+    let plan = req.plan(tensix_isa::l1::DATA).unwrap();
     let (ready, mutated, copied) = (
         plan.semaphore(ready),
         plan.semaphore(mutated),
@@ -762,7 +762,7 @@ fn invalid_geometry_and_dtype_are_rejected() {
 
 #[test]
 fn input_masks_eight_bits_but_output_uses_thirteen_bits() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Targets, Zw},
         backend::{self, Before, ConfigWords},
         cfg::generated::unpack1,
@@ -781,7 +781,7 @@ fn input_masks_eight_bits_but_output_uses_thirteen_bits() {
                 let mut words = ConfigWords::new();
                 dp::unpack_config(&mut words, dp::flat_descriptor(16), dp::STAGE);
                 words
-                    .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                    .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                     .unwrap();
                 words
                     .set(
@@ -805,7 +805,7 @@ fn input_masks_eight_bits_but_output_uses_thirteen_bits() {
                     )
                     .unwrap();
                 unpack.extend(dp::config_program(&words));
-                unpack.push(tt_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
+                unpack.push(tensix_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
                 unpack.push(backend::wait_for_matrix(Before::EVERYTHING).unwrap());
                 unpack.extend(dp::clear_unpacker0_adcs());
                 unpack.push(dp::set_adc_x_unpack(0, 15));
@@ -864,7 +864,7 @@ fn input_masks_eight_bits_but_output_uses_thirteen_bits() {
 
 #[test]
 fn traversal_negative_controls_disagree_with_oracle() {
-    use tt_isa::{
+    use tensix_isa::{
         adc::{self, Targets, Zw, ZwCoordinates},
         backend::{self, Before, ConfigWords},
         cfg::generated::unpack1,
@@ -882,7 +882,7 @@ fn traversal_negative_controls_disagree_with_oracle() {
             let mut words = ConfigWords::new();
             dp::unpack_config(&mut words, dp::flat_descriptor(16).with_z_dim(8), dp::STAGE);
             words
-                .set(tt_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
+                .set(tensix_isa::cfg::generated::alu::ALU_ACC_CTRL_Fp32_enabled, 1)
                 .unwrap();
             words
                 .set(
@@ -897,7 +897,7 @@ fn traversal_negative_controls_disagree_with_oracle() {
                 )
                 .unwrap();
             unpack.extend(dp::config_program(&words));
-            unpack.push(tt_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
+            unpack.push(tensix_isa::isa::generated::encode::zeroacc(3, 0, 0, 0).unwrap());
             unpack.push(backend::wait_for_matrix(Before::EVERYTHING).unwrap());
             unpack.extend(dp::clear_unpacker0_adcs());
             unpack.push(dp::set_adc_x_unpack(0, 15));

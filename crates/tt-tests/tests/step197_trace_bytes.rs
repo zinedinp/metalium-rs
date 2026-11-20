@@ -16,7 +16,7 @@ use tt_models::generate::{Shapes, TracedGenerator};
 use tt_models::llama::{Llama, LlamaConfig};
 use tt_tests::burn_device::{with_device, Config};
 
-const SLOT: u64 = tt_isa::dm::TILE_SLOT;
+const SLOT: u64 = tensix_isa::dm::TILE_SLOT;
 
 /// step193's two synthetic Llamas: multi-head with a tied head, and grouped-query 4:1 untied.
 fn configs() -> Vec<(&'static str, LlamaConfig)> {

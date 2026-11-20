@@ -9,9 +9,9 @@
 #![allow(dead_code)]
 
 use tt_device::tlb::WindowKind;
-use tt_isa::mailbox::{self, status as mbox};
-use tt_isa::noc::probe::{self, result};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::mailbox::{self, status as mbox};
+use tensix_isa::noc::probe::{self, result};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_tests::harness::Dev;
 
 /// One request for the probe: the register values (ten, or eleven for a

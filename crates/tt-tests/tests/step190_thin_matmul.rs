@@ -1,5 +1,5 @@
 //! decode-matmul-bandwidth P1: a GDDR matmul reads only the rows of `op(A)`'s
-//! last tile row it uses (`tt_isa::dm::record::gather_rows`, at most 16), not
+//! last tile row it uses (`tensix_isa::dm::record::gather_rows`, at most 16), not
 //! whole tiles. A decode step's products are `m = 1`, so each `A` tile was 32
 //! rows read for one used.
 //!
@@ -24,7 +24,7 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{face_index, TILE_DATA, TILE_SLOT};
+use tensix_isa::dm::{face_index, TILE_DATA, TILE_SLOT};
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::sfpu::reduce::{Axis, ReduceOp};

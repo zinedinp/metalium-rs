@@ -650,7 +650,7 @@ fn products_under_busy_prefetch_are_bit_for_bit() {
 /// refused by name, keeping the plain trace.
 #[test]
 fn the_region_is_sized_by_its_plan_and_never_past_its_cap() {
-    use tt_isa::l1::DATA;
+    use tensix_isa::l1::DATA;
     use tt_kernels::session::RESIDENCY_REGION;
     with_session(|s| {
         s.set_count_trace_bytes(true);

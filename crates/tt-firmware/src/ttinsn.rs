@@ -16,13 +16,13 @@
 //!   caller-saved `t0` and `t1`, loops at most two deep.
 
 use crate::l1_write32;
-use tt_isa::ttinsn::{addi, bne, RET};
+use tensix_isa::ttinsn::{addi, bne, RET};
 
 /// Words in an opcode bitmap: one bit per opcode byte.
 pub const OPCODE_WORDS: usize = 8;
 
 const ZERO: u32 = 0;
-use tt_isa::ttinsn::{MAX_COUNT, T0, T1};
+use tensix_isa::ttinsn::{MAX_COUNT, T0, T1};
 const A0: u32 = 10;
 
 fn has_opcode(opcodes: &[u32; OPCODE_WORDS], byte: u32) -> bool {

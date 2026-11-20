@@ -34,7 +34,7 @@ use std::path::{Path, PathBuf};
 
 use mapping::Mapping;
 use tt_device::{Bar, ConfigOffset, Transport, TransportError};
-use tt_isa::noc::ChipId;
+use tensix_isa::noc::ChipId;
 
 /// `TENSTORRENT_DRIVER_VERSION` at the pinned tag, mirrored from `PINS.toml`.
 ///

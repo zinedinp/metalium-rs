@@ -14,7 +14,7 @@
 //!   (identities 0, 1, `i32::MAX`, `i32::MIN`), on raw two's-complement words.
 use super::kernel::{A_ROW, B_ROW, OUT_ROW};
 use super::{Cond, Format, LReg, Program};
-use tt_isa::isa::Instruction;
+use tensix_isa::isa::Instruction;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ScanOp {
@@ -203,8 +203,8 @@ pub fn reference_bits(op: ScanOp, input: &[u32], rows: usize, cols: usize) -> Ve
         for r in 0..rows {
             let x = input[r * cols + c];
             acc = match op {
-                ScanOp::Sum => tt_isa::numerics::fma_bh(1.0f32.to_bits(), x, acc),
-                ScanOp::Prod => tt_isa::numerics::fma_bh(acc, x, 0x80000000),
+                ScanOp::Sum => tensix_isa::numerics::fma_bh(1.0f32.to_bits(), x, acc),
+                ScanOp::Prod => tensix_isa::numerics::fma_bh(acc, x, 0x80000000),
                 ScanOp::Min | ScanOp::Max => {
                     let order = f32::from_bits(x).total_cmp(&f32::from_bits(acc));
                     if (op == ScanOp::Min && order.is_lt()) || (op == ScanOp::Max && order.is_gt())
@@ -464,7 +464,7 @@ mod tests {
             for first in [true, false] {
                 let words = program(op, first).len() as u32;
                 assert!(
-                    words < tt_isa::mailbox::PROGRAM_MAX / 2 + 256,
+                    words < tensix_isa::mailbox::PROGRAM_MAX / 2 + 256,
                     "{op:?} first={first}: {words} words"
                 );
             }

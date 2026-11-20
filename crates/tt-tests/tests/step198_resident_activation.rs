@@ -1,5 +1,5 @@
 //! B1 of `docs/completed-plans/decode-step-bandwidth.md`: a GDDR matmul's later blocks on a unit do not
-//! read `A` again (`tt_isa::dm::record::GATHER_A_RESIDENT`). With `K` whole under one staging,
+//! read `A` again (`tensix_isa::dm::record::GATHER_A_RESIDENT`). With `K` whole under one staging,
 //! `A` sits at the same slots for every block, so a unit whose previous block of the op read the
 //! same `A` rows reads only `B`. A decode step's `gate|up` (272 blocks on 120 units) and its head
 //! (816) run several blocks a unit.
@@ -16,7 +16,7 @@
 //!   `Session::set_count_trace_bytes`) are one read of `A`'s rows a unit that ran it, against
 //!   one a block with the flag off; its `B` bytes are unchanged.
 
-use tt_isa::dm::TILE_SLOT;
+use tensix_isa::dm::TILE_SLOT;
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{DramTensor, Pad};
@@ -87,7 +87,7 @@ fn with_tiles(tiles: TileChoice, f: impl FnOnce(&mut Session<tt_kmd::Kmd>)) {
 /// slots by mistake carries into valid outputs.
 fn poison_padding_rows<T: tt_device::Transport>(s: &mut Session<T>, t: &DramTensor) {
     use tt_device::tlb::WindowKind;
-    use tt_isa::dm::{face_index, TILE_DATA};
+    use tensix_isa::dm::{face_index, TILE_DATA};
     s.sync().unwrap();
     let w = s.device().alloc_window(WindowKind::FourGib).unwrap();
     let [rt, ct] = t.grid();

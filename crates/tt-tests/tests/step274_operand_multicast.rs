@@ -12,7 +12,7 @@
 //!   with `A`, `B` or both multicast, with units sitting rounds out (column blocks that do not
 //!   divide the grid's width, block rows that do not divide its height) and a unit past the grid:
 //!   the multicasts move bytes only.
-//! - **Each unit leaves its credit words at zero** (`tt_isa::dm::CREDITS`), so a trace of a
+//! - **Each unit leaves its credit words at zero** (`tensix_isa::dm::CREDITS`), so a trace of a
 //!   multicast product replays as the eager product, again and again.
 //! - **The negative control:** multicasts of either operand that land 16 bytes past their strip
 //!   change the product.
@@ -27,7 +27,7 @@
 //! NC may still be multicasting from, and a reader that does not wait for its strip; silicon runs
 //! the same products with real concurrency.
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{credit_word, CREDIT_WORDS};
+use tensix_isa::dm::{credit_word, CREDIT_WORDS};
 use tt_kernels::matmul::{Fidelity, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{BlockStream, DramTensor, Reuse};

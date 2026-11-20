@@ -1,7 +1,7 @@
 //! Blackhole format-code and physical-stream characterization. Candidate
 //! codes originally came from the WH table; both-card measurements establish
 //! the corresponding Blackhole shipping format constants.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::thcon,
     tile::{L1Format, TileImage},
@@ -94,7 +94,7 @@ fn pack_block_formats() {
                 .unwrap();
             words
                 .set(
-                    tt_isa::cfg::generated::alu::ALU_ROUNDING_MODE_Packer_srnd_en,
+                    tensix_isa::cfg::generated::alu::ALU_ROUNDING_MODE_Packer_srnd_en,
                     0,
                 )
                 .unwrap();
@@ -158,9 +158,9 @@ fn pack_block_formats() {
                 let width = format.datum_bits();
                 let datum = bytes[at / 8] >> (at % 8) & ((1u16 << width) - 1) as u8;
                 let bits = match format {
-                    L1Format::Bfp8 => tt_isa::tile::bfp8_to_bf16(datum, exp),
-                    L1Format::Bfp4 => tt_isa::tile::bfp4_to_bf16(datum, exp),
-                    L1Format::Bfp2 => tt_isa::tile::bfp2_to_bf16(datum, exp),
+                    L1Format::Bfp8 => tensix_isa::tile::bfp8_to_bf16(datum, exp),
+                    L1Format::Bfp4 => tensix_isa::tile::bfp4_to_bf16(datum, exp),
+                    L1Format::Bfp2 => tensix_isa::tile::bfp2_to_bf16(datum, exp),
                     _ => unreachable!(),
                 };
                 let decoded = if bits & 0x7f80 == 0 {
@@ -207,7 +207,7 @@ fn pack_block_formats() {
 #[test]
 fn unpack_raw_block_formats() {
     use datapath::Unpacker;
-    use tt_isa::{cfg::generated::alu, isa::generated::encode, matrix::Banks, tile};
+    use tensix_isa::{cfg::generated::alu, isa::generated::encode, matrix::Banks, tile};
     harness::in_device(|dev| {
         for (format, code) in [
             (L1Format::Bfp8, 6),

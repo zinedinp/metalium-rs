@@ -7,7 +7,7 @@ use crate::{
     sfpu::kernel,
     tensor::{DramAlloc, DramTensor, Elem, Pad, Placement, Result, Step, TensorError, Work},
 };
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     cfg::generated::alu,
     dm::{op, record},
@@ -240,7 +240,7 @@ fn build(
     let mut pack = vec![datapath::state_id()];
     pack.extend(sync::take(sems.computed, Before::PACKER));
     pack.extend(datapath::pack_tile_from_dst(
-        layout.out_at + tt_isa::dm::TILE_DATA,
+        layout.out_at + tensix_isa::dm::TILE_DATA,
         0,
     ));
     pack.extend(sync::post_after(Unit::Packer, sems.free));
@@ -377,7 +377,7 @@ pub(crate) fn transpose_block(
     let mut pack = vec![datapath::state_id()];
     pack.extend(sync::take(sems.computed, Before::PACKER));
     pack.extend(datapath::pack_tile_from_dst(
-        layout.out_at + tt_isa::dm::TILE_DATA,
+        layout.out_at + tensix_isa::dm::TILE_DATA,
         0,
     ));
     pack.extend(sync::post_after(Unit::Packer, sems.free));
@@ -400,8 +400,8 @@ pub(crate) fn transpose_block(
     gather.push([op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
     gather.push([
         op::COPY_WORDS,
-        (layout.a_at + tt_isa::dm::TILE_DATA) as u32,
-        (layout.a_at + tt_isa::dm::TILE_DATA + 256 * 4) as u32,
+        (layout.a_at + tensix_isa::dm::TILE_DATA) as u32,
+        (layout.a_at + tensix_isa::dm::TILE_DATA + 256 * 4) as u32,
         256,
         4,
         4,

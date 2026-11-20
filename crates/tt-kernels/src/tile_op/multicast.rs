@@ -8,7 +8,7 @@
 //!
 //! The pass works on a lowered product's `GATHER` records, as [`super::reuse::pull`] does, and
 //! pairs each reader's strips with its sender's in the same way ([`super::reuse::pair`]). Each
-//! strip is credited both ways through the op-level credit words ([`tt_isa::dm::CREDITS`]):
+//! strip is credited both ways through the op-level credit words ([`tensix_isa::dm::CREDITS`]):
 //! [`super::reuse::READY`] and [`super::reuse::FREED`] for `A`, [`super::reuse::READY_B`] and
 //! [`super::reuse::FREED_B`] for `B` (an op shares one way or the other, never both).
 //!
@@ -18,7 +18,7 @@
 //!   count before the kernel may read the half.
 //! - **A sender**'s RISCV B gathers each chunk's strips into its own half as it would unshared,
 //!   inside a reserve and a push of the tile's transfer stream
-//!   ([`tt_isa::dataflow::Stream::Transfer`]), whether or not the chunk has readers: the push
+//!   ([`tensix_isa::dataflow::Stream::Transfer`]), whether or not the chunk has readers: the push
 //!   waits for the gather's reads, so the token follows the data, and the reserve keeps B off a
 //!   half NC may still be multicasting from. Its RISCV NC, at the
 //!   head of the chunk's writer section (before it waits for the chunk's results;
@@ -49,8 +49,8 @@
 
 use std::collections::HashMap;
 
-use tt_isa::dataflow::{Action, Stream};
-use tt_isa::dm::{self, credit_word, op, record};
+use tensix_isa::dataflow::{Action, Stream};
+use tensix_isa::dm::{self, credit_word, op, record};
 
 use super::distribute::Shared;
 use super::reuse::{self, Edit, Operand, WORDS};
@@ -181,7 +181,7 @@ pub fn push(
     // token, and every chunk of theirs has a writer prefix, empty or not (module doc).
     let mut senders = vec![false; units];
     let mut totals = vec![[0u32; WORDS]; units];
-    let max = tt_isa::noc::niu::MAX_REQUEST_BYTES;
+    let max = tensix_isa::noc::niu::MAX_REQUEST_BYTES;
     for (operand, holder_of) in [
         (Operand::A, &shared.holder_of),
         (Operand::B, &shared.b_holder_of),
@@ -414,9 +414,9 @@ mod tests {
     use super::super::reuse::Operand;
     use crate::matmul::{Fidelity, SrcRoute};
     use crate::tensor::{self, BlockStream, DramAlloc, DramTensor, Elem, Reads, Reuse, Step};
-    use tt_isa::dataflow::{Action, Stream};
-    use tt_isa::dm::{credit_word, op, record, CREDIT_WORDS};
-    use tt_isa::dram::Dram;
+    use tensix_isa::dataflow::{Action, Stream};
+    use tensix_isa::dm::{credit_word, op, record, CREDIT_WORDS};
+    use tensix_isa::dram::Dram;
 
     /// Held by every test that builds a product: the negative controls' hooks are process-wide
     /// ([`super::probe_misroute`], [`super::probe_overwait`]).

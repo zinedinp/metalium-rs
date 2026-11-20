@@ -91,7 +91,7 @@ fn a_weight_stream_reads_its_scratch_in_large_entries() {
                 probe_contiguous_b(None);
                 println!("{at}: {moved} bytes moved, {ahead} read ahead");
                 // Every tile of `B` in its FP32 slot (the tile and its header).
-                let slots = (k / 32 * (n / 32)) as u64 * tt_isa::dm::TILE_SLOT;
+                let slots = (k / 32 * (n / 32)) as u64 * tensix_isa::dm::TILE_SLOT;
                 assert_eq!(moved, slots, "{at}: every slot of `B` moved");
                 assert_eq!(ahead, 0, "{at}: nothing read ahead on one tile");
                 assert!(

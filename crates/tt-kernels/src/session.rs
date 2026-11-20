@@ -38,10 +38,10 @@ use std::sync::Arc;
 use tt_device::core_control::WaitError;
 use tt_device::tlb::WindowKind;
 use tt_device::{Device, Transport, TransportError};
-use tt_isa::isa::Instruction;
-use tt_isa::noc::grid::Tensix;
-use tt_isa::noc::{Noc0, NocCoord};
-use tt_isa::tensix::{self, Core};
+use tensix_isa::isa::Instruction;
+use tensix_isa::noc::grid::Tensix;
+use tensix_isa::noc::{Noc0, NocCoord};
+use tensix_isa::tensix::{self, Core};
 
 use crate::datapath;
 use crate::dm::{DataMover, Throttle};
@@ -397,7 +397,7 @@ fn busy_start(
     // The ring's first slot, from the list's own `GATHER` record.
     let Some(b_at) = capture.units[u].stream[block.clone()]
         .iter()
-        .find(|e| e[0] == tt_isa::dm::record::GATHER)
+        .find(|e| e[0] == tensix_isa::dm::record::GATHER)
         .map(|e| u64::from(e[3]))
     else {
         return last;
@@ -427,7 +427,7 @@ fn early_start(
 ) -> usize {
     let stream = &capture.units[u].stream;
     // An arrival, not a wait for a barrier the unit sat out.
-    let arrival = |e: &[u32; 8]| e[0] == tt_isa::dm::op::BARRIER && e[4] == 0;
+    let arrival = |e: &[u32; 8]| e[0] == tensix_isa::dm::op::BARRIER && e[4] == 0;
     let Some(at) = to.checked_sub(1).filter(|&at| arrival(&stream[at])) else {
         return to;
     };
@@ -960,7 +960,7 @@ pub struct Session<T: Transport> {
     ttinsn: bool,
     /// What every unit's movers' lists may name in L1 now, and each started later
     /// (`DataMover::set_arena`): `DATA`, or the trace arena while a capture plans into it.
-    mover_arena: tt_isa::l1::Region,
+    mover_arena: tensix_isa::l1::Region,
     /// The shape of the op being queued ([`trace::OpRecord::shape`]).
     pending_shape: u64,
     /// The capture's tensors allocated when the op being queued was ([`trace::OpRecord::allocs`]).
@@ -1072,7 +1072,7 @@ struct Unit {
     /// Mover lists submitted to this tile: one host round trip each.
     lists: u64,
     /// The host's mirror of this tile's resident programs
-    /// (`tt_isa::l1::PROGRAM_CACHE`).
+    /// (`tensix_isa::l1::PROGRAM_CACHE`).
     programs: ProgramCache,
     /// Lists enqueued on this tile's mover and not yet retired, oldest first
     /// ([`Session::sync`]).
@@ -1121,13 +1121,13 @@ impl ExtentDir<'_> {
 /// An upload is B reading the host and NC writing GDDR. A download is one list
 /// on B: the read, a wait until it has landed, then the write to the host.
 fn weight_image_job(
-    range: tt_isa::dram::DramRange,
+    range: tensix_isa::dram::DramRange,
     host: u64,
     l1: u64,
     len: u32,
     upload: bool,
 ) -> tensor::Job {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     let host_move = [
         if upload {
             op::HOST_READ
@@ -1202,7 +1202,7 @@ pub enum Tilize {
     /// tiles cross PCIe (`tensor::host_dma_jobs`).
     Host,
     /// On the card: rows cross PCIe and each unit's mover tilizes them in L1
-    /// (`tt_isa::dm::op::TILIZE`, `tensor::row_major_dma_jobs`). The tile
+    /// (`tensix_isa::dm::op::TILIZE`, `tensor::row_major_dma_jobs`). The tile
     /// layout never leaves the card.
     Card,
 }
@@ -1399,7 +1399,7 @@ type ContiguousKey = (usize, [u32; 8], [[u32; 8]; 2]);
 /// allocator, the data mover image, and a window for each size of access.
 struct DramState {
     alloc: DramAlloc,
-    dram: tt_isa::dram::Dram,
+    dram: tensix_isa::dram::Dram,
     image: &'static [u8],
     nc_image: &'static [u8],
     w4: tt_device::Window,
@@ -1443,7 +1443,7 @@ struct Segment {
     init: Vec<runtime::SemaphoreInit>,
     /// Its kernels' MOP configurations: one descriptor serves the list, so
     /// every kernel in it has the same (`tensor::Step::Kernel::mop`).
-    mop: [Option<tt_isa::frontend::mop::MopConfig>; 3],
+    mop: [Option<tensix_isa::frontend::mop::MopConfig>; 3],
     /// The block repeats of the programs a list of fixed-slot kernels shares
     /// (resident lists' kernels each carry their own, `kernel_loops`).
     loops: Arc<[Vec<crate::code::Loop>; 3]>,
@@ -1467,7 +1467,7 @@ struct Segment {
 ///
 /// With `fuse` ([`Session::set_ttinsn`]), the math role's program as fused `.ttinsn` code when it
 /// pushes [`FUSE_MIN_WORDS`] words or more and has a fused form, its length flagged
-/// `tt_isa::ttinsn::FUSED`.
+/// `tensix_isa::ttinsn::FUSED`.
 fn stored_program(
     roles: &Arc<[Vec<Instruction>; 3]>,
     loops: &Arc<[Vec<crate::code::Loop>; 3]>,
@@ -1519,7 +1519,7 @@ fn stored_program(
                 mutate_fused(&mut w);
             }
             let n = w.len() as u32;
-            (w, n | tt_isa::ttinsn::FUSED)
+            (w, n | tensix_isa::ttinsn::FUSED)
         });
     let (words, len_word) = match fused {
         Some(f) => f,
@@ -1576,7 +1576,7 @@ pub fn probe_fuse_mutation(on: bool) {
 
 /// [`probe_fuse_mutation`]'s change.
 fn mutate_fused(words: &mut [u32]) {
-    use tt_isa::isa::generated::defs::SFPLOADI;
+    use tensix_isa::isa::generated::defs::SFPLOADI;
     for w in words.iter_mut() {
         if *w & 3 != 3 && SFPLOADI.matches(w.rotate_right(2)) {
             *w = (w.rotate_right(2) ^ 1).rotate_left(2);
@@ -1588,7 +1588,7 @@ fn mutate_fused(words: &mut [u32]) {
 /// form ([`crate::code::Code::fused`]).
 fn fused_form(code: &crate::code::Code) -> Option<Vec<u32>> {
     let fused = code.fused().ok()?;
-    let pushed = tt_isa::ttinsn::validate(&fused).ok()?;
+    let pushed = tensix_isa::ttinsn::validate(&fused).ok()?;
     (pushed >= FUSE_MIN_WORDS as u64).then_some(fused)
 }
 
@@ -1645,7 +1645,7 @@ fn place_programs<T: Transport>(
                         break 'kernels;
                     }
                 };
-                if len_word & tt_isa::ttinsn::FUSED != 0 {
+                if len_word & tensix_isa::ttinsn::FUSED != 0 {
                     FUSED_PLACED.fetch_add(1, Ordering::Relaxed);
                     LAST_FUSED_AT.store(at, Ordering::Relaxed);
                 }
@@ -1658,7 +1658,7 @@ fn place_programs<T: Transport>(
             let mut scripts = [(0u32, 0u32); 3];
             for (role, script) in scripts.iter_mut().enumerate() {
                 let mut words = vec![
-                    tt_isa::dataflow::VERSION,
+                    tensix_isa::dataflow::VERSION,
                     placed.len() as u32,
                     capacity,
                     role as u32,
@@ -1666,7 +1666,7 @@ fn place_programs<T: Transport>(
                 for programs in &placed {
                     words.extend([programs[role].0, programs[role].1, 0, 0]);
                 }
-                let length = words.len() as u32 | tt_isa::dataflow::STREAMED;
+                let length = words.len() as u32 | tensix_isa::dataflow::STREAMED;
                 let words: Arc<[u32]> = words.into();
                 let hash = crate::program_cache::hash(&words);
                 // As the kernels' programs above: another trace's held scripts may make room once
@@ -1786,7 +1786,7 @@ fn control_segments(steps: Vec<Step>) -> Vec<Segment> {
                     init,
                     *mop,
                     loops,
-                    tt_isa::dm::op::KERNEL,
+                    tensix_isa::dm::op::KERNEL,
                 );
                 after_list = false;
             }
@@ -1811,8 +1811,8 @@ fn control_segments(steps: Vec<Step>) -> Vec<Segment> {
 /// NC has yet to write out, since the next transfer's slots and reads may meet
 /// what an earlier one wrote; at depth one the next reserve waits for that.
 fn transfer_segments(steps: Vec<Step>) -> Vec<Segment> {
-    use tt_isa::dataflow::{Action, Release, Stream};
-    use tt_isa::dm::{op, LIST_MAX};
+    use tensix_isa::dataflow::{Action, Release, Stream};
+    use tensix_isa::dm::{op, LIST_MAX};
     struct Packet {
         what: &'static str,
         depth: u16,
@@ -1822,7 +1822,7 @@ fn transfer_segments(steps: Vec<Step>) -> Vec<Segment> {
         steps: u64,
     }
     fn close(packet: Option<Packet>, out: &mut Vec<Segment>) {
-        use tt_isa::dataflow::Action;
+        use tensix_isa::dataflow::Action;
         let Some(mut p) = packet.filter(|p| p.sent > 0) else {
             return;
         };
@@ -1947,7 +1947,7 @@ fn capture_commands(
     base: u32,
     mut retain: impl FnMut(u64),
 ) -> Result<Vec<[u32; 8]>, TensorError> {
-    use tt_isa::dm::{op, record};
+    use tensix_isa::dm::{op, record};
     let mut relative = Vec::with_capacity(entries.len());
     let mut index = 0;
     while index < entries.len() {
@@ -1989,7 +1989,7 @@ fn close_segment(cur: &mut Segment, out: &mut Vec<Segment>) {
 /// modelled -- anything but GDDR moves, fills and the move records -- which
 /// keeps a region's slot reuse waiting for NC's release.
 fn l1_footprint(entries: &[[u32; 8]], gather: bool) -> Option<Vec<std::ops::Range<u64>>> {
-    use tt_isa::dm::{op, record, Entry, Transform, TILE_SLOT};
+    use tensix_isa::dm::{op, record, Entry, Transform, TILE_SLOT};
     let slots = |at: u32, n: u64| at as u64..at as u64 + n * TILE_SLOT;
     let mut ranges = Vec::new();
     let mut index = 0;
@@ -2110,16 +2110,16 @@ fn write_barrier_words<T: Transport>(
     let Some(&leader) = tiles.first() else {
         return Ok(());
     };
-    dev.write32(w, leader, tt_isa::dm::BARRIER_COUNTER, 0)?;
+    dev.write32(w, leader, tensix_isa::dm::BARRIER_COUNTER, 0)?;
     let rects = rects.unwrap_or(&[]);
-    dev.write32(w, leader, tt_isa::dm::BARRIER_RECTS, rects.len() as u32)?;
+    dev.write32(w, leader, tensix_isa::dm::BARRIER_RECTS, rects.len() as u32)?;
     for (i, &(hi, acks)) in rects.iter().enumerate() {
-        let at = tt_isa::dm::BARRIER_RECTS + 4 + 8 * i as u64;
+        let at = tensix_isa::dm::BARRIER_RECTS + 4 + 8 * i as u64;
         dev.write32(w, leader, at, hi)?;
         dev.write32(w, leader, at + 4, acks)?;
     }
     for &tile in tiles {
-        dev.write32(w, tile, tt_isa::dm::BARRIER_RELEASE, 0)?;
+        dev.write32(w, tile, tensix_isa::dm::BARRIER_RELEASE, 0)?;
     }
     Ok(())
 }
@@ -2129,7 +2129,7 @@ fn write_barrier_words<T: Transport>(
 /// rows where they match -- as `(NOC_RET_ADDR_HI on NoC #0, tile count)`, each checked against
 /// the grid ([`multicast::Rect::new`]). `None` past `dm::BARRIER_RECTS_MAX`.
 fn release_rects(grid: &Tensix, tiles: &[(u8, u8)]) -> Option<Vec<(u32, u32)>> {
-    use tt_isa::noc::multicast::Rect;
+    use tensix_isa::noc::multicast::Rect;
     let mut rest: Vec<(u8, u8)> = tiles.iter().skip(1).copied().collect();
     rest.sort_unstable_by_key(|&(x, y)| (y, x));
     rest.dedup();
@@ -2152,7 +2152,7 @@ fn release_rects(grid: &Tensix, tiles: &[(u8, u8)]) -> Option<Vec<(u32, u32)>> {
             None => rects.push((x0, x1, y, y)),
         }
     }
-    if rects.len() > tt_isa::dm::BARRIER_RECTS_MAX as usize {
+    if rects.len() > tensix_isa::dm::BARRIER_RECTS_MAX as usize {
         return None;
     }
     rects
@@ -2160,7 +2160,7 @@ fn release_rects(grid: &Tensix, tiles: &[(u8, u8)]) -> Option<Vec<(u32, u32)>> {
         .map(|(x0, x1, y0, y1)| {
             Rect::new(grid, x0, y0, x1, y1)
                 .ok()
-                .map(|r| (r.hi(tt_isa::noc::niu::Niu::Noc0), r.tile_count()))
+                .map(|r| (r.hi(tensix_isa::noc::niu::Niu::Noc0), r.tile_count()))
         })
         .collect()
 }
@@ -2172,28 +2172,28 @@ fn barrier_entries(stream: &[[u32; 8]]) -> [u32; 3] {
     let mut i = 0;
     while i < stream.len() {
         let e = stream[i];
-        if e[0] == tt_isa::dm::op::BARRIER {
+        if e[0] == tensix_isa::dm::op::BARRIER {
             let wait = e[4] == 1;
             out[wait as usize] += 1;
             out[2] += if wait {
-                e[tt_isa::dm::BARRIER_STANDS_FOR]
+                e[tensix_isa::dm::BARRIER_STANDS_FOR]
             } else {
                 1
             };
         }
-        i += tt_isa::dm::record::len(e[0]).max(1);
+        i += tensix_isa::dm::record::len(e[0]).max(1);
     }
     out
 }
 
 fn lead_with(seg: &mut Segment, entry: [u32; 8]) -> bool {
-    if seg.entries.len() >= tt_isa::dm::LIST_MAX as usize {
+    if seg.entries.len() >= tensix_isa::dm::LIST_MAX as usize {
         return false;
     }
     let packet = seg
         .entries
         .first()
-        .is_some_and(|e| e[0] == tt_isa::dm::op::PAIR);
+        .is_some_and(|e| e[0] == tensix_isa::dm::op::PAIR);
     let at = usize::from(packet);
     seg.entries.insert(at, entry);
     if packet {
@@ -2216,8 +2216,8 @@ fn lead_with(seg: &mut Segment, entry: [u32; 8]) -> bool {
 /// of `cache` bytes (`Session::limit_program_cache`).
 fn streaming_segments(steps: Vec<Step>, cache: u64) -> Result<Vec<Segment>, TensorError> {
     use crate::channel::Channel;
-    use tt_isa::dataflow::{Action, Stream};
-    use tt_isa::dm::op;
+    use tensix_isa::dataflow::{Action, Stream};
+    use tensix_isa::dm::op;
     let mut result = Vec::new();
     // Consecutive standalone transfers share one control list (and one queue
     // commit), as `control_segments` lays them out; consecutive `Transfer`s
@@ -2383,11 +2383,11 @@ fn streaming_segments(steps: Vec<Step>, cache: u64) -> Result<Vec<Segment>, Tens
     Ok(result)
 }
 
-/// One entry, or one whole op record (`tt_isa::dm::record`), which a list
+/// One entry, or one whole op record (`tensix_isa::dm::record`), which a list
 /// never splits. A full list ends here; the mover waits for all of it before
 /// it reports done, so the next list starts from a clean boundary.
 fn push_entries(cur: &mut Segment, out: &mut Vec<Segment>, e: &[[u32; 8]]) {
-    if cur.entries.len() + e.len() > tt_isa::dm::LIST_MAX as usize {
+    if cur.entries.len() + e.len() > tensix_isa::dm::LIST_MAX as usize {
         close_segment(cur, out);
     }
     cur.entries.extend_from_slice(e);
@@ -2402,7 +2402,7 @@ fn add_list(
     entries: &[[u32; 8]],
     wait_before: bool,
 ) {
-    use tt_isa::dm::op;
+    use tensix_isa::dm::op;
     if cur.what.is_empty() {
         cur.what = what;
     }
@@ -2411,7 +2411,7 @@ fn add_list(
     }
     let mut i = 0;
     while i < entries.len() {
-        let n = tt_isa::dm::record::len(entries[i][0]).min(entries.len() - i);
+        let n = tensix_isa::dm::record::len(entries[i][0]).min(entries.len() - i);
         push_entries(cur, out, &entries[i..i + n]);
         i += n;
         if cur.what.is_empty() {
@@ -2433,11 +2433,11 @@ fn add_kernel(
     out: &mut Vec<Segment>,
     roles: Arc<[Vec<Instruction>; 3]>,
     init: Vec<runtime::SemaphoreInit>,
-    mop: [Option<tt_isa::frontend::mop::MopConfig>; 3],
+    mop: [Option<tensix_isa::frontend::mop::MopConfig>; 3],
     loops: Arc<[Vec<crate::code::Loop>; 3]>,
     op_code: u32,
 ) {
-    use tt_isa::dm::LIST_MAX;
+    use tensix_isa::dm::LIST_MAX;
     let resident = roles
         .iter()
         .all(|p| p.is_empty() || crate::program_cache::admitted(p.len()));
@@ -2446,7 +2446,7 @@ fn add_kernel(
     let same_init = cur.init.is_empty() || cur.init == init;
     let fits = if resident {
         (cur.kernels.is_empty() || cur.resident)
-            && (seen || cur.resident_bytes + bytes <= tt_isa::l1::PROGRAM_CACHE.len())
+            && (seen || cur.resident_bytes + bytes <= tensix_isa::l1::PROGRAM_CACHE.len())
     } else {
         (cur.kernels.is_empty() || !cur.resident)
             && cur.roles.as_ref().is_none_or(|r| {
@@ -2487,7 +2487,7 @@ struct Block {
     gather: (&'static str, Vec<[u32; 8]>),
     roles: Arc<[Vec<Instruction>; 3]>,
     init: Vec<runtime::SemaphoreInit>,
-    mop: [Option<tt_isa::frontend::mop::MopConfig>; 3],
+    mop: [Option<tensix_isa::frontend::mop::MopConfig>; 3],
     loops: Arc<[Vec<crate::code::Loop>; 3]>,
     scatter: (&'static str, Vec<[u32; 8]>),
 }
@@ -2558,7 +2558,7 @@ fn linked_groups(
     jobs: &[tensor::Job],
     units: usize,
 ) -> Result<Option<Vec<Vec<Option<Vec<Step>>>>>, TensorError> {
-    use tt_isa::dm::{op, CREDITS, CREDITS_END, LIST_MAX};
+    use tensix_isa::dm::{op, CREDITS, CREDITS_END, LIST_MAX};
     let linked = jobs.iter().flatten().any(|step| match step {
         Step::List { entries, .. } => entries
             .iter()
@@ -2614,7 +2614,7 @@ fn linked_groups(
 }
 
 fn execution_groups(steps: Vec<Step>, cache: u64) -> Vec<Item> {
-    use tt_isa::dm::LIST_MAX;
+    use tensix_isa::dm::LIST_MAX;
     let mut items: Vec<Item> = Vec::new();
     let mut run: Vec<Block> = Vec::new();
     let mut run_entries = 0usize;
@@ -2718,32 +2718,32 @@ fn execution_groups(steps: Vec<Step>, cache: u64) -> Vec<Item> {
 /// `KICK` or `ROLES_DONE` inside), and for a `PAIR_CALL`, its reader section's entries (B runs them;
 /// NC, which runs the writer's, does not stamp). B also stamps each fetch of a chunk of the stream
 /// or of a reader section, its wait for its writer and each prefetch `WAIT`
-/// (`tt_isa::dm::trace_mode::FETCH`, `WRITER_WAIT`, `PREFETCH_WAIT`): two events each, and `range`
+/// (`tensix_isa::dm::trace_mode::FETCH`, `WRITER_WAIT`, `PREFETCH_WAIT`): two events each, and `range`
 /// may touch one chunk more than it fills. A prefetch `GATHER` adds its two `READ_BYTES` marks
 /// (`crate::profile_mode::PREFETCH_MARKS`), here though the second may fall under a later op.
 /// `Pipeline` stamps as `Ops` does and one base after a kernel
 /// ([`crate::profile_mode::ProfileOptions::stamps`]), and logs its batch tables in B's batch log:
 /// a header and six words a batch, one input `CB` reserve each, charged to the window at the log's
 /// rate ([`crate::profile_mode::batch_log_cost`]).
-/// Empty RISCV NC's entry log (`tt_isa::dm::nc_log`) on `tile` and disarm it.
+/// Empty RISCV NC's entry log (`tensix_isa::dm::nc_log`) on `tile` and disarm it.
 fn clear_nc_log<T: Transport>(
     dev: &mut Device<T>,
     window: &tt_device::Window,
     tile: NocCoord<Noc0>,
 ) -> Result<(), TransportError> {
-    dev.write32(window, tile, tt_isa::dm::nc::LOG, 0)?;
-    dev.write32(window, tile, tt_isa::dm::nc::LOG + 4, 0)?;
-    dev.write32(window, tile, tt_isa::dm::Mover::NC.at(tt_isa::dm::TRACE), 0)
+    dev.write32(window, tile, tensix_isa::dm::nc::LOG, 0)?;
+    dev.write32(window, tile, tensix_isa::dm::nc::LOG + 4, 0)?;
+    dev.write32(window, tile, tensix_isa::dm::Mover::NC.at(tensix_isa::dm::TRACE), 0)
 }
 
-/// RISCV NC's entry log on `tile` (`tt_isa::dm::nc_log`): its record words and the records it
+/// RISCV NC's entry log on `tile` (`tensix_isa::dm::nc_log`): its record words and the records it
 /// lost, read and emptied for the next. Read while NC is between lists (after a sync).
 fn take_nc_log<T: Transport>(
     dev: &mut Device<T>,
     window: &tt_device::Window,
     tile: NocCoord<Noc0>,
 ) -> Result<(Vec<u32>, u32), TransportError> {
-    use tt_isa::dm::{nc, nc_log};
+    use tensix_isa::dm::{nc, nc_log};
     let used = dev
         .read32(window, tile, nc::LOG)?
         .min(nc::LOG_WORDS - nc_log::HEADER_WORDS);
@@ -2830,36 +2830,36 @@ fn op_stamps(uc: &trace::UnitCapture, range: core::ops::Range<usize>) -> [u32; 3
             for (c, d) in count.iter_mut().zip(&details) {
                 *c += d.stamps(head);
             }
-            if head == tt_isa::dm::op::WAIT && entries[i][1] == tt_isa::dm::WAIT_PREFETCH {
+            if head == tensix_isa::dm::op::WAIT && entries[i][1] == tensix_isa::dm::WAIT_PREFETCH {
                 count[0] += 2;
                 count[2] += 2;
             }
-            use tt_isa::dataflow::{Action, Stream};
-            if head == tt_isa::dm::op::CB
+            use tensix_isa::dataflow::{Action, Stream};
+            if head == tensix_isa::dm::op::CB
                 && Stream::decode(entries[i][1]) == Some(Stream::Input)
                 && Action::decode(entries[i][2]) == Some(Action::Reserve)
             {
-                log_words += tt_isa::mailbox::BATCH_TIME_WORDS * 2;
+                log_words += tensix_isa::mailbox::BATCH_TIME_WORDS * 2;
             }
-            if matches!(head, tt_isa::dm::op::KERNEL | tt_isa::dm::op::KERNEL_WAIT) {
+            if matches!(head, tensix_isa::dm::op::KERNEL | tensix_isa::dm::op::KERNEL_WAIT) {
                 log_words += 1;
             }
-            use tt_isa::dm::record;
+            use tensix_isa::dm::record;
             if head == record::GATHER && entries[i][1] & record::GATHER_PREFETCH != 0 {
                 for c in &mut count {
                     *c += crate::profile_mode::PREFETCH_MARKS;
                 }
             }
-            i += (tt_isa::dm::record::len(head) as usize).max(1);
+            i += (tensix_isa::dm::record::len(head) as usize).max(1);
         }
     };
-    let chunks = |n: usize| 2 * n.div_ceil(tt_isa::dm::TRACE_CHUNK_ENTRIES as usize) as u32;
+    let chunks = |n: usize| 2 * n.div_ceil(tensix_isa::dm::TRACE_CHUNK_ENTRIES as usize) as u32;
     let fetches = chunks(range.len()) + 2;
     let mut waits = 0;
     let mut i = range.start;
     while i < range.end.min(uc.stream.len()) {
         let head = uc.stream[i][0];
-        if head == tt_isa::dm::op::PAIR_CALL {
+        if head == tensix_isa::dm::op::PAIR_CALL {
             waits += 2;
             if let Some(k) = uc.pair_at(i) {
                 if let Some(reader) = uc.pending_sections.get(2 * k) {
@@ -2873,19 +2873,19 @@ fn op_stamps(uc: &trace::UnitCapture, range: core::ops::Range<usize>) -> [u32; 3
         } else {
             add(&uc.stream[i..i + 1]);
         }
-        i += (tt_isa::dm::record::len(head) as usize).max(1);
+        i += (tensix_isa::dm::record::len(head) as usize).max(1);
     }
     count[2] += crate::profile_mode::batch_log_cost(log_words);
     count[2] += crate::profile_mode::nc_log_cost(nc_words);
     count.map(|c| c + fetches + waits)
 }
 
-/// The words RISCV NC's entry log (`tt_isa::dm::nc_log`) takes for a writer section run as its
+/// The words RISCV NC's entry log (`tensix_isa::dm::nc_log`) takes for a writer section run as its
 /// trace chunks, as the firmware logs it: a record an entry, but one for a run of a tag that
 /// coalesces; a settle before the first entry after a multicast run; and an anchor (two words), a
 /// settle and an end a chunk.
 fn nc_log_words(writer: &[[u32; 8]]) -> u32 {
-    use tt_isa::dm::{nc_log, op, MCAST_RUN_ACKS, TRACE_CHUNK_ENTRIES};
+    use tensix_isa::dm::{nc_log, op, MCAST_RUN_ACKS, TRACE_CHUNK_ENTRIES};
     let settle = nc_log::tag(nc_log::SETTLE, 0);
     let mut words = 0u32;
     let mut last = None;
@@ -2907,7 +2907,7 @@ fn nc_log_words(writer: &[[u32; 8]]) -> u32 {
             words += 1;
         }
         (last, run) = (Some(tag), of_run);
-        i += (tt_isa::dm::record::len(w[0])).max(1);
+        i += (tensix_isa::dm::record::len(w[0])).max(1);
     }
     words
 }
@@ -2930,11 +2930,11 @@ fn unit_barriers(
     let mut i = 0;
     while i < uc.stream.len() {
         let e = uc.stream[i];
-        if e[0] == tt_isa::dm::op::BARRIER {
+        if e[0] == tensix_isa::dm::op::BARRIER {
             out.push(if e[4] == 1 {
                 crate::profile_mode::UnitBarrier {
                     arrival_of: None,
-                    counts: e[tt_isa::dm::BARRIER_STANDS_FOR],
+                    counts: e[tensix_isa::dm::BARRIER_STANDS_FOR],
                 }
             } else {
                 let at = owners.partition_point(|(r, _)| r.start <= i);
@@ -2948,7 +2948,7 @@ fn unit_barriers(
                 }
             });
         }
-        i += (tt_isa::dm::record::len(e[0]) as usize).max(1);
+        i += (tensix_isa::dm::record::len(e[0]) as usize).max(1);
     }
     out
 }
@@ -2990,8 +2990,8 @@ fn op_bytes(
     let mut i = range.start;
     while i < range.end.min(uc.stream.len()) {
         let head = uc.stream[i][0];
-        let n = (tt_isa::dm::record::len(head) as usize).max(1);
-        if head == tt_isa::dm::op::PAIR_CALL {
+        let n = (tensix_isa::dm::record::len(head) as usize).max(1);
+        if head == tensix_isa::dm::op::PAIR_CALL {
             if let Some(k) = uc.pair_at(i) {
                 for section in uc.pending_sections.iter().skip(2 * k).take(2) {
                     bytes.count(section);
@@ -3185,7 +3185,7 @@ impl<T: Transport> Session<T> {
             l1_writes: Default::default(),
             trace_arena: std::env::var("TT_TRACE_ARENA").is_ok_and(|v| v == "1"),
             ttinsn: std::env::var("TT_TTINSN").map_or(true, |v| v != "0"),
-            mover_arena: tt_isa::l1::DATA,
+            mover_arena: tensix_isa::l1::DATA,
             pending_shape: 0,
             pending_allocs: 0,
             resident_matmul_a: true,
@@ -3219,8 +3219,8 @@ impl<T: Transport> Session<T> {
             profile_drained: Vec::new(),
             profile_drain_time: std::time::Duration::ZERO,
             profile_buffer: (
-                tt_isa::mailbox::TRACE_BUFFER,
-                tt_isa::mailbox::TRACE_BUFFER_BYTES,
+                tensix_isa::mailbox::TRACE_BUFFER,
+                tensix_isa::mailbox::TRACE_BUFFER_BYTES,
             ),
             batching: std::env::var("TT_BATCH").map_or(true, |v| v != "0"),
             math,
@@ -3245,7 +3245,7 @@ impl<T: Transport> Session<T> {
                 mover: None,
                 steps: 0,
                 lists: 0,
-                programs: ProgramCache::new(tt_isa::l1::PROGRAM_CACHE),
+                programs: ProgramCache::new(tensix_isa::l1::PROGRAM_CACHE),
                 queued: Default::default(),
                 nc: None,
                 barrier_seen: 0,
@@ -3372,7 +3372,7 @@ impl<T: Transport> Session<T> {
         self.sync_run()?;
         if self.dev.transport().is_simulated() {
             return Err(RunError::Transport(TransportError::Hazard {
-                address: tt_isa::tensix::timestamper::TIMESTAMP,
+                address: tensix_isa::tensix::timestamper::TIMESTAMP,
                 reason: "ttsim does not model the timestamper's event stream (divergence row 54)",
             }));
         }
@@ -3390,14 +3390,14 @@ impl<T: Transport> Session<T> {
                 TensorError::Run(r) => r,
                 TensorError::Transport(t) => RunError::Transport(t),
                 _ => RunError::Transport(TransportError::Hazard {
-                    address: tt_isa::dm::CAPS,
+                    address: tensix_isa::dm::CAPS,
                     reason: "unit 0's data mover did not start, so whether it can stamp is unknown",
                 }),
             })?;
         }
         if self.units[0].mover.as_ref().is_some_and(|m| !m.stamps()) {
             return Err(RunError::Transport(TransportError::Hazard {
-                address: tt_isa::dm::CAPS,
+                address: tensix_isa::dm::CAPS,
                 reason: "this firmware cannot stamp its work: build with the `profile` feature \
                          (`burn-tt/profile`, `tt-tests/profile`; `cargo xtask silicon --profile`)",
             }));
@@ -3424,16 +3424,16 @@ impl<T: Transport> Session<T> {
             // A batch table left by an earlier process (L1 outlives one) is never stamped as
             // this profile's: the mover stamps a table whose count is not zero.
             for role in [0, 2] {
-                let count = tt_isa::mailbox::role::Mailbox::of(role).batch_count();
+                let count = tensix_isa::mailbox::role::Mailbox::of(role).batch_count();
                 dev.write32(r.window(), unit.tile, count, 0)?;
             }
-            dev.write32(r.window(), unit.tile, tt_isa::dm::BATCH_LOG, 0)?;
+            dev.write32(r.window(), unit.tile, tensix_isa::dm::BATCH_LOG, 0)?;
             // NC's entry log starts empty and disarmed: B arms it pair by pair
             // (`dm::trace_mode::NC_LOG`).
             clear_nc_log(dev, r.window(), unit.tile)?;
             if unit.mover.is_some() {
-                dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE, trace_word)?;
-                dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE_WINDOW, 0)?;
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE, trace_word)?;
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE_WINDOW, 0)?;
             }
             let counter_at_start = dev.wall_clock(r.window(), unit.tile)?;
             units.push(crate::profile::UnitProfile {
@@ -3469,9 +3469,9 @@ impl<T: Transport> Session<T> {
                 .extend(dev.read_trace(r.window(), unit.tile, buffer)?);
             r.set_profiling(false);
             if unit.mover.is_some() {
-                dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE, 0)?;
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE, 0)?;
             }
-            let nc_trace = tt_isa::dm::Mover::NC.at(tt_isa::dm::TRACE);
+            let nc_trace = tensix_isa::dm::Mover::NC.at(tensix_isa::dm::TRACE);
             dev.write32(r.window(), unit.tile, nc_trace, 0)?;
             if u == 0 {
                 let now = dev.wall_clock(r.window(), unit.tile)?;
@@ -3485,12 +3485,12 @@ impl<T: Transport> Session<T> {
         })
     }
 
-    /// The mover's `tt_isa::dm::TRACE` word while profiling: the profile mode's detail, or every
+    /// The mover's `tensix_isa::dm::TRACE` word while profiling: the profile mode's detail, or every
     /// entry for a bare [`Session::profile_start`].
     fn trace_word(&self) -> u32 {
         self.profiler
             .as_ref()
-            .map_or(tt_isa::dm::trace_mode::FULL, |p| p.options.trace_mode())
+            .map_or(tensix_isa::dm::trace_mode::FULL, |p| p.options.trace_mode())
     }
 
     /// Turn the profile mode on (`Some`) or off (`None`, returning what it recorded): where the
@@ -3569,7 +3569,7 @@ impl<T: Transport> Session<T> {
             let Session { dev, units, .. } = self;
             for unit in units.iter() {
                 if let (Some(r), Some(_)) = (unit.resident.as_ref(), unit.mover.as_ref()) {
-                    let _ = dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE_WINDOW, 0);
+                    let _ = dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE_WINDOW, 0);
                 }
             }
         }
@@ -3616,12 +3616,12 @@ impl<T: Transport> Session<T> {
                     && units[u].mover.is_some() =>
             {
                 let used = dev
-                    .read32(r.window(), tile, tt_isa::dm::BATCH_LOG)?
-                    .min(tt_isa::dm::BATCH_LOG_WORDS - 1);
+                    .read32(r.window(), tile, tensix_isa::dm::BATCH_LOG)?
+                    .min(tensix_isa::dm::BATCH_LOG_WORDS - 1);
                 let mut bytes = vec![0u8; used as usize * 4];
                 if used > 0 {
-                    dev.read(r.window(), tile, tt_isa::dm::BATCH_LOG + 4, &mut bytes)?;
-                    dev.write32(r.window(), tile, tt_isa::dm::BATCH_LOG, 0)?;
+                    dev.read(r.window(), tile, tensix_isa::dm::BATCH_LOG + 4, &mut bytes)?;
+                    dev.write32(r.window(), tile, tensix_isa::dm::BATCH_LOG, 0)?;
                 }
                 let log: Vec<u32> = bytes
                     .chunks_exact(4)
@@ -3666,7 +3666,7 @@ impl<T: Transport> Session<T> {
         }
         self.sync()?;
         use crate::channel::Channel;
-        use tt_isa::dataflow::Stream;
+        use tensix_isa::dataflow::Stream;
         let mut requirements = crate::l1::Requirements::new(1);
         // The streams' counters are the channels' words; their depth is each packet's.
         let input = requirements.channel(
@@ -3681,7 +3681,7 @@ impl<T: Transport> Session<T> {
         );
         let state = requirements.scratch(
             "stream cancellation, progress and waits",
-            tt_isa::dataflow::TRANSFER - tt_isa::dataflow::ABORT,
+            tensix_isa::dataflow::TRANSFER - tensix_isa::dataflow::ABORT,
             4,
             0..1,
         );
@@ -3690,19 +3690,19 @@ impl<T: Transport> Session<T> {
             &Channel::local(0, Stream::Transfer, 1),
             0..1,
         );
-        let arena = tt_isa::l1::Region {
+        let arena = tensix_isa::l1::Region {
             name: "stream control",
-            base: tt_isa::dataflow::INPUT,
-            end: tt_isa::dataflow::END,
+            base: tensix_isa::dataflow::INPUT,
+            end: tensix_isa::dataflow::END,
         };
         let plan = requirements
             .plan(arena)
             .map_err(|error| TensorError::Shape(error.to_string()))?;
         crate::l1::check(&requirements, &plan, arena).map_err(TensorError::Shape)?;
-        if plan.addr(input) != tt_isa::dataflow::INPUT
-            || plan.addr(output) != tt_isa::dataflow::OUTPUT
-            || plan.addr(state) != tt_isa::dataflow::ABORT
-            || plan.addr(transfer) != tt_isa::dataflow::TRANSFER
+        if plan.addr(input) != tensix_isa::dataflow::INPUT
+            || plan.addr(output) != tensix_isa::dataflow::OUTPUT
+            || plan.addr(state) != tensix_isa::dataflow::ABORT
+            || plan.addr(transfer) != tensix_isa::dataflow::TRANSFER
         {
             return Err(TensorError::Shape(
                 "stream-control plan disagrees with firmware".into(),
@@ -3747,7 +3747,7 @@ impl<T: Transport> Session<T> {
                 *word = self.dev.read32(
                     resident.window(),
                     unit.tile,
-                    tt_isa::dataflow::INPUT + index as u64 * 4,
+                    tensix_isa::dataflow::INPUT + index as u64 * 4,
                 )?;
             }
             result.push(Some(DataflowProgress {
@@ -4126,7 +4126,7 @@ impl<T: Transport> Session<T> {
     /// no pinned memory, and the bytes go through the BAR.
     fn copy_extent_up(
         &mut self,
-        range: tt_isa::dram::DramRange,
+        range: tensix_isa::dram::DramRange,
         data: &[u8],
     ) -> Result<(), TensorError> {
         self.copy_extent(range, ExtentDir::Up(data))
@@ -4136,7 +4136,7 @@ impl<T: Transport> Session<T> {
     /// no pinned memory, and the bytes come through the BAR.
     fn copy_extent_down(
         &mut self,
-        range: tt_isa::dram::DramRange,
+        range: tensix_isa::dram::DramRange,
         data: &mut [u8],
     ) -> Result<(), TensorError> {
         self.copy_extent(range, ExtentDir::Down(data))
@@ -4144,7 +4144,7 @@ impl<T: Transport> Session<T> {
 
     fn copy_extent(
         &mut self,
-        range: tt_isa::dram::DramRange,
+        range: tensix_isa::dram::DramRange,
         mut data: ExtentDir<'_>,
     ) -> Result<(), TensorError> {
         if data.len() as u64 != range.len() {
@@ -4157,8 +4157,8 @@ impl<T: Transport> Session<T> {
         if self.staging().is_none() {
             return self.copy_extent_bar(range, &mut data);
         }
-        let chunk = (tt_isa::l1::DATA.len() as usize) & !63;
-        let l1 = tt_isa::l1::DATA.base;
+        let chunk = (tensix_isa::l1::DATA.len() as usize) & !63;
+        let l1 = tensix_isa::l1::DATA.base;
         let upload = data.is_up();
         let mut at = 0;
         while at < data.len() {
@@ -4202,7 +4202,7 @@ impl<T: Transport> Session<T> {
 
     fn copy_extent_bar(
         &mut self,
-        range: tt_isa::dram::DramRange,
+        range: tensix_isa::dram::DramRange,
         data: &mut ExtentDir<'_>,
     ) -> Result<(), TensorError> {
         let Session { dev, dram, .. } = self;
@@ -4219,7 +4219,7 @@ impl<T: Transport> Session<T> {
     /// `bytes` of the staging ring from the next 64-byte boundary, syncing first if they
     /// would wrap onto memory a queued transfer may still read.
     fn staging_aligned(&mut self, bytes: usize) -> Result<usize, TensorError> {
-        let align = tt_isa::dram::ALIGN as usize;
+        let align = tensix_isa::dram::ALIGN as usize;
         if self.staging_at + align + bytes > HOST_DMA_STAGING {
             if self.staging_busy {
                 self.sync()?;
@@ -4335,7 +4335,7 @@ impl<T: Transport> Session<T> {
                         let col = t % cols.div_ceil(32) * 32 + c;
                         if row < rows && col < cols {
                             let offset =
-                                tt_isa::dm::TILE_DATA as usize + tt_isa::dm::face_index(r, c) * 2;
+                                tensix_isa::dm::TILE_DATA as usize + tensix_isa::dm::face_index(r, c) * 2;
                             image[offset..offset + 2]
                                 .copy_from_slice(&values[row * cols + col].to_le_bytes());
                         }
@@ -4373,7 +4373,7 @@ impl<T: Transport> Session<T> {
                     let row = t / ct * 32 + r;
                     let col = t % ct * 32 + c;
                     if row < tensor.rows && col < tensor.cols {
-                        let at = tt_isa::dm::TILE_DATA as usize + tt_isa::dm::face_index(r, c) * 2;
+                        let at = tensix_isa::dm::TILE_DATA as usize + tensix_isa::dm::face_index(r, c) * 2;
                         values[row * tensor.cols + col] =
                             u16::from_le_bytes([image[at], image[at + 1]]);
                     }
@@ -4624,7 +4624,7 @@ impl<T: Transport> Session<T> {
             self.submit_jobs_on(jobs, units, RESET_BUDGET)?;
             return Ok(Some(()));
         }
-        let slot = tt_isa::dm::TILE_SLOT as usize;
+        let slot = tensix_isa::dm::TILE_SLOT as usize;
         let per = HOST_DMA_STAGING / slot;
         for first in (0..tiles).step_by(per) {
             let n = (tiles - first).min(per);
@@ -4669,10 +4669,10 @@ impl<T: Transport> Session<T> {
         at: u64,
         per_unit: usize,
     ) -> Result<(), TensorError> {
-        use tt_isa::dm::{record, TILE_SLOT};
+        use tensix_isa::dm::{record, TILE_SLOT};
         let refuse = |why: String| Err(TensorError::Shape(format!("probe_prefetch: {why}")));
         let [rt, ct] = t.grid();
-        let data = tt_isa::l1::DATA;
+        let data = tensix_isa::l1::DATA;
         if self.capture.is_some() {
             return refuse("not in a capture".into());
         }
@@ -4728,10 +4728,10 @@ impl<T: Transport> Session<T> {
         order: StreamOrder,
         window: usize,
     ) -> Result<Vec<Vec<[usize; 2]>>, TensorError> {
-        use tt_isa::dm::{record, TILE_SLOT};
+        use tensix_isa::dm::{record, TILE_SLOT};
         let refuse = |why: String| Err(TensorError::Shape(format!("probe_stream: {why}")));
         let [rt, ct] = t.grid();
-        let data = tt_isa::l1::DATA;
+        let data = tensix_isa::l1::DATA;
         if units == 0 || units > self.units.len() {
             return refuse(format!("{units} units of {}", self.units.len()));
         }
@@ -4827,7 +4827,7 @@ impl<T: Transport> Session<T> {
         twin: &DramTensor,
     ) -> Result<RowLayout, TensorError> {
         use crate::residency::{holders, rectangles, RowScheme};
-        use tt_isa::dm::{mcast_corners, op, record, TILE_DATA, TILE_SLOT};
+        use tensix_isa::dm::{mcast_corners, op, record, TILE_DATA, TILE_SLOT};
         const FACE: u64 = 1024;
         let refuse = |why: String| Err(TensorError::Shape(format!("probe_row_delivery: {why}")));
         let n = self.units.len();
@@ -4851,7 +4851,7 @@ impl<T: Transport> Session<T> {
         let runs = tensor::runs(rows, producers.len(), usize::MAX);
         let most = runs.iter().map(|r| r.len()).max().unwrap_or(0) as u64;
         let bytes = rt as u64 * TILE_SLOT;
-        let data = tt_isa::l1::DATA;
+        let data = tensix_isa::l1::DATA;
         let region = data.end - bytes;
         let dst = region - bytes;
         let src = (dst - most * TILE_SLOT) & !63;
@@ -4906,7 +4906,7 @@ impl<T: Transport> Session<T> {
                     match scheme {
                         RowScheme::Multicast | RowScheme::MulticastRunAcks => {
                             let run = match scheme {
-                                RowScheme::MulticastRunAcks => tt_isa::dm::MCAST_RUN_ACKS,
+                                RowScheme::MulticastRunAcks => tensix_isa::dm::MCAST_RUN_ACKS,
                                 _ => 0,
                             };
                             if reading.contains(&u) {
@@ -4961,7 +4961,7 @@ impl<T: Transport> Session<T> {
                 .map(|&r| all[r])
                 .collect();
             let mut writes = Vec::new();
-            let max = tt_isa::noc::niu::MAX_REQUEST_BYTES as u64;
+            let max = tensix_isa::noc::niu::MAX_REQUEST_BYTES as u64;
             for off in (0..bytes).step_by(max as usize) {
                 let (a, len) = ((region + off) as u32, (bytes - off).min(max) as u32);
                 for (s, e) in rectangles(&others) {
@@ -4994,7 +4994,7 @@ impl<T: Transport> Session<T> {
                 from = reading[(k + 1) % reading.len()];
             }
             let (x, y) = xy(all[from]);
-            let max = tt_isa::noc::niu::MAX_REQUEST_BYTES as u64;
+            let max = tensix_isa::noc::niu::MAX_REQUEST_BYTES as u64;
             (0..bytes)
                 .step_by(max as usize)
                 .map(|off| {
@@ -5080,7 +5080,7 @@ impl<T: Transport> Session<T> {
             host.with_bytes(&mut |buf| copy_rows(buf, t.rows, stride, bytes, t.cols * 4));
             return Ok(Some(out));
         }
-        let per = HOST_DMA_STAGING / tt_isa::dm::TILE_SLOT as usize;
+        let per = HOST_DMA_STAGING / tensix_isa::dm::TILE_SLOT as usize;
         for first in (0..tiles).step_by(per) {
             let n = (tiles - first).min(per);
             let base = self.staging().expect("checked above").noc_address();
@@ -5092,8 +5092,8 @@ impl<T: Transport> Session<T> {
             host.with_bytes(&mut |buf| {
                 crate::matmul::detilize_from(
                     buf,
-                    tt_isa::dm::TILE_SLOT as usize,
-                    tt_isa::dm::TILE_DATA as usize,
+                    tensix_isa::dm::TILE_SLOT as usize,
+                    tensix_isa::dm::TILE_DATA as usize,
                     t.rows,
                     t.cols,
                     first..first + n,
@@ -5213,7 +5213,7 @@ impl<T: Transport> Session<T> {
     fn barrier_wait(&self, target: u32) -> [u32; 8] {
         let c = self.units[0].tile;
         [
-            tt_isa::dm::op::BARRIER,
+            tensix_isa::dm::op::BARRIER,
             target,
             c.x() as u32,
             c.y() as u32,
@@ -5239,7 +5239,7 @@ impl<T: Transport> Session<T> {
         };
         let words = units
             .iter()
-            .map(|u| dev.read32(w, u.tile, tt_isa::dm::BARRIER_RELEASE))
+            .map(|u| dev.read32(w, u.tile, tensix_isa::dm::BARRIER_RELEASE))
             .collect::<Result<Vec<_>, _>>()?;
         Ok((words, self.barriers))
     }
@@ -5258,9 +5258,9 @@ impl<T: Transport> Session<T> {
         else {
             return Ok(());
         };
-        dev.write32(w, units[0].tile, tt_isa::dm::BARRIER_RECTS, 0)?;
+        dev.write32(w, units[0].tile, tensix_isa::dm::BARRIER_RECTS, 0)?;
         for u in &units[1..] {
-            dev.write32(w, u.tile, tt_isa::dm::BARRIER_RELEASE, 0x4000_0000)?;
+            dev.write32(w, u.tile, tensix_isa::dm::BARRIER_RELEASE, 0x4000_0000)?;
         }
         Ok(())
     }
@@ -5361,7 +5361,7 @@ impl<T: Transport> Session<T> {
                 .map(|r| r.window())
             {
                 for unit in units.iter() {
-                    dev.write32(w, unit.tile, tt_isa::dm::BARRIER_RELEASE, count)?;
+                    dev.write32(w, unit.tile, tensix_isa::dm::BARRIER_RELEASE, count)?;
                 }
             }
         }
@@ -5484,7 +5484,7 @@ impl<T: Transport> Session<T> {
             .read32(
                 r.window(),
                 unit.tile,
-                tt_isa::dm::MAILBOX_BASE + tt_isa::mailbox::offset::RESULT,
+                tensix_isa::dm::MAILBOX_BASE + tensix_isa::mailbox::offset::RESULT,
             )
             .unwrap_or(0);
         Err(TensorError::Shape(format!(
@@ -5548,7 +5548,7 @@ impl<T: Transport> Session<T> {
                 r.window(),
                 unit.tile,
                 &d.dram,
-                tt_isa::dm::Mover::NC,
+                tensix_isa::dm::Mover::NC,
                 d.nc_image,
             )?;
             nc.set_write_noc(dev, r.window(), crate::dm::WriteNoc::Noc1)?;
@@ -5564,13 +5564,13 @@ impl<T: Transport> Session<T> {
             }
             unit.nc = Some(nc);
             // The op-level credit words start at zero, as every op that counts in one leaves it
-            // (`tt_isa::dm::CREDITS`): L1 keeps what an earlier session or a failed op left.
-            for i in 0..tt_isa::dm::CREDIT_WORDS {
-                dev.write32(r.window(), unit.tile, tt_isa::dm::credit_word(i) as u64, 0)?;
+            // (`tensix_isa::dm::CREDITS`): L1 keeps what an earlier session or a failed op left.
+            for i in 0..tensix_isa::dm::CREDIT_WORDS {
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::credit_word(i) as u64, 0)?;
             }
             if profiling.is_some() {
-                dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE, trace_word)?;
-                dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE_WINDOW, 0)?;
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE, trace_word)?;
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE_WINDOW, 0)?;
             }
             // Unit 0's tile holds the barrier counter, and L1 keeps whatever
             // an earlier session left there: a count already past every
@@ -5648,7 +5648,7 @@ impl<T: Transport> Session<T> {
                     .iter()
                     .map(|u| (u.tile.x(), u.tile.y()))
                     .collect();
-                let wait_only = |e: &[u32; 8]| e[0] == tt_isa::dm::op::BARRIER && e[4] != 0;
+                let wait_only = |e: &[u32; 8]| e[0] == tensix_isa::dm::op::BARRIER && e[4] != 0;
                 for (u, block) in lists {
                     let stream = &c.units[u].stream;
                     let Some(wait) = block
@@ -5711,15 +5711,15 @@ impl<T: Transport> Session<T> {
                 let Step::List { entries, .. } = step else {
                     continue;
                 };
-                if !entries.iter().any(|e| e[0] == tt_isa::dm::record::GATHER) {
+                if !entries.iter().any(|e| e[0] == tensix_isa::dm::record::GATHER) {
                     continue;
                 }
                 let mut out = Vec::with_capacity(entries.len());
                 let mut i = 0;
                 while i < entries.len() {
                     let head = entries[i];
-                    let len = (tt_isa::dm::record::len(head[0])).max(1);
-                    let moved = match head[0] == tt_isa::dm::record::GATHER {
+                    let len = (tensix_isa::dm::record::len(head[0])).max(1);
+                    let moved = match head[0] == tensix_isa::dm::record::GATHER {
                         true => tensor::contiguous_b_bytes(&head)?,
                         false => None,
                     };
@@ -5918,7 +5918,7 @@ impl<T: Transport> Session<T> {
             let target = self.barriers;
             let c = self.units[0].tile;
             [
-                tt_isa::dm::op::BARRIER,
+                tensix_isa::dm::op::BARRIER,
                 target,
                 c.x() as u32,
                 c.y() as u32,
@@ -5968,7 +5968,7 @@ impl<T: Transport> Session<T> {
                         // arrivals).
                         let mut wait = self.barrier_wait(rel);
                         let c = self.capture.as_mut().unwrap();
-                        wait[tt_isa::dm::BARRIER_STANDS_FOR] =
+                        wait[tensix_isa::dm::BARRIER_STANDS_FOR] =
                             c.barrier_ops - c.units[u].barriers_accounted;
                         c.units[u].barriers_accounted = c.barrier_ops;
                         c.units[u].stream.push(wait);
@@ -5992,7 +5992,7 @@ impl<T: Transport> Session<T> {
                     }
                     if let Some(entry) = fold {
                         if q.iter().all(Option::is_none)
-                            && seg.entries.len() < tt_isa::dm::LIST_MAX as usize
+                            && seg.entries.len() < tensix_isa::dm::LIST_MAX as usize
                         {
                             if seg.streaming {
                                 seg.entries[0][4] = 1;
@@ -6207,7 +6207,7 @@ impl<T: Transport> Session<T> {
         let start = self.mark();
         if let Some(kernel) = &kernel {
             // A capture's own setup runs from the program cache, never role 0's fixed slot: the
-            // slots are trace data while a capture plans into them (`tt_isa::l1::TRACE_ARENA`).
+            // slots are trace data while a capture plans into them (`tensix_isa::l1::TRACE_ARENA`).
             if self.capture.is_some() {
                 let r = self.units[u].resident.as_ref().unwrap();
                 if let Some(setup) = r.pending_setup(kernel)? {
@@ -6286,7 +6286,7 @@ impl<T: Transport> Session<T> {
             for entry in seg
                 .entries
                 .iter()
-                .filter(|e| e[0] == tt_isa::dm::op::RELEASED)
+                .filter(|e| e[0] == tensix_isa::dm::op::RELEASED)
             {
                 if entry[2] != 0 {
                     self.dataflow.pack_waits += 1;
@@ -6315,7 +6315,7 @@ impl<T: Transport> Session<T> {
             window,
             unit.tile,
             &d.dram,
-            tt_isa::dm::Mover::NC,
+            tensix_isa::dm::Mover::NC,
             d.nc_image,
         )?;
         nc.set_write_noc(dev, window, crate::dm::WriteNoc::Noc1)?;
@@ -6339,7 +6339,7 @@ impl<T: Transport> Session<T> {
         seg: &Segment,
         entries: &[[u32; 8]],
     ) -> Result<(), TensorError> {
-        use tt_isa::dm::op;
+        use tensix_isa::dm::op;
         let mut kernel_descriptors = None;
         let mut setup = None;
         if let Some(roles) = seg.kernel_roles.first() {
@@ -6363,7 +6363,7 @@ impl<T: Transport> Session<T> {
         let mut out = std::mem::take(&mut self.capture.as_mut().unwrap().units[u]);
         let base = out.generation_base;
         let push_window = if self.dev.transport().is_simulated() {
-            tt_isa::mailbox::SIM_PUSH_WINDOW
+            tensix_isa::mailbox::SIM_PUSH_WINDOW
         } else {
             0
         };
@@ -6376,7 +6376,7 @@ impl<T: Transport> Session<T> {
                 held.push((self.units[u].programs.generation(), at));
                 out.poke_descriptor(
                     0,
-                    &tt_isa::mailbox::Descriptor {
+                    &tensix_isa::mailbox::Descriptor {
                         thread_index: 0,
                         dst_access_fmt: *dst_fmt,
                         push_window,
@@ -6636,7 +6636,7 @@ impl<T: Transport> Session<T> {
         let top = self.region_top();
         let region_base = region_base.filter(|&b| b < top);
         if let Some(base) = region_base {
-            crate::l1::set_arena_end(base.min(tt_isa::l1::DATA.end));
+            crate::l1::set_arena_end(base.min(tensix_isa::l1::DATA.end));
             if let Some(c) = self.capture.as_mut() {
                 c.region_base = Some(base);
             }
@@ -6644,7 +6644,7 @@ impl<T: Transport> Session<T> {
         if self.trace_arena {
             let ring = region_base.unwrap_or(top - self.region_room());
             crate::l1::set_ring_end(Some(ring.max(crate::l1::arena().end)));
-            if let Err(e) = self.set_mover_arena(tt_isa::l1::TRACE_ARENA) {
+            if let Err(e) = self.set_mover_arena(tensix_isa::l1::TRACE_ARENA) {
                 self.capture = None;
                 return Err(e);
             }
@@ -6671,7 +6671,7 @@ impl<T: Transport> Session<T> {
             entries: u64,
             program_bytes: u64,
         }
-        let data = tt_isa::l1::DATA;
+        let data = tensix_isa::l1::DATA;
         let mut kinds: BTreeMap<(&str, &str), Kind> = BTreeMap::new();
         let signatures = crate::residency::signatures(c);
         let alike: BTreeSet<&String> = signatures.iter().collect();
@@ -6760,7 +6760,7 @@ impl<T: Transport> Session<T> {
             let mut out = Vec::new();
             for (k, e) in uc.stream[r.clone()].iter().enumerate() {
                 out.push(*e);
-                if e[0] == tt_isa::dm::op::PAIR_CALL {
+                if e[0] == tensix_isa::dm::op::PAIR_CALL {
                     if let Some(i) = uc.pair_at(r.start + k) {
                         for part in &uc.pending_sections[2 * i..2 * i + 2] {
                             out.extend_from_slice(part);
@@ -6793,7 +6793,7 @@ impl<T: Transport> Session<T> {
                     // tensor references.
                     let kind = if left == 0 {
                         head = x[0];
-                        left = tt_isa::dm::record::len(x[0]).max(1);
+                        left = tensix_isa::dm::record::len(x[0]).max(1);
                         None
                     } else {
                         Some("ref")
@@ -6841,7 +6841,7 @@ impl<T: Transport> Session<T> {
     /// [`ProbeBackground`]'s reads, at the front of the capture's streams on its units: each unit
     /// reads its tiles from its own start in the scratch tensor, `PROBE_BACKGROUND_WINDOW` at a time.
     fn push_probe_background(&mut self, b: ProbeBackground) -> Result<(), TensorError> {
-        use tt_isa::dm::{record, TILE_SLOT};
+        use tensix_isa::dm::{record, TILE_SLOT};
         let n = self.units.len();
         let units = b.first.min(n)..(b.first + b.units).min(n);
         if self.probe_scratch.is_none() {
@@ -6852,7 +6852,7 @@ impl<T: Transport> Session<T> {
         let [rt, ct] = t.grid();
         let total = rt * ct;
         let x = t.tensor_ref();
-        let at = (tt_isa::l1::DATA.end - PROBE_BACKGROUND_WINDOW as u64 * TILE_SLOT) as u32;
+        let at = (tensix_isa::l1::DATA.end - PROBE_BACKGROUND_WINDOW as u64 * TILE_SLOT) as u32;
         let c = self.capture.as_mut().expect("capturing");
         for (k, u) in units.enumerate() {
             let stream = &mut c.units[u].stream;
@@ -6915,9 +6915,9 @@ impl<T: Transport> Session<T> {
             .unwrap_or_default();
         // Ops after the capture plan in the whole arena again, their lists in `DATA`, and what the
         // capture's own run left in the program slots is not what the eager runtime last wrote there.
-        crate::l1::set_arena_end(tt_isa::l1::DATA.end);
+        crate::l1::set_arena_end(tensix_isa::l1::DATA.end);
         crate::l1::set_ring_end(None);
-        self.set_mover_arena(tt_isa::l1::DATA)?;
+        self.set_mover_arena(tensix_isa::l1::DATA)?;
         for unit in &mut self.units {
             if let Some(r) = unit.resident.as_mut() {
                 r.forget_program_slots();
@@ -6933,7 +6933,7 @@ impl<T: Transport> Session<T> {
         for uc in capture.units.iter_mut() {
             if !uc.stream.is_empty() && uc.barriers_accounted != ops {
                 let mut wait = self.barrier_wait(last);
-                wait[tt_isa::dm::BARRIER_STANDS_FOR] = ops - uc.barriers_accounted;
+                wait[tensix_isa::dm::BARRIER_STANDS_FOR] = ops - uc.barriers_accounted;
                 uc.barriers_accounted = ops;
                 uc.stream.push(wait);
             }
@@ -7268,7 +7268,7 @@ impl<T: Transport> Session<T> {
     /// Unit `u`'s captured stream and its packets' sections, laid out for
     /// streaming and written to GDDR in one region: the stream first, then each
     /// section from a 64-byte boundary (what a mover's chunk read needs,
-    /// `tt_isa::dram::ALIGN`), each `PAIR_CALL` given its sections' offsets. One
+    /// `tensix_isa::dram::ALIGN`), each `PAIR_CALL` given its sections' offsets. One
     /// allocation and one write a unit, rather than a whole slot and a write for
     /// each section.
     fn store_stream(
@@ -7276,9 +7276,9 @@ impl<T: Transport> Session<T> {
         u: usize,
         uc: &trace::UnitCapture,
     ) -> Result<trace::UnitTrace, TensorError> {
-        use tt_isa::dm::ENTRY_BYTES;
+        use tensix_isa::dm::ENTRY_BYTES;
         debug_assert_eq!(uc.pending_sections.len(), 2 * uc.pair_calls.len());
-        let align = |bytes: u64| bytes.next_multiple_of(tt_isa::dram::ALIGN);
+        let align = |bytes: u64| bytes.next_multiple_of(tensix_isa::dram::ALIGN);
         let top = trace::chunked(&uc.stream).len();
         let mut offsets = Vec::with_capacity(uc.pending_sections.len());
         let mut end = align(top as u64 * ENTRY_BYTES);
@@ -7347,7 +7347,7 @@ impl<T: Transport> Session<T> {
     }
 
     /// Run trace `id` again: one `CALL` entry on each unit's mover
-    /// (`tt_isa::dm::op::CALL`), queued like any op. Between replays,
+    /// (`tensix_isa::dm::op::CALL`), queued like any op. Between replays,
     /// [`Session::write`] puts new values into the tensors it reads.
     pub fn replay(&mut self, id: TraceId) -> Result<(), TensorError> {
         if self.capture.is_some() {
@@ -7402,7 +7402,7 @@ impl<T: Transport> Session<T> {
         if let Some(w) = window {
             for unit in units.iter() {
                 if let (Some(r), Some(_)) = (unit.resident.as_ref(), unit.mover.as_ref()) {
-                    dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE_WINDOW, w)?;
+                    dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE_WINDOW, w)?;
                 }
             }
         }
@@ -7413,7 +7413,7 @@ impl<T: Transport> Session<T> {
             let r = unit.resident.as_mut().unwrap();
             let generation_base = r.take_generations(generations).wrapping_sub(1);
             let entry = [
-                tt_isa::dm::op::CALL,
+                tensix_isa::dm::op::CALL,
                 channel,
                 offset,
                 count,
@@ -7471,7 +7471,7 @@ impl<T: Transport> Session<T> {
     /// stores ran at ~0.15 GB/s and were half of a 64-layer capture's host time.
     fn store_bytes(
         &mut self,
-        range: tt_isa::dram::DramRange,
+        range: tensix_isa::dram::DramRange,
         bytes: &[u8],
     ) -> Result<(), TensorError> {
         static BAR: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -7491,7 +7491,7 @@ impl<T: Transport> Session<T> {
         if t.programs.is_empty() || !self.mover_restore {
             return Ok(());
         }
-        let align = tt_isa::dram::ALIGN;
+        let align = tensix_isa::dram::ALIGN;
         let mut offsets = Vec::with_capacity(t.programs.len());
         let mut end = 0u64;
         for (at, words, _) in &t.programs {
@@ -7524,9 +7524,9 @@ impl<T: Transport> Session<T> {
             .enumerate()
             .map(|(i, ((at, words, _), &offset))| {
                 [
-                    tt_isa::dm::op::READ,
+                    tensix_isa::dm::op::READ,
                     channel,
-                    ((u + i) % tt_isa::dram::PORTS as usize) as u32,
+                    ((u + i) % tensix_isa::dram::PORTS as usize) as u32,
                     (base + offset) as u32,
                     *at as u32,
                     4 * words.len() as u32,
@@ -7596,7 +7596,7 @@ impl<T: Transport> Session<T> {
             }
         }
         let queue = (std::time::Instant::now(), self.dev.traffic());
-        for list in copies.chunks(tt_isa::dm::LIST_MAX as usize) {
+        for list in copies.chunks(tensix_isa::dm::LIST_MAX as usize) {
             let Session { dev, units, .. } = self;
             let unit = &mut units[u];
             let r = unit.resident.as_ref().unwrap();
@@ -7623,7 +7623,7 @@ impl<T: Transport> Session<T> {
         Ok(())
     }
 
-    /// The window of trace `id`'s ops its next replay stamps (`tt_isa::dm::TRACE_WINDOW`), its ops
+    /// The window of trace `id`'s ops its next replay stamps (`tensix_isa::dm::TRACE_WINDOW`), its ops
     /// made known to the profile mode on its first replay.
     fn profile_window(&mut self, id: TraceId) -> u32 {
         let detail = self
@@ -7731,7 +7731,7 @@ impl<T: Transport> Session<T> {
 
     /// Entries in each reader and writer section trace `id` stores in GDDR, per
     /// unit and then per packet (reader, writer), chunk padding included. The
-    /// mover fetches a section [`tt_isa::dm::TRACE_CHUNK_ENTRIES`] at a time.
+    /// mover fetches a section [`tensix_isa::dm::TRACE_CHUNK_ENTRIES`] at a time.
     pub fn trace_sections(&self, id: TraceId) -> Result<Vec<Vec<u32>>, TensorError> {
         let t = self.traces.get(&id.0).ok_or(TraceError::Unknown(id.0))?;
         Ok(t.units
@@ -8211,7 +8211,7 @@ impl<T: Transport> Session<T> {
             placement: self
                 .dram_state()?
                 .alloc
-                .alloc_slots(tiles, tt_isa::dm::BF16_TILE_SLOT)?,
+                .alloc_slots(tiles, tensix_isa::dm::BF16_TILE_SLOT)?,
         };
         let result =
             crate::local_movement::jobs(source.map(|s| &s.placement), &out.placement, dims, 2)
@@ -8531,7 +8531,7 @@ impl<T: Transport> Session<T> {
             placement: self
                 .dram_state()?
                 .alloc
-                .alloc_slots(input.rows.div_ceil(32), tt_isa::dm::BF16_TILE_SLOT)?,
+                .alloc_slots(input.rows.div_ceil(32), tensix_isa::dm::BF16_TILE_SLOT)?,
         };
         let result = crate::index::jobs(
             &input.placement,
@@ -9246,10 +9246,10 @@ impl<T: Transport> Session<T> {
     pub fn hardware_round(
         &mut self,
         a: &DramTensor,
-        precision: tt_isa::numerics::stochastic::Precision,
-        rounding: tt_isa::numerics::stochastic::Rounding,
+        precision: tensix_isa::numerics::stochastic::Precision,
+        rounding: tensix_isa::numerics::stochastic::Rounding,
     ) -> Result<DramTensor, TensorError> {
-        use tt_isa::numerics::stochastic::Precision;
+        use tensix_isa::numerics::stochastic::Precision;
         let offset = if precision == Precision::Bf16 { 0 } else { 3 };
         self.eltwise(
             tensor::Eltwise {
@@ -9309,7 +9309,7 @@ impl<T: Transport> Session<T> {
     fn zero_packed_padding(
         &mut self,
         t: &DramTensor,
-        format: tt_isa::format::TileFormat,
+        format: tensix_isa::format::TileFormat,
     ) -> Result<DramTensor, TensorError> {
         let Some(bf16) = t.as_bf16() else {
             return Err(TensorError::Shape(format!(
@@ -9366,7 +9366,7 @@ impl<T: Transport> Session<T> {
         out_elem: tensor::Elem,
     ) -> Result<DramTensor, TensorError> {
         use tensor::OpPadding;
-        use tt_isa::format::TileFormat;
+        use tensix_isa::format::TileFormat;
         let out = match out_elem {
             tensor::Elem::F32 => crate::matmul::Out::Fp32,
             tensor::Elem::BF16 => tensor::bf16_result(),
@@ -9623,7 +9623,7 @@ impl<T: Transport> Session<T> {
                                     .map(|op| &op.entries[u])
                                     .zip(&c.ops)
                                     .filter(|(r, _)| r.start < r.end && r.start >= lens[u])
-                                    .try_fold(tt_isa::l1::DATA.base, |top, (_, op)| {
+                                    .try_fold(tensix_isa::l1::DATA.base, |top, (_, op)| {
                                         (op.l1_top != 0).then(|| top.max(op.l1_top))
                                     })
                             })
@@ -9872,7 +9872,7 @@ impl<T: Transport> Session<T> {
         layout: BatchedLayout,
     ) -> Result<DramTensor, TensorError> {
         use tensor::OpPadding;
-        use tt_isa::format::TileFormat;
+        use tensix_isa::format::TileFormat;
         // Each operand read in its own edge format, as [`Session::matmul_dram_as`] reads them: a
         // BF16 `B` (a BF16 KV cache's keys and values) unpacked as BF16, the product of the values
         // it widens to, bit for bit the widened `B`'s (`SrcRoute::Edges`, gate `step270`).
@@ -10888,10 +10888,10 @@ impl<T: Transport> Session<T> {
                     dev.write32(
                         r.window(),
                         unit.tile,
-                        tt_isa::dm::TRACE,
+                        tensix_isa::dm::TRACE,
                         if on { trace_word } else { 0 },
                     )?;
-                    dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE_WINDOW, 0)?;
+                    dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE_WINDOW, 0)?;
                 }
             }
             Ok(())
@@ -10962,7 +10962,7 @@ impl<T: Transport> Session<T> {
             })
             .collect();
         self.paused_protected.push(protected);
-        let restored = self.set_mover_arena(tt_isa::l1::DATA);
+        let restored = self.set_mover_arena(tensix_isa::l1::DATA);
         let out = restored.map(|()| crate::l1::unnoted(|| f(self)));
         self.paused_protected.pop();
         if let (Some(d), Some(s)) = (self.dram.as_mut(), suspended) {
@@ -11001,7 +11001,7 @@ impl<T: Transport> Session<T> {
     /// write there; a planned capture's write window leaves it. `TT_OPERAND_REUSE` at open;
     /// [`tensor::Reuse::Auto`] by default.
     pub fn set_operand_reuse(&mut self, reuse: tensor::Reuse) -> Result<(), TensorError> {
-        let listed = tt_isa::l1::LISTED;
+        let listed = tensix_isa::l1::LISTED;
         let tiles = self
             .units
             .iter()
@@ -11082,7 +11082,7 @@ impl<T: Transport> Session<T> {
 
     /// Give every B mover the read-ahead cap [`prefetch_cap`] says for the layouts in use.
     fn push_prefetch_cap(&mut self) -> Result<(), TensorError> {
-        let cap = prefetch_cap(self.column_weights).unwrap_or(tt_isa::dm::PREFETCH_CAP_DEFAULT);
+        let cap = prefetch_cap(self.column_weights).unwrap_or(tensix_isa::dm::PREFETCH_CAP_DEFAULT);
         let Session { dev, units, .. } = self;
         for unit in units.iter() {
             if let (Some(b), Some(r)) = (unit.mover.as_ref(), unit.resident.as_ref()) {
@@ -11117,7 +11117,7 @@ impl<T: Transport> Session<T> {
         self.idle_ahead_early = on;
     }
 
-    /// Whether a capture plans into the trace arena (`tt_isa::l1::TRACE_ARENA`: `DATA`, the 88 KiB
+    /// Whether a capture plans into the trace arena (`tensix_isa::l1::TRACE_ARENA`: `DATA`, the 88 KiB
     /// the mailboxes left and the program slots, which a trace's kernels never run from;
     /// `TT_TRACE_ARENA=1` at open; `docs/completed-plans/decode-to-bandwidth.md` Phase 8, P3). On, a capture
     /// keeps its persistent region at the top of the trace arena, above `DATA`, and its products'
@@ -11405,7 +11405,7 @@ impl<T: Transport> Session<T> {
             .probe_planned_region
             .map_or(budget, |r| r.max(plan.region))
             .next_multiple_of(crate::residency::ALIGN);
-        let base = kept.min(end - region.min(end - tt_isa::l1::DATA.base));
+        let base = kept.min(end - region.min(end - tensix_isa::l1::DATA.base));
         let shapes = c.ops.iter().map(|o| o.shape).collect();
         let coords = self
             .units
@@ -11449,7 +11449,7 @@ impl<T: Transport> Session<T> {
 
     /// Let every unit's movers' lists name `arena` in L1 (`DataMover::set_arena`), and each
     /// started later.
-    fn set_mover_arena(&mut self, arena: tt_isa::l1::Region) -> Result<(), TensorError> {
+    fn set_mover_arena(&mut self, arena: tensix_isa::l1::Region) -> Result<(), TensorError> {
         for unit in self.units.iter_mut() {
             for m in [unit.mover.as_mut(), unit.nc.as_mut()]
                 .into_iter()
@@ -11466,9 +11466,9 @@ impl<T: Transport> Session<T> {
     /// ([`Session::set_trace_arena`]).
     fn region_top(&self) -> u64 {
         if self.trace_arena {
-            tt_isa::l1::TRACE_ARENA.end
+            tensix_isa::l1::TRACE_ARENA.end
         } else {
-            tt_isa::l1::DATA.end
+            tensix_isa::l1::DATA.end
         }
     }
 
@@ -11478,7 +11478,7 @@ impl<T: Transport> Session<T> {
     fn region_room(&self) -> u64 {
         if self.trace_arena {
             self.residency_region
-                .min(tt_isa::l1::TRACE_ARENA.end - tt_isa::l1::DATA.end)
+                .min(tensix_isa::l1::TRACE_ARENA.end - tensix_isa::l1::DATA.end)
         } else {
             self.residency_region
         }
@@ -11534,7 +11534,7 @@ impl<T: Transport> Session<T> {
                             // A list whose every move was a dropped write keeps its place: a
                             // `WAIT`, which waits for nothing still in flight.
                             if rewritten.is_empty() && !entries.is_empty() {
-                                rewritten.push([tt_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
+                                rewritten.push([tensix_isa::dm::op::WAIT, 0, 0, 0, 0, 0, 0, 0]);
                             }
                             Step::List {
                                 what,
@@ -11590,19 +11590,19 @@ impl<T: Transport> Session<T> {
     /// Where a capture's persistent region begins ([`Session::set_l1_region`], or a fixed
     /// residency region: [`Session::set_residency_fixed`]), if it keeps one.
     fn l1_region_base(&self) -> Option<u64> {
-        let data = tt_isa::l1::DATA;
+        let data = tensix_isa::l1::DATA;
         let fixed = if self.residency_fixed {
             self.residency_region
         } else {
             0
         };
         let bytes = self.l1_region.max(fixed);
-        let bytes = bytes.div_ceil(tt_isa::dram::ALIGN) * tt_isa::dram::ALIGN;
+        let bytes = bytes.div_ceil(tensix_isa::dram::ALIGN) * tensix_isa::dram::ALIGN;
         (bytes > 0).then(|| data.end.saturating_sub(bytes).max(data.base))
     }
 
     /// Whether a GDDR matmul's later blocks on a unit skip reading the `A` rows its previous block
-    /// there read to the same slots ([`tt_isa::dm::record::GATHER_A_RESIDENT`]; on by default).
+    /// there read to the same slots ([`tensix_isa::dm::record::GATHER_A_RESIDENT`]; on by default).
     /// Off, every block reads its `A`: the gates compare the two.
     pub fn set_resident_matmul_a(&mut self, on: bool) {
         self.resident_matmul_a = on;
@@ -11662,7 +11662,7 @@ impl<T: Transport> Session<T> {
     /// default): each block staged in half the data arena, a unit's
     /// consecutive blocks in alternate halves, so its mover gathers the next
     /// block and scatters the last while the roles compute one
-    /// (`tt_isa::dm::op::LAUNCH`, `KERNEL_WAIT`). Only where it pays
+    /// (`tensix_isa::dm::op::LAUNCH`, `KERNEL_WAIT`). Only where it pays
     /// (`tensor::pipelining_pays`): two blocks a unit or more, and at most
     /// twice the operand tiles gathered. The bits are the same. Captures retain
     /// the selected schedule, and replays do not replan it. Streaming mode with
@@ -11820,9 +11820,9 @@ impl<T: Transport> Session<T> {
     #[doc(hidden)]
     pub fn limit_program_cache(&mut self, bytes: u64) -> Result<(), TensorError> {
         self.sync()?;
-        let full = tt_isa::l1::PROGRAM_CACHE;
+        let full = tensix_isa::l1::PROGRAM_CACHE;
         for unit in &mut self.units {
-            unit.programs.resize(tt_isa::l1::Region {
+            unit.programs.resize(tensix_isa::l1::Region {
                 end: full.base + bytes.min(full.len()),
                 ..full
             });
@@ -11835,8 +11835,8 @@ impl<T: Transport> Session<T> {
     #[doc(hidden)]
     pub fn limit_unit_program_cache(&mut self, u: usize, bytes: u64) -> Result<(), TensorError> {
         self.sync()?;
-        let full = tt_isa::l1::PROGRAM_CACHE;
-        self.units[u].programs.resize(tt_isa::l1::Region {
+        let full = tensix_isa::l1::PROGRAM_CACHE;
+        self.units[u].programs.resize(tensix_isa::l1::Region {
             end: full.base + bytes.min(full.len()),
             ..full
         });
@@ -11865,7 +11865,7 @@ impl<T: Transport> Session<T> {
     }
 
     pub fn set_profile_buffer(&mut self, bytes: Option<u64>) -> Result<(), TensorError> {
-        let full = tt_isa::l1::PROGRAM_CACHE;
+        let full = tensix_isa::l1::PROGRAM_CACHE;
         let refuse = |why: &str| Err(TensorError::Shape(format!("set_profile_buffer: {why}")));
         if self.capture.is_some() || !self.traces.is_empty() || self.profiling.is_some() {
             return refuse("a capture, a trace or a profile is live");
@@ -11873,12 +11873,12 @@ impl<T: Transport> Session<T> {
         let (buffer, cache) = match bytes {
             None => (
                 (
-                    tt_isa::mailbox::TRACE_BUFFER,
-                    tt_isa::mailbox::TRACE_BUFFER_BYTES,
+                    tensix_isa::mailbox::TRACE_BUFFER,
+                    tensix_isa::mailbox::TRACE_BUFFER_BYTES,
                 ),
                 full.len(),
             ),
-            Some(b) if b % tt_isa::tensix::timestamper::EVENT_BYTES == 0 && b < full.len() => {
+            Some(b) if b % tensix_isa::tensix::timestamper::EVENT_BYTES == 0 && b < full.len() => {
                 ((full.end - b, b), full.len() - b)
             }
             Some(_) => return refuse("whole 16-byte events, less than the program cache"),
@@ -11931,7 +11931,7 @@ impl<T: Transport> Session<T> {
     }
 
     /// Every unit's NC waits since they were last taken, in tile cycles, in
-    /// `tt_isa::dataflow::NcWait` order (`DataMover::take_nc_waits`), and zeroed: what B's
+    /// `tensix_isa::dataflow::NcWait` order (`DataMover::take_nc_waits`), and zeroed: what B's
     /// waits for its writer core are made of. Counted only by firmware built with the profile
     /// feature; zeros otherwise. Waits for what is queued first. Dev-facing.
     #[doc(hidden)]
@@ -11950,7 +11950,7 @@ impl<T: Transport> Session<T> {
         Ok(out)
     }
 
-    /// Have every started unit's NC log its writer sections (`tt_isa::dm::nc_log`) with no profile
+    /// Have every started unit's NC log its writer sections (`tensix_isa::dm::nc_log`) with no profile
     /// running, or stop: B's trace word holds only `trace_mode::NC_LOG`, so B stamps nothing and
     /// arms NC's log for every pair. Each log starts empty. Only a `profile` image logs; refused
     /// while a profile runs. Dev-facing: the NC log's ttsim gate.
@@ -11960,13 +11960,13 @@ impl<T: Transport> Session<T> {
         if self.profiling.is_some() {
             return Err(TensorError::Run(RunError::Transport(
                 TransportError::Hazard {
-                    address: tt_isa::dm::TRACE,
+                    address: tensix_isa::dm::TRACE,
                     reason: "a profile is running: its detail owns the trace word",
                 },
             )));
         }
         let word = if on {
-            tt_isa::dm::trace_mode::NC_LOG
+            tensix_isa::dm::trace_mode::NC_LOG
         } else {
             0
         };
@@ -11974,13 +11974,13 @@ impl<T: Transport> Session<T> {
         for unit in units.iter() {
             if let (Some(r), Some(_)) = (unit.resident.as_ref(), unit.mover.as_ref()) {
                 clear_nc_log(dev, r.window(), unit.tile)?;
-                dev.write32(r.window(), unit.tile, tt_isa::dm::TRACE, word)?;
+                dev.write32(r.window(), unit.tile, tensix_isa::dm::TRACE, word)?;
             }
         }
         Ok(())
     }
 
-    /// Every unit's NC entry log since it was last taken (`tt_isa::dm::nc_log`), after what is
+    /// Every unit's NC entry log since it was last taken (`tensix_isa::dm::nc_log`), after what is
     /// queued: its record words and the records it lost, and emptied. Dev-facing.
     #[doc(hidden)]
     pub fn probe_take_nc_logs(&mut self) -> Result<Vec<(Vec<u32>, u32)>, TensorError> {
@@ -12013,7 +12013,7 @@ impl<T: Transport> Session<T> {
     /// role's batch count and the clock reads of the batches its table holds. Dev-facing.
     #[doc(hidden)]
     pub fn probe_batch_tables(&mut self) -> Result<Vec<[BatchTable; 2]>, TensorError> {
-        use tt_isa::mailbox::{role::Mailbox, BATCH_TIMES_MAX, BATCH_TIME_WORDS};
+        use tensix_isa::mailbox::{role::Mailbox, BATCH_TIMES_MAX, BATCH_TIME_WORDS};
         self.sync()?;
         let mut out = Vec::with_capacity(self.units.len());
         for unit in &self.units {
@@ -12137,7 +12137,7 @@ mod tests {
         }
     }
     use std::sync::Arc;
-    use tt_isa::dm::{op, LIST_MAX};
+    use tensix_isa::dm::{op, LIST_MAX};
 
     fn list(n: usize, tag: u32) -> Step {
         Step::List {
@@ -12152,7 +12152,7 @@ mod tests {
 
     #[test]
     fn capture_rebases_headers_without_treating_tensor_payloads_as_commands() {
-        use tt_isa::dm::record;
+        use tensix_isa::dm::record;
         let entries = [
             [record::READ_RUN, 0, 0, 0, 0, 0, 0, 0],
             [op::KERNEL, 999, 888, 777, 666, 555, 444, 333],
@@ -12173,13 +12173,13 @@ mod tests {
     #[test]
     fn compute_without_a_resident_ownership_region_is_rejected() {
         let kernel = |words| Step::Kernel {
-            roles: Arc::new([vec![tt_isa::sfpu::nop(); words], Vec::new(), Vec::new()]),
+            roles: Arc::new([vec![tensix_isa::sfpu::nop(); words], Vec::new(), Vec::new()]),
             init: Vec::new(),
             mop: Box::new([None; 3]),
             loops: Default::default(),
             half: None,
         };
-        let cache = tt_isa::l1::PROGRAM_CACHE.len();
+        let cache = tensix_isa::l1::PROGRAM_CACHE.len();
         let message = |steps| match streaming_segments(steps, cache) {
             Err(crate::tensor::TensorError::Shape(message)) => message,
             other => panic!("expected a rejection, got {:?}", other.map(|s| s.len())),
@@ -12218,7 +12218,7 @@ mod tests {
 
     #[test]
     fn transfers_are_kernelless_packets_that_pass_the_ownership_rules() {
-        use tt_isa::dataflow::{Action, Release, Stream};
+        use tensix_isa::dataflow::{Action, Release, Stream};
         for depth in [1u16, 2] {
             let segments = transfer_segments(vec![
                 transfer("upload", depth, 5, 3),
@@ -12232,7 +12232,7 @@ mod tests {
             assert_eq!(packet.steps, 2);
             assert_eq!(packet.entries[0][3], depth as u32);
             assert_eq!(
-                tt_isa::dataflow::packet_length(packet.entries[0]),
+                tensix_isa::dataflow::packet_length(packet.entries[0]),
                 Ok(packet.entries.len())
             );
             crate::dm::check_pair(&packet.entries).unwrap();
@@ -12289,7 +12289,7 @@ mod tests {
         let mut batches = 0;
         for packet in &segments {
             assert!(
-                packet.entries.len() < tt_isa::dm::LIST_MAX as usize,
+                packet.entries.len() < tensix_isa::dm::LIST_MAX as usize,
                 "room for a trailer"
             );
             crate::dm::check_pair(&packet.entries).unwrap();
@@ -12310,7 +12310,7 @@ mod tests {
         };
         let segments = streaming_segments(
             vec![list("before"), transfer("t", 1, 1, 1), list("after")],
-            tt_isa::l1::PROGRAM_CACHE.len(),
+            tensix_isa::l1::PROGRAM_CACHE.len(),
         )
         .unwrap();
         let order: Vec<(&str, bool)> = segments.iter().map(|s| (s.what, s.streaming)).collect();
@@ -12324,7 +12324,7 @@ mod tests {
             .entries;
         let writer = 1 + packet[0][1] as usize;
         // NC may not push a transfer it consumes.
-        packet[writer][2] = tt_isa::dataflow::Action::Push.word();
+        packet[writer][2] = tensix_isa::dataflow::Action::Push.word();
         assert!(crate::dm::check_pair(&packet).is_err());
     }
 
@@ -12361,7 +12361,7 @@ mod tests {
 
     #[test]
     fn a_reader_holding_an_output_credit_is_refused() {
-        use tt_isa::dataflow::{Action, Stream};
+        use tensix_isa::dataflow::{Action, Stream};
         let (mut packet, writer) = packet();
         let at = (1..writer).find(|&i| packet[i][0] == op::CB).unwrap();
         // The output's producer is T2 and its consumer NC: B is neither.
@@ -12443,13 +12443,13 @@ mod tests {
                     entries: vec![[op::WRITE, 0, 0, 0, 0, 0, 0, 0]],
                 });
             }
-            let regions = streaming_segments(steps, tt_isa::l1::PROGRAM_CACHE.len()).unwrap();
+            let regions = streaming_segments(steps, tensix_isa::l1::PROGRAM_CACHE.len()).unwrap();
             assert_eq!(regions.len(), 2);
             for region in &regions {
                 assert!(region.streaming);
                 assert_eq!(region.entries[0][3], capacity as u32);
                 assert_eq!(
-                    tt_isa::dataflow::packet_length(region.entries[0]),
+                    tensix_isa::dataflow::packet_length(region.entries[0]),
                     Ok(region.entries.len())
                 );
                 assert_eq!(region.kernels, [1]);
@@ -12498,7 +12498,7 @@ mod tests {
             [gather, kernel, scatter]
         };
         let waits = |steps: Vec<Step>| -> Vec<[u32; 2]> {
-            let regions = streaming_segments(steps, tt_isa::l1::PROGRAM_CACHE.len()).unwrap();
+            let regions = streaming_segments(steps, tensix_isa::l1::PROGRAM_CACHE.len()).unwrap();
             assert_eq!(regions.len(), 1);
             regions[0]
                 .entries
@@ -12603,7 +12603,7 @@ mod tests {
         let mut dump = String::new();
         for (name, steps) in cases {
             writeln!(dump, "# {name}").unwrap();
-            let segments = streaming_segments(steps, tt_isa::l1::PROGRAM_CACHE.len()).unwrap();
+            let segments = streaming_segments(steps, tensix_isa::l1::PROGRAM_CACHE.len()).unwrap();
             for segment in segments {
                 writeln!(
                     dump,
@@ -12687,8 +12687,8 @@ mod tests {
 
     #[test]
     fn kernels_of_different_programs_share_a_list_when_resident() {
-        let a = Arc::new([vec![tt_isa::sfpu::nop()], Vec::new(), Vec::new()]);
-        let b = Arc::new([vec![tt_isa::sfpu::nop(); 2], Vec::new(), Vec::new()]);
+        let a = Arc::new([vec![tensix_isa::sfpu::nop()], Vec::new(), Vec::new()]);
+        let b = Arc::new([vec![tensix_isa::sfpu::nop(); 2], Vec::new(), Vec::new()]);
         let (_, init) = crate::matmul::MatmulSemaphores::alone();
         let k =
             |roles: &Arc<[Vec<Instruction>; 3]>, init: &Vec<runtime::SemaphoreInit>| Step::Kernel {
@@ -12712,8 +12712,8 @@ mod tests {
 
     #[test]
     fn programs_too_large_to_cache_take_the_fixed_slots_one_set_per_list() {
-        let words = (tt_isa::l1::PROGRAM_CACHE.len() / 2 / 4 + 1) as usize;
-        let big = |n| Arc::new([vec![tt_isa::sfpu::nop(); n], Vec::new(), Vec::new()]);
+        let words = (tensix_isa::l1::PROGRAM_CACHE.len() / 2 / 4 + 1) as usize;
+        let big = |n| Arc::new([vec![tensix_isa::sfpu::nop(); n], Vec::new(), Vec::new()]);
         let (a, b) = (big(words), big(words + 1));
         let (_, init) = crate::matmul::MatmulSemaphores::alone();
         let k = |roles: &Arc<[Vec<Instruction>; 3]>| Step::Kernel {
@@ -12727,15 +12727,15 @@ mod tests {
         assert_eq!(segs.len(), 2);
         assert!(!segs[0].resident && segs[0].kernels.len() == 2);
         // A resident kernel does not join a fixed-slot list either.
-        let small = Arc::new([vec![tt_isa::sfpu::nop()], Vec::new(), Vec::new()]);
+        let small = Arc::new([vec![tensix_isa::sfpu::nop()], Vec::new(), Vec::new()]);
         assert_eq!(control_segments(vec![k(&a), k(&small)]).len(), 2);
     }
 
     #[test]
     fn a_list_holds_no_more_resident_programs_than_the_cache() {
         // Each just under the admission bound: two fit the region, three do not.
-        let words = (tt_isa::l1::PROGRAM_CACHE.len() / 2 / 4) as usize - 16;
-        let p = |n: usize| Arc::new([vec![tt_isa::sfpu::nop(); words - n], Vec::new(), Vec::new()]);
+        let words = (tensix_isa::l1::PROGRAM_CACHE.len() / 2 / 4) as usize - 16;
+        let p = |n: usize| Arc::new([vec![tensix_isa::sfpu::nop(); words - n], Vec::new(), Vec::new()]);
         let (_, init) = crate::matmul::MatmulSemaphores::alone();
         let steps = (0..3)
             .map(|n| Step::Kernel {
@@ -12753,7 +12753,7 @@ mod tests {
         );
         assert!(segs
             .iter()
-            .all(|s| s.resident_bytes <= tt_isa::l1::PROGRAM_CACHE.len()));
+            .all(|s| s.resident_bytes <= tensix_isa::l1::PROGRAM_CACHE.len()));
     }
 
     #[test]
@@ -12797,7 +12797,7 @@ mod tests {
     fn a_wedged_tile_says_what_clears_it() {
         let e = RunError::Wedged {
             tile: (1, 2),
-            roles: vec![tt_isa::tensix::Core::T1],
+            roles: vec![tensix_isa::tensix::Core::T1],
         };
         let text = e.to_string();
         assert!(text.contains("tile (1,2) is wedged"), "{text}");
@@ -12829,8 +12829,8 @@ pub enum PowExponent<'a> {
 #[cfg(test)]
 mod release_rect_tests {
     use super::release_rects;
-    use tt_isa::noc::grid::Tensix;
-    use tt_isa::noc::Noc0;
+    use tensix_isa::noc::grid::Tensix;
+    use tensix_isa::noc::Noc0;
 
     /// The tiles of a NoC #0 `RET_ADDR_HI` broadcast word, `start <= end`.
     fn tiles_of(hi: u32) -> Vec<(u8, u8)> {
@@ -12862,7 +12862,7 @@ mod release_rect_tests {
                 let Some(rects) = release_rects(&grid, &tiles) else {
                     continue;
                 };
-                assert!(rects.len() <= tt_isa::dm::BARRIER_RECTS_MAX as usize);
+                assert!(rects.len() <= tensix_isa::dm::BARRIER_RECTS_MAX as usize);
                 let mut got: Vec<(u8, u8)> = Vec::new();
                 for &(hi, acks) in &rects {
                     let t = tiles_of(hi);

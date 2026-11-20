@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use std::{collections::BTreeMap, sync::Arc};
-use tt_isa::{
+use tensix_isa::{
     adc::{self, Coordinates, Targets, Xy},
     backend::{self, Before, ConfigWords},
     cfg::generated::{alu, thcon, unpack1},
@@ -277,7 +277,7 @@ mod tests {
     use super::*;
     #[test]
     fn rectangle_runs_cover_each_output_datum_and_audit_the_pipeline() {
-        let mut alloc = DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         let source = DramTensor::alloc_elem(&mut alloc, 97, 99, Elem::F32).unwrap();
         let work = build(&mut alloc, &source, [15, 16], [65, 80]).unwrap();
         for (tile, job) in work.jobs.iter().enumerate() {
@@ -439,7 +439,7 @@ pub(crate) fn build_planes(
     origin: [usize; 2],
     dims: [usize; 2],
 ) -> Result<Work> {
-    use tt_isa::dm::{op, LIST_MAX};
+    use tensix_isa::dm::{op, LIST_MAX};
     let [rows, cols] = plane_geometry(source, shape, origin, dims)?;
     // All three scratch slots, output slots and semaphores have overlapping
     // declared lifetimes. Scratch is bounded independently of global planes.
@@ -535,7 +535,7 @@ mod plane_tests {
     use super::*;
     #[test]
     fn plane_fragments_match_flat_selection_and_program_uses_both_instructions() {
-        let mut alloc = DramAlloc::new(&tt_isa::dram::Dram::FULL);
+        let mut alloc = DramAlloc::new(&tensix_isa::dram::Dram::FULL);
         for y in [1, 17, 33] {
             for x in [1, 17, 33] {
                 let source = DramTensor::alloc_elem(&mut alloc, 27 * y, x, Elem::F32).unwrap();

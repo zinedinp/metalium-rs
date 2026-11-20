@@ -103,7 +103,7 @@ fn four_chip_products_are_resident_and_exact_through_relays() {
 #[test]
 fn ethernet_slot_copies_preserve_bits_across_packets_and_relays() {
     use tt_device::Device;
-    use tt_isa::noc::NocCoord;
+    use tensix_isa::noc::NocCoord;
     use tt_kernels::shard::{Chip, Fabric};
     use tt_kernels::tensor::Elem;
     tt_ttsim::fork_scope(|| {

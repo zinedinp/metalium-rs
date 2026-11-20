@@ -34,10 +34,10 @@ use std::collections::BTreeSet;
 /// A rectangle as `(x0, y0, x1, y1)`.
 type R4 = (u8, u8, u8, u8);
 
-use tt_isa::noc::grid::Tensix;
-use tt_isa::noc::multicast::{full_grid_except, AckCount, AckProgress, MulticastWrite, Rect};
-use tt_isa::noc::niu::{initiator, Niu, TxnId};
-use tt_isa::noc::probe;
+use tensix_isa::noc::grid::Tensix;
+use tensix_isa::noc::multicast::{full_grid_except, AckCount, AckProgress, MulticastWrite, Rect};
+use tensix_isa::noc::niu::{initiator, Niu, TxnId};
+use tensix_isa::noc::probe;
 
 // ---------------------------------------------------------------------------
 // The model: the page's rectangle rule.
@@ -190,7 +190,7 @@ fn acknowledgements_come_from_the_known_recipients() {
 // ---------------------------------------------------------------------------
 
 use noc_support::{multicast, read_bytes, run_probe, write_bytes, Res};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_tests::harness::{self, Dev};
 
 const SRC: u64 = probe::DATA;

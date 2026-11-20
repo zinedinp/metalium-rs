@@ -130,9 +130,9 @@ fn case(
         Tensor::<TtBackend, 4, Bool>::from_data(TensorData::new(later, [1, 1, 1, len]), d)
     });
     let m = if groups > 1 && t == 1 { groups } else { t };
-    let elem = tt_kernels::tensor::Elem::Packed(tt_isa::format::TileFormat::new(match format {
-        StorageFormat::Bfp8 => tt_isa::tile::L1Format::Bfp8,
-        _ => tt_isa::tile::L1Format::Bfp4,
+    let elem = tt_kernels::tensor::Elem::Packed(tensix_isa::format::TileFormat::new(match format {
+        StorageFormat::Bfp8 => tensix_isa::tile::L1Format::Bfp8,
+        _ => tensix_isa::tile::L1Format::Bfp4,
     }));
     let rows = t == 1 && tt_kernels::attention::fits_as([m, dim, len, dim], 0, elem);
     Case {

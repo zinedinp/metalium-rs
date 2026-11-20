@@ -16,7 +16,7 @@ burn-fusion = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 rand = { version = "0.10", default-features = false, features = ["std", "std_rng"] }
 tt-device.workspace = true
-tt-isa.workspace = true
+tensix-isa.workspace = true
 # Native scalar conversion for SFPU parameters.
 num-traits = { version = "0.2", default-features = false }
 tt-kernels.workspace = true

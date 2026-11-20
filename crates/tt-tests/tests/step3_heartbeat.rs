@@ -6,9 +6,9 @@
 //! Tensix instruction or read a compute result. A core has to sit in the middle.
 
 use tt_device::{core_control::WaitError, tlb::WindowKind};
-use tt_isa::mailbox::{self, status};
-use tt_isa::noc::grid;
-use tt_isa::tensix::{self, Core};
+use tensix_isa::mailbox::{self, status};
+use tensix_isa::noc::grid;
+use tensix_isa::tensix::{self, Core};
 use tt_tests::firmware;
 use tt_tests::harness::{advance, in_device, tensix_grid, tile};
 

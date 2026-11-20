@@ -2,7 +2,7 @@
 //!
 //! The one query that has to happen before anything else. Which Tensix columns a
 //! chip has is a per-ASIC fact, it cannot be discovered by probing — probing a
-//! fused-off tile hangs the NoC, see [`tt_isa::arc`] — and the loaded driver will
+//! fused-off tile hangs the NoC, see [`tensix_isa::arc`] — and the loaded driver will
 //! not answer it. `TENSTORRENT_IOCTL_GET_HARVESTING` exists in the ABI but is an
 //! unimplemented stub in 2.11.0 (`chardev.c:786-787`: a bare `break`, no handler,
 //! and no struct for it in `ioctl.h`), and the driver's telemetry cache is sparse
@@ -15,8 +15,8 @@
 //! whose coordinate is translation-invariant, so the bootstrap is safe even though
 //! we do not yet know the translation state or the harvesting mask.
 
-use tt_isa::arc;
-use tt_isa::noc::grid::Tensix;
+use tensix_isa::arc;
+use tensix_isa::noc::grid::Tensix;
 
 use crate::device::{Device, Window};
 use crate::transport::{Result, Transport, TransportError};
@@ -208,7 +208,7 @@ impl core::fmt::Display for ChipTelemetry {
             "{} Tensix tiles ({} of {} columns; harvested at X",
             self.tensix.tile_count(),
             self.tensix.enabled_column_count(),
-            tt_isa::noc::grid::TENSIX_COLUMNS.len(),
+            tensix_isa::noc::grid::TENSIX_COLUMNS.len(),
         )?;
         let mut any = false;
         for x in self.tensix.harvested_columns() {
@@ -231,11 +231,11 @@ impl core::fmt::Display for ChipTelemetry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::noc::Noc0;
+    use tensix_isa::noc::Noc0;
 
     #[test]
     fn the_arc_tile_is_addressable_on_noc0() {
-        let arc: tt_isa::noc::NocCoord<Noc0> = arc::arc_tile();
+        let arc: tensix_isa::noc::NocCoord<Noc0> = arc::arc_tile();
         assert_eq!((arc.x(), arc.y()), (arc::ARC_X, arc::ARC_Y));
     }
 }

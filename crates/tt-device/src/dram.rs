@@ -3,11 +3,11 @@
 //!
 //! Every accessor takes a [`DramRange`], which only a chip's [`Dram`] grid can
 //! produce, so a fused-off or untrained channel cannot be addressed and nothing
-//! can reach past the extent both targets agree on ([`tt_isa::dram::CHANNEL_BYTES`]).
+//! can reach past the extent both targets agree on ([`tensix_isa::dram::CHANNEL_BYTES`]).
 
-use tt_isa::arc;
-use tt_isa::dram::{Dram, DramError, DramRange};
-use tt_isa::noc::niu::Niu;
+use tensix_isa::arc;
+use tensix_isa::dram::{Dram, DramError, DramRange};
+use tensix_isa::noc::niu::Niu;
 
 use crate::device::Window;
 use crate::telemetry::TelemetryTable;
@@ -21,7 +21,7 @@ impl<T: Transport> Device<T> {
     /// The chip's usable DRAM channels, from ARC telemetry tags 36 and 22.
     ///
     /// On ttsim, which publishes neither, [`Dram::FULL`]. On silicon the NoC must
-    /// be translating: [`tt_isa::dram::DramChannel::endpoint`] hands out translated
+    /// be translating: [`tensix_isa::dram::DramChannel::endpoint`] hands out translated
     /// coordinates, which name nothing otherwise.
     pub fn dram_grid(&mut self, window: &Window) -> Result<Dram> {
         if self.transport().is_simulated() {
@@ -59,7 +59,7 @@ impl<T: Transport> Device<T> {
     /// Returns once the bytes are visible through every endpoint a mover reads
     /// through, not merely posted: the last word is read back through each
     /// endpoint NoC #0 owns, as UMD's DRAM barrier touches every port. The
-    /// movers read only through those (`tt_isa::dram::DramChannel::port_for`,
+    /// movers read only through those (`tensix_isa::dram::DramChannel::port_for`,
     /// records rotate the port), and a read through one port is no fence for
     /// writes taken by another. The host is on NoC #0 and never touches NoC
     /// #1's endpoint: one endpoint fed by both NoCs is the SYS-1419 hang
@@ -78,7 +78,7 @@ impl<T: Transport> Device<T> {
         if data.len() >= 4 {
             let last = range.offset() + data.len() as u64 - 4;
             let mut word = [0u8; 4];
-            for port in 0..tt_isa::dram::PORTS {
+            for port in 0..tensix_isa::dram::PORTS {
                 if let Some(via) = range.channel().endpoint(Niu::Noc0, port) {
                     self.read_memory(window, via, last, &mut word)?;
                 }

@@ -9,7 +9,7 @@
 //!   at a time, without overlap.
 //! * **Every captured op of every trace**, replay by replay. A long trace's stamps do not fit a tile's
 //!   16 KiB stamp buffer (a 1.7B-parameter decode step is ~1,900 ops), so each replay stamps a
-//!   *window* of its ops (`tt_isa::dm::TRACE_WINDOW`) and the next replay the next window, until every
+//!   *window* of its ops (`tensix_isa::dm::TRACE_WINDOW`) and the next replay the next window, until every
 //!   op has been seen, then round again. Nothing is replayed twice and nothing is added to a replay,
 //!   so a trace that carries state is profiled as it runs. An op's span runs from the previous op's
 //!   barrier to its own on unit 0, which arrives at every op's barrier: its own work there and its
@@ -23,7 +23,7 @@
 //! paths); their time is the span less the rest.
 //!
 //! **The card's GDDR reads over a replay** ([`unit_reads`], [`card_reads`]): every unit's B marks
-//! the GDDR bytes it has issued (`tt_isa::mailbox::trace::READ_BYTES`) at each barrier's arrival and
+//! the GDDR bytes it has issued (`tensix_isa::mailbox::trace::READ_BYTES`) at each barrier's arrival and
 //! release, and when a queued prefetch starts and when it has issued its last read. Between two
 //! marks a unit's bytes are spread evenly; each unit's clock is put on unit 0's by the barrier
 //! releases they share; the sum over units is the card's read rate in each op's span on unit 0,
@@ -34,7 +34,7 @@
 //! **A streamed pair's batches, unit by unit** ([`Detail::Pipeline`], [`unit_pipes`]): B's input
 //! credits, which [`Detail::Ops`] already stamps (a pair's reader runs them as Reserve, Push,
 //! Reserve, Push), give each batch's wait for a slot, its gather's issue and its wait for the reads
-//! to land; T0's and T2's batch tables (`tt_isa::mailbox::BATCH_TIMES`), which B stamps after the
+//! to land; T0's and T2's batch tables (`tensix_isa::mailbox::BATCH_TIMES`), which B stamps after the
 //! kernel, give when T0 waited for the batch, saw it and popped it, and when T2 waited for an
 //! output slot, got it and pushed. Every time is on the unit's own clock, so no two tiles' clocks
 //! are compared ([`PipeStats`]).
@@ -43,12 +43,12 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use tt_device::trace::TraceEvent;
-use tt_isa::dm::op;
-use tt_isa::mailbox::trace as ev;
+use tensix_isa::dm::op;
+use tensix_isa::mailbox::trace as ev;
 
 use crate::profile::{Event, RoleTotal};
 
-/// The `READ_BYTES` marks a prefetch `GATHER` (`tt_isa::dm::record::GATHER_PREFETCH`) stamps: when
+/// The `READ_BYTES` marks a prefetch `GATHER` (`tensix_isa::dm::record::GATHER_PREFETCH`) stamps: when
 /// it is queued and when its last read is issued, which may be under a later op.
 pub const PREFETCH_MARKS: u32 = 2;
 
@@ -58,14 +58,14 @@ pub const READ_BINS: usize = 8;
 /// How much of an op the movers stamp.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Detail {
-    /// Only what bounds an op's phases (`tt_isa::dm::trace_mode::OPS`): ~8 events an op.
+    /// Only what bounds an op's phases (`tensix_isa::dm::trace_mode::OPS`): ~8 events an op.
     #[default]
     Ops = 0,
     /// Every entry (`trace_mode::FULL`): data entries timed one by one, ~25 events an op, so a
     /// window holds about a third as many ops.
     Full = 1,
     /// [`Detail::Ops`], and each streamed pair's batches on every unit ([`unit_pipes`]): T0 and T2
-    /// keep batch tables (`tt_isa::mailbox::trace_word::BATCHES`) that B stamps after the kernel,
+    /// keep batch tables (`tensix_isa::mailbox::trace_word::BATCHES`) that B stamps after the kernel,
     /// six events a batch, so a window holds fewer ops. The movers stamp as in `Ops`.
     Pipeline = 2,
 }
@@ -81,7 +81,7 @@ pub struct ProfileOptions {
     /// buffer for any trace of more than ~100 ops (the negative control of the window).
     pub window: bool,
     /// Have the math role total each kernel's pushing and its waits for the coprocessor
-    /// (`tt_isa::mailbox::trace_word::PUSH`), which the mover stamps after the kernel's
+    /// (`tensix_isa::mailbox::trace_word::PUSH`), which the mover stamps after the kernel's
     /// `ROLES_DONE`: [`UnitTime::push`]. Three mover stamps a kernel, no role stamps.
     pub push: bool,
 }
@@ -98,10 +98,10 @@ impl Default for ProfileOptions {
 }
 
 impl ProfileOptions {
-    /// The mover's `tt_isa::dm::TRACE` word for this detail. [`Detail::Pipeline`] adds B's credit
+    /// The mover's `tensix_isa::dm::TRACE` word for this detail. [`Detail::Pipeline`] adds B's credit
     /// stamps (`trace_mode::CREDITS`) and NC's entry log (`trace_mode::NC_LOG`).
     pub fn trace_mode(&self) -> u32 {
-        use tt_isa::dm::trace_mode as m;
+        use tensix_isa::dm::trace_mode as m;
         match self.detail {
             Detail::Ops => m::OPS,
             Detail::Pipeline => m::OPS | m::CREDITS | m::NC_LOG,
@@ -122,8 +122,8 @@ impl ProfileOptions {
         marks
             + base
             + match self.detail {
-                Detail::Ops if !tt_isa::dm::trace_mode::ops_stamped(op) => 0,
-                Detail::Pipeline if !tt_isa::dm::trace_mode::ops_stamped_with(op, true) => 0,
+                Detail::Ops if !tensix_isa::dm::trace_mode::ops_stamped(op) => 0,
+                Detail::Pipeline if !tensix_isa::dm::trace_mode::ops_stamped_with(op, true) => 0,
                 _ if waits && self.push => 6,
                 _ => 3,
             }
@@ -142,13 +142,13 @@ pub struct OpTime {
     /// In `LAUNCH`, `KERNEL`, `CB` and `POKE` entries.
     pub control: u64,
     /// B fetching the trace from GDDR: a chunk of its stream or of a `PAIR_CALL`'s reader section,
-    /// read and waited for (`tt_isa::dm::trace_mode::FETCH`). Replays, [`Detail::Ops`] only.
+    /// read and waited for (`tensix_isa::dm::trace_mode::FETCH`). Replays, [`Detail::Ops`] only.
     pub fetch: u64,
     /// B waiting for NC to finish a pair's writer section: NC's fetch of it and its writes
-    /// (`tt_isa::dm::trace_mode::WRITER_WAIT`). [`Detail::Ops`] only: in `Full` it is data.
+    /// (`tensix_isa::dm::trace_mode::WRITER_WAIT`). [`Detail::Ops`] only: in `Full` it is data.
     pub writer: u64,
     /// B issuing what is left of a prefetch and waiting for it to land, before the kernel that
-    /// reads it (`tt_isa::dm::trace_mode::PREFETCH_WAIT`): `B` read ahead that had not arrived.
+    /// reads it (`tensix_isa::dm::trace_mode::PREFETCH_WAIT`): `B` read ahead that had not arrived.
     /// [`Detail::Ops`] only: in `Full` it is data.
     pub prefetch: u64,
     /// Moving data: the reads, writes, gathers and scatters ([`Detail::Full`]), or, in
@@ -208,8 +208,8 @@ pub struct OpBytes {
 }
 
 /// GDDR channels and the endpoints (ports) a channel has.
-const CHANNELS: usize = tt_isa::dram::CHANNELS as usize;
-const PORTS: usize = tt_isa::dram::PORTS as usize;
+const CHANNELS: usize = tensix_isa::dram::CHANNELS as usize;
+const PORTS: usize = tensix_isa::dram::PORTS as usize;
 
 impl OpBytes {
     pub fn add(&mut self, o: &OpBytes) {
@@ -243,7 +243,7 @@ impl OpBytes {
     /// move nothing) into `self`. A record that does not expand is counted as nothing: the capture
     /// validated it, so that does not happen.
     pub fn count(&mut self, entries: &[[u32; 8]]) {
-        use tt_isa::dm::{record, TILE_SLOT};
+        use tensix_isa::dm::{record, TILE_SLOT};
         let mut i = 0;
         while i < entries.len() {
             let head = entries[i];
@@ -293,10 +293,10 @@ impl OpBytes {
             op::READ | op::READ_TRANSPOSED | op::READ_BROADCAST_COL => {
                 self.read += e[5] as u64;
                 self.reads += 1;
-                let all = tt_isa::dram::Dram::from_usable_mask(u8::MAX);
+                let all = tensix_isa::dram::Dram::from_usable_mask(u8::MAX);
                 if let Some(ch) = u8::try_from(e[1]).ok().and_then(|c| all.channel(c)) {
                     let port =
-                        ch.port_for(tt_isa::noc::niu::Niu::Noc0, (e[2] % PORTS as u32) as u8);
+                        ch.port_for(tensix_isa::noc::niu::Niu::Noc0, (e[2] % PORTS as u32) as u8);
                     self.endpoint[ch.index() as usize][port as usize] += e[5] as u64;
                 }
                 e[5] as u64
@@ -361,9 +361,9 @@ impl Classes {
                         op::BARRIER => self.time.barrier += d,
                         op::KERNEL_WAIT => self.time.kernels += d,
                         op::LAUNCH | op::KERNEL | op::CB | op::POKE => self.time.control += d,
-                        tt_isa::dm::trace_mode::FETCH => self.time.fetch += d,
-                        tt_isa::dm::trace_mode::WRITER_WAIT => self.time.writer += d,
-                        tt_isa::dm::trace_mode::PREFETCH_WAIT => self.time.prefetch += d,
+                        tensix_isa::dm::trace_mode::FETCH => self.time.fetch += d,
+                        tensix_isa::dm::trace_mode::WRITER_WAIT => self.time.writer += d,
+                        tensix_isa::dm::trace_mode::PREFETCH_WAIT => self.time.prefetch += d,
                         _ => self.data += d,
                     }
                 }
@@ -822,7 +822,7 @@ impl Batch {
     }
 }
 
-/// What RISCV NC did on one unit for one op, from its entry log (`tt_isa::dm::nc_log`,
+/// What RISCV NC did on one unit for one op, from its entry log (`tensix_isa::dm::nc_log`,
 /// [`splice_nc_log`]), in tile cycles: each record's entry lasts until the next record. On a
 /// multicast sender (`tile_op::multicast`) a strip is a transfer wait (its B's gather done), a wait
 /// for its readers' frees, the multicast, its acknowledgements, the ready word raised and copied,
@@ -866,8 +866,8 @@ pub struct NcStats {
 impl NcStats {
     /// One unit's records on one op, `(tag, time)` in order, and the records its log lost.
     pub fn of(records: &[(u32, u64)], lost: u64) -> NcStats {
-        use tt_isa::dataflow::{Action, Stream};
-        use tt_isa::dm::nc_log as l;
+        use tensix_isa::dataflow::{Action, Stream};
+        use tensix_isa::dm::nc_log as l;
         let mut s = NcStats {
             records: records.len() as u64,
             lost,
@@ -1121,7 +1121,7 @@ pub const DROP_REASONS: [&str; 7] = [
 /// product's batch (~5,000 cycles), so a join off by a batch is not taken as in order.
 pub const CROSS_CORE_SLACK: u64 = 128;
 
-/// The host's half of the batch log (`tt_isa::dm::BATCH_LOG`): unit `u`'s stamps since its last
+/// The host's half of the batch log (`tensix_isa::dm::BATCH_LOG`): unit `u`'s stamps since its last
 /// drain, each `BATCH_BASE` replaced by its record from `log` (the log's words after its count)
 /// as a `BATCH_TABLE` and its `BATCH_TIME`s. A record's clock reads are the low word of the
 /// counter the base was stamped with, so each is placed on the full counter exactly, counting back
@@ -1129,7 +1129,7 @@ pub const CROSS_CORE_SLACK: u64 = 128;
 /// base naming a record already spliced is a copy the timestamper repeated (each record is
 /// named once a drain): it becomes a `BATCH_REPEAT`, which [`unit_pipes`] counts.
 pub fn splice_batch_log(events: Vec<TraceEvent>, log: &[u32]) -> Vec<TraceEvent> {
-    use tt_isa::mailbox::{trace as ev, BATCH_TIME_WORDS};
+    use tensix_isa::mailbox::{trace as ev, BATCH_TIME_WORDS};
     let mut out = Vec::with_capacity(events.len());
     let mut named = std::collections::BTreeSet::new();
     for e in events {
@@ -1173,16 +1173,16 @@ pub fn splice_batch_log(events: Vec<TraceEvent>, log: &[u32]) -> Vec<TraceEvent>
     out
 }
 
-/// The host's half of RISCV NC's entry log (`tt_isa::dm::nc_log`): unit `u`'s stamps since its
+/// The host's half of RISCV NC's entry log (`tensix_isa::dm::nc_log`): unit `u`'s stamps since its
 /// last drain with the log's records (`log`, its words after the header) merged in by time, each an
 /// `NC_RECORD` on the tile's full counter, and an `NC_LOST` after the last if `lost` records did not
 /// fit. An anchor's word is the counter's low word, placed as the full counter nearest before `now`
 /// (the counter when the log was read: a record is less than 2^32 cycles, ~3 s, older); each
 /// record after it is placed from the one before, its field counting forward (to within the
-/// [`tt_isa::dm::nc_log::CLOCK_SHIFT`] bits it drops). Records before the first anchor, and an
+/// [`tensix_isa::dm::nc_log::CLOCK_SHIFT`] bits it drops). Records before the first anchor, and an
 /// anchor without its word, are left out.
 pub fn splice_nc_log(events: Vec<TraceEvent>, log: &[u32], lost: u32, now: u64) -> Vec<TraceEvent> {
-    use tt_isa::dm::nc_log as l;
+    use tensix_isa::dm::nc_log as l;
     let mut records: Vec<TraceEvent> = Vec::new();
     let mut at: Option<u64> = None;
     let mut i = 0;
@@ -1238,18 +1238,18 @@ pub fn splice_nc_log(events: Vec<TraceEvent>, log: &[u32], lost: u32, now: u64) 
 
 /// What a writer section's NC log costs a window, in stamps: its `words` (at most one a writer entry,
 /// and three a list), scaled so a window's logs fit NC's log as its stamps fit the buffer
-/// (`tt_isa::dm::nc::LOG_WORDS` against [`WINDOW_EVENTS`]).
+/// (`tensix_isa::dm::nc::LOG_WORDS` against [`WINDOW_EVENTS`]).
 pub fn nc_log_cost(words: u32) -> u32 {
-    let room = tt_isa::dm::nc::LOG_WORDS - tt_isa::dm::nc_log::HEADER_WORDS;
+    let room = tensix_isa::dm::nc::LOG_WORDS - tensix_isa::dm::nc_log::HEADER_WORDS;
     (u64::from(words) * u64::from(WINDOW_EVENTS)).div_ceil(u64::from(room)) as u32
 }
 
 /// What a pair's batch log record costs a window, in stamps: its `words`, scaled so a window's
-/// records fit the log as its stamps fit the buffer (`tt_isa::dm::BATCH_LOG_WORDS` against
+/// records fit the log as its stamps fit the buffer (`tensix_isa::dm::BATCH_LOG_WORDS` against
 /// [`WINDOW_EVENTS`]).
 pub fn batch_log_cost(words: u32) -> u32 {
     (u64::from(words) * u64::from(WINDOW_EVENTS))
-        .div_ceil(u64::from(tt_isa::dm::BATCH_LOG_WORDS - 1)) as u32
+        .div_ceil(u64::from(tensix_isa::dm::BATCH_LOG_WORDS - 1)) as u32
 }
 
 /// Whether a pair's joined batches keep the credit protocol's order, which they always do if the
@@ -1311,8 +1311,8 @@ pub fn unit_pipes(
     else {
         return Some(UnitPipes::default());
     };
-    let words = tt_isa::mailbox::BATCH_TIME_WORDS as usize;
-    use tt_isa::dataflow::{Action, Stream};
+    let words = tensix_isa::mailbox::BATCH_TIME_WORDS as usize;
+    use tensix_isa::dataflow::{Action, Stream};
     let mut out = UnitPipes::default();
     // The current pair's input credits, `(begin, end)`; what B did inside each of its batches, from
     // the input reserve's end to the push's begin (`Batch::transfer`, `credit_wait`, `credit`, the
@@ -1711,9 +1711,9 @@ enum Pending {
     },
 }
 
-/// Events a unit's stamp buffer holds (`tt_isa::mailbox::TRACE_BUFFER_BYTES`), less room for the
+/// Events a unit's stamp buffer holds (`tensix_isa::mailbox::TRACE_BUFFER_BYTES`), less room for the
 /// catch-up list before a replay and the replay's own list.
-const WINDOW_EVENTS: u32 = (tt_isa::mailbox::TRACE_BUFFER_BYTES / 16) as u32 - 96;
+const WINDOW_EVENTS: u32 = (tensix_isa::mailbox::TRACE_BUFFER_BYTES / 16) as u32 - 96;
 
 /// The profile mode's state in a session: see the module documentation.
 #[derive(Debug)]
@@ -3575,7 +3575,7 @@ impl ProfileReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tt_isa::dm::record;
+    use tensix_isa::dm::record;
 
     /// A product's `B` reads land by channel and NoC #0 endpoint as its tensor and the mover's
     /// port rotation place them: a `[4, 16]`-tile weight over eight channels puts its column `j`
@@ -3607,7 +3607,7 @@ mod tests {
         ];
         let mut got = OpBytes::default();
         got.count(&[head, a0, a1, b0, b1]);
-        let tile = tt_isa::dm::TILE_SLOT;
+        let tile = tensix_isa::dm::TILE_SLOT;
         let mut want = [[0u64; PORTS]; CHANNELS];
         for kk in 0..kt as usize {
             for j in 0..ct as usize {
@@ -3750,30 +3750,30 @@ mod tests {
     /// (`BATCH_TABLE` with `header`, a `BATCH_TIME` a clock read); then the unit's arrival at 430.
     /// A `CB` entry's two stamps, its stream and action in the detail (`dm::entry_detail`).
     fn cb(
-        stream: tt_isa::dataflow::Stream,
-        action: tt_isa::dataflow::Action,
+        stream: tensix_isa::dataflow::Stream,
+        action: tensix_isa::dataflow::Action,
         t0: u64,
         t1: u64,
     ) -> [TraceEvent; 2] {
         let w = [op::CB, stream.word(), action.word(), 2, 0, 0, 0, 0];
-        let d = tt_isa::dm::entry_detail(&w);
+        let d = tensix_isa::dm::entry_detail(&w);
         [e(ev::ENTRY_BEGIN, d, t0), e(ev::ENTRY_END, d, t1)]
     }
 
     /// A credit entry's two stamps (`WAIT_CREDIT` or `CREDIT`) on credit word `word`.
     fn credit_entry(o: u32, word: u32, t0: u64, t1: u64) -> [TraceEvent; 2] {
-        let at = tt_isa::dm::credit_word(word);
+        let at = tensix_isa::dm::credit_word(word);
         let w = if o == op::WAIT_CREDIT {
             [o, at, 1, 0, 0, 0, 0, 0]
         } else {
             [o, 1, 2, at, 1, 0, 0, 0]
         };
-        let d = tt_isa::dm::entry_detail(&w);
+        let d = tensix_isa::dm::entry_detail(&w);
         [e(ev::ENTRY_BEGIN, d, t0), e(ev::ENTRY_END, d, t1)]
     }
 
     fn pair_of_two(header: u32, times: &[u64]) -> Vec<TraceEvent> {
-        use tt_isa::dataflow::{Action::*, Stream::*};
+        use tensix_isa::dataflow::{Action::*, Stream::*};
         let mut v = vec![e(ev::LIST_BEGIN, 1, 100)];
         v.extend(entry(op::LAUNCH, 101, 103));
         v.extend(cb(Input, Reserve, 104, 108));
@@ -3795,7 +3795,7 @@ mod tests {
     /// push; NC's log between the kernel and the barrier. `args` false stamps every `CB` with its
     /// op alone, as the meter's stamps were before they named their stream.
     fn sender_pair(args: bool, transfer_push: bool) -> Vec<TraceEvent> {
-        use tt_isa::dataflow::{Action::*, Stream::*};
+        use tensix_isa::dataflow::{Action::*, Stream::*};
         let cb = |s, a, t0, t1| {
             if args {
                 cb(s, a, t0, t1)
@@ -3844,7 +3844,7 @@ mod tests {
 
     /// A sender NC's log over one strip and its output: `(tag, time)`.
     const NC_RECORDS: [(u32, u64); 12] = {
-        use tt_isa::dm::nc_log::*;
+        use tensix_isa::dm::nc_log::*;
         const T: u32 = 2 << 2;
         const O: u32 = 1 << 2;
         [
@@ -3893,7 +3893,7 @@ mod tests {
         assert_eq!(s.busy(), 424 - 200);
         // A gap from a list's end to the next list's anchor is idle, not NC's work.
         let mut two = NC_RECORDS.to_vec();
-        two.push((tt_isa::dm::nc_log::tag(tt_isa::dm::nc_log::ANCHOR, 0), 500));
+        two.push((tensix_isa::dm::nc_log::tag(tensix_isa::dm::nc_log::ANCHOR, 0), 500));
         let t = NcStats::of(&two, 0);
         assert_eq!((t.idle, t.busy(), t.records), (76, 224, 13));
     }
@@ -3950,7 +3950,7 @@ mod tests {
     /// field's wrap; records before any anchor left out; and what was lost after the last.
     #[test]
     fn the_nc_log_is_placed_on_the_counter_and_merged_by_time() {
-        use tt_isa::dm::nc_log::*;
+        use tensix_isa::dm::nc_log::*;
         let ev_at = |cycles: u64| e(ev::LIST_BEGIN, 1, cycles);
         let low = 0x03FF_FFF0u32;
         let log = vec![
@@ -4181,8 +4181,8 @@ mod tests {
             },
         );
         assert_eq!(
-            pipeline.trace_mode() & tt_isa::dm::trace_mode::MODE,
-            tt_isa::dm::trace_mode::OPS
+            pipeline.trace_mode() & tensix_isa::dm::trace_mode::MODE,
+            tensix_isa::dm::trace_mode::OPS
         );
         for o in [op::KERNEL, op::KERNEL_WAIT] {
             assert_eq!(pipeline.stamps(o), ops.stamps(o) + 1);
@@ -4194,7 +4194,7 @@ mod tests {
         for o in [op::WAIT_CREDIT, op::CREDIT] {
             assert_eq!((ops.stamps(o), pipeline.stamps(o)), (0, 3));
         }
-        let m = tt_isa::dm::trace_mode::CREDITS | tt_isa::dm::trace_mode::NC_LOG;
+        let m = tensix_isa::dm::trace_mode::CREDITS | tensix_isa::dm::trace_mode::NC_LOG;
         assert_eq!(pipeline.trace_mode() & m, m);
         assert_eq!(ops.trace_mode() & m, 0);
     }

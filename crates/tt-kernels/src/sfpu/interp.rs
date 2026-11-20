@@ -17,13 +17,13 @@
 //! program here runs with; a program that changed them would need them
 //! modelled first.
 //!
-//! The arithmetic is `tt_isa::numerics::fma_bh`, itself held bit for bit to
+//! The arithmetic is `tensix_isa::numerics::fma_bh`, itself held bit for bit to
 //! the specification's `fma.c` (`fma_oracle`).
 
-use tt_isa::isa::generated::defs;
-use tt_isa::isa::Instruction;
-use tt_isa::numerics::fma_bh;
-use tt_isa::numerics::sfpu::sign_mag_is_smaller;
+use tensix_isa::isa::generated::defs;
+use tensix_isa::isa::Instruction;
+use tensix_isa::numerics::fma_bh;
+use tensix_isa::numerics::sfpu::sign_mag_is_smaller;
 
 /// `Dst` rows the model holds: the ten bits of a `Dst` row address.
 pub const DST_ROWS: usize = 1024;
@@ -290,7 +290,7 @@ impl Vector {
                     let old = state;
                     for (lane, value) in state.iter_mut().enumerate() {
                         if self.lane_enabled(lane) {
-                            *value = tt_isa::numerics::stochastic::advance(*value);
+                            *value = tensix_isa::numerics::stochastic::advance(*value);
                         }
                     }
                     self.prng = Some(state);
@@ -305,7 +305,7 @@ impl Vector {
                 self.write(vd, v, mod1 == 2);
             }
             "SFP_STOCH_RND" => {
-                use tt_isa::numerics::stochastic::{self, Precision, Rounding};
+                use tensix_isa::numerics::stochastic::{self, Precision, Rounding};
                 let precision = match op("Mod1") {
                     0 => Precision::Tf32,
                     1 => Precision::Bf16,
@@ -597,7 +597,7 @@ impl Vector {
                 };
                 let d = self.read(at, vd)?;
                 let v: [u32; 32] =
-                    std::array::from_fn(|l| tt_isa::numerics::sfpu::arecip(mod1, b[l], c[l], d[l]));
+                    std::array::from_fn(|l| tensix_isa::numerics::sfpu::arecip(mod1, b[l], c[l], d[l]));
                 self.write(vd, v, false);
             }
             "SFPGT" | "SFPLE" => {
@@ -736,7 +736,7 @@ impl Vector {
                 }
                 let (a, b) = (self.read(at, va)?, self.read(at, vb)?);
                 let v: [u32; 32] = std::array::from_fn(|l| {
-                    tt_isa::numerics::sfpu::mul24(a[l], b[l], mod1 & 1 != 0)
+                    tensix_isa::numerics::sfpu::mul24(a[l], b[l], mod1 & 1 != 0)
                 });
                 self.write(vd, v, false);
             }
@@ -751,7 +751,7 @@ impl Vector {
                 backdoor(vd)?;
                 let v = self
                     .read(at, vc)?
-                    .map(tt_isa::numerics::sfpu::cast_sm32_to_fp32_rne);
+                    .map(tensix_isa::numerics::sfpu::cast_sm32_to_fp32_rne);
                 self.write(vd, v, false);
             }
             "SFPCONFIG" => {
@@ -795,13 +795,13 @@ impl Vector {
                 let l3 = self.read(at, 3)?;
                 let t = [self.read(at, 0)?, self.read(at, 1)?, self.read(at, 2)?];
                 let v: [u32; 32] = std::array::from_fn(|l| {
-                    let i = tt_isa::numerics::sfpu::lut_index(l3[l]);
-                    tt_isa::numerics::sfpu::lut(t[i][l], l3[l], mod0 & 4 != 0)
+                    let i = tensix_isa::numerics::sfpu::lut_index(l3[l]);
+                    tensix_isa::numerics::sfpu::lut(t[i][l], l3[l], mod0 & 4 != 0)
                 });
                 self.write(vd, v, false);
             }
             "SFPLUTFP32" => {
-                use tt_isa::numerics::sfpu::{lutfp32, lutfp32_mod1 as m};
+                use tensix_isa::numerics::sfpu::{lutfp32, lutfp32_mod1 as m};
                 let (vd, mod1) = (op("VD"), op("Mod1"));
                 backdoor(vd)?;
                 let fp16_3 = mod1 & m::FP16_3ENTRY_TABLE == m::FP16_3ENTRY_TABLE;
@@ -944,7 +944,7 @@ impl Vector {
 mod tests {
     use super::super::{Cond, Format, LoopPolicy, Program};
     use super::*;
-    use tt_isa::sfpu::LReg;
+    use tensix_isa::sfpu::LReg;
 
     fn tiles() -> (Vec<u32>, Vec<u32>) {
         let a = (0..1024).map(|i| (i as f32 - 300.0).to_bits()).collect();
@@ -1014,7 +1014,7 @@ mod tests {
     /// in every lane, `SFPCONFIG` having taken lanes 0..8's value.
     #[test]
     fn a_constant_is_known_only_to_the_program_that_writes_it() {
-        use tt_isa::sfpu::ConfigLReg;
+        use tensix_isa::sfpu::ConfigLReg;
         let mut p = Program::new();
         p.mov(ConfigLReg::L13.lreg(), LReg::L2);
         assert_eq!(
@@ -1032,10 +1032,10 @@ mod tests {
     #[test]
     fn what_has_no_model_is_refused_by_name() {
         let mut v = Vector::new();
-        let p = [tt_isa::isa::generated::encode::sfpcast(1, 2, 1).unwrap()];
+        let p = [tensix_isa::isa::generated::encode::sfpcast(1, 2, 1).unwrap()];
         let e = v.run(&p).unwrap_err();
         assert!(e.to_string().contains("SFPCAST"), "{e}");
-        let read8 = [tt_isa::isa::generated::encode::sfpmov(8, 0, 0).unwrap()];
+        let read8 = [tensix_isa::isa::generated::encode::sfpmov(8, 0, 0).unwrap()];
         assert_eq!(
             Vector::new().run(&read8),
             Err(InterpError::Unknown { at: 0, lreg: 8 })

@@ -9,9 +9,9 @@
 //! and ends past it, and NC, which runs no poke at all.
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{self, op, record, Mover};
-use tt_isa::mailbox::role::Mailbox;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, record, Mover};
+use tensix_isa::mailbox::role::Mailbox;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::{DataMover, DmError};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -27,7 +27,7 @@ fn start(d: &mut Dev<'_>, mover: Mover) -> DataMover<Noc0> {
     let dram = d.dram_grid(&w).unwrap();
     let t = tile(d, GATE_TILE.0, GATE_TILE.1);
     let image = match mover.core {
-        tt_isa::tensix::Core::NC => tt_firmware_images::DM_NC.1,
+        tensix_isa::tensix::Core::NC => tt_firmware_images::DM_NC.1,
         _ => tt_firmware_images::DM_B.1,
     };
     DataMover::start_on(d, &w, t, &dram, mover, image).unwrap()
@@ -101,7 +101,7 @@ fn a_malformed_run_is_refused_by_the_host_and_by_the_tile() {
     in_device(|d| {
         let w = d.alloc_window(WindowKind::TwoMib).unwrap();
         let (at, values) = words_of(0, 1);
-        let last = (Mailbox::of(2).base() + tt_isa::mailbox::MAILBOX_SIZE - 4) as u32;
+        let last = (Mailbox::of(2).base() + tensix_isa::mailbox::MAILBOX_SIZE - 4) as u32;
         let mut stray = record::poke_run(at, &values);
         stray[1][7] = 1;
         let mut count0 = record::poke_run(at, &values);

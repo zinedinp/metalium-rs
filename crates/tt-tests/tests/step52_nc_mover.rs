@@ -1,4 +1,4 @@
-//! RISCV NC's data mover (`tt_isa::dm::Mover::NC`, `dm_nc`): the writer, on
+//! RISCV NC's data mover (`tensix_isa::dm::Mover::NC`, `dm_nc`): the writer, on
 //! NC's own mailbox, list ring and scratch, so it runs beside B on one tile.
 //!
 //! NC passes what `step16_dm` and `step49_in_flight` ask of a mover's writes --
@@ -10,9 +10,9 @@
 //! (`docs/learnings/tt-metal-concepts-review.md`, G6).
 
 use tt_device::tlb::WindowKind;
-use tt_isa::dm::{self, op, Mover};
-use tt_isa::dram::PORTS;
-use tt_isa::noc::Noc0;
+use tensix_isa::dm::{self, op, Mover};
+use tensix_isa::dram::PORTS;
+use tensix_isa::noc::Noc0;
 use tt_kernels::dm::{DataMover, DmError, WriteNoc};
 use tt_tests::backend::GATE_TILE;
 use tt_tests::harness::{in_device, tile, Dev};
@@ -39,7 +39,7 @@ fn start(d: &mut Dev<'_>, mover: Mover) -> DataMover<Noc0> {
     let dram = d.dram_grid(&w).unwrap();
     let t = tile(d, GATE_TILE.0, GATE_TILE.1);
     let image = match mover.core {
-        tt_isa::tensix::Core::NC => tt_firmware_images::DM_NC.1,
+        tensix_isa::tensix::Core::NC => tt_firmware_images::DM_NC.1,
         _ => tt_firmware_images::DM_B.1,
     };
     DataMover::start_on(d, &w, t, &dram, mover, image).unwrap()

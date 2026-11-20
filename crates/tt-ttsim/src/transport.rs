@@ -15,7 +15,7 @@
 use tt_device::{Bar, ConfigOffset, Result, Transport, TransportError};
 use tt_ttsim_sys::Lib;
 
-use tt_isa::noc::ChipId;
+use tensix_isa::noc::ChipId;
 
 use crate::{chip_bar_base, chip_bdf};
 

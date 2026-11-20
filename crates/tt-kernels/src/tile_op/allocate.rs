@@ -41,7 +41,7 @@ pub fn place(req: &Arc<Requirements>, half: Option<u8>) -> Result<Placed> {
     let (region, by) = match half {
         Some(h) => (l1::half_arena(), h as u64 * l1::half()),
         None if req.has_end() => (
-            tt_isa::l1::Region {
+            tensix_isa::l1::Region {
                 end: l1::ring_end(),
                 ..l1::arena()
             },

@@ -1,6 +1,6 @@
 //! Hardware precision rounding held to the functional model and an observed
 //! PRNG predecessor. No reset seed or idealized statistical distribution is assumed.
-use tt_isa::{
+use tensix_isa::{
     backend::{self, Before, ConfigWords},
     numerics::stochastic::{self, Precision, Rounding},
     tile::{L1Format, TileImage},

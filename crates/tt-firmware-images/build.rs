@@ -57,7 +57,8 @@ fn main() {
     // `rerun-if-changed` does not reliably notice an edit to a file nested inside
     // it, which showed up here as firmware changes that never rebuilt.
     track_sources(&firmware_dir);
-    track_sources(&manifest.parent().unwrap().join("tt-isa"));
+    // The isa crates the firmware is built from (tensix-isa, next to this repository).
+    track_sources(&manifest.join("../../../tensix-isa/crates"));
 
     let target_dir = out_dir.join("firmware-target");
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
@@ -421,7 +422,7 @@ fn check_ttinsn_blocks(objdump: &Path, elf: &Path, name: &str) -> Vec<(u64, u64)
                  instruction, which is not a `.ttinsn` word"
             );
             assert!(
-                tt_isa::isa::generated::ALL
+                tensix_isa::isa::generated::ALL
                     .iter()
                     .any(|d| d.opcode() == (tensix >> 24) as u8),
                 "`{name}`: word {w:#010x} at {at:#x} rotates back to {tensix:#010x}, whose \

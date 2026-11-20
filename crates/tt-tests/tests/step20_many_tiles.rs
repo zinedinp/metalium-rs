@@ -140,7 +140,7 @@ fn more_tiles_than_the_chip_has_is_an_error() {
     if let Err(e) = fork_scope(|| {
         let mut sim = tt_ttsim::Simulator::open().unwrap();
         let dev = tt_device::Device::open(sim.transport()).unwrap();
-        let have = tt_isa::noc::grid::Tensix::FULL.tile_count();
+        let have = tensix_isa::noc::grid::Tensix::FULL.tile_count();
         let r = Session::open(
             dev,
             tt_firmware_images::ROLES,
@@ -337,9 +337,9 @@ fn a_failed_kernel_on_one_tile_leaves_every_tile_usable() {
             .unwrap_or_else(|e| panic!("{e}"));
         // Any semaphore will do: math waits on one that starts at zero and
         // that nothing posts.
-        let never = tt_isa::sync::Semaphore::new(0).unwrap();
-        let stuck = tt_isa::sync::take(never, tt_isa::backend::Before::EVERYTHING).to_vec();
-        let nothing: Vec<tt_isa::isa::Instruction> = Vec::new();
+        let never = tensix_isa::sync::Semaphore::new(0).unwrap();
+        let stuck = tensix_isa::sync::take(never, tensix_isa::backend::Before::EVERYTHING).to_vec();
+        let nothing: Vec<tensix_isa::isa::Instruction> = Vec::new();
         let sems = [(never, 0, 1)];
         let k = Kernel {
             dump_rows: 0,

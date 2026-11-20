@@ -3,7 +3,7 @@
 //! The oracles are independent of the implementation: a host reference built from
 //! the definition (row `sum_j i_j * stride_j` of the `[P, R]` view; sequential
 //! application of the update in index order) and Flex for the same inputs. Float
-//! `Add` is held to the specification's `SFPMAD` add model (`tt_isa::numerics::add_bh`)
+//! `Add` is held to the specification's `SFPMAD` add model (`tensix_isa::numerics::add_bh`)
 //! chained in index order, because that is the arithmetic the device runs; where the
 //! data are ordinary normal numbers Flex's IEEE `+=` agrees bit for bit, and the
 //! gate says so. Gathers and `Assign` move raw datums, so signed zeros, subnormals
@@ -20,7 +20,7 @@
 use burn::tensor::{backend::Backend, IndexingUpdateOp, Int, Tensor, TensorData, TensorPrimitive};
 use burn_flex::{Flex, FlexDevice};
 use burn_tt::{tensor_traffic, TileChoice, TtBackend, TtDevice};
-use tt_isa::numerics;
+use tensix_isa::numerics;
 use tt_tests::burn_device::{assert_native_model, with_device, Config};
 use tt_tests::data::{float_data, lcg, panic_message};
 

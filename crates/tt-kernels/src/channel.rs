@@ -4,7 +4,7 @@
 //! which is the credits its reverse edge starts with) and a page. Its kind says how its data and
 //! its credits move:
 //!
-//! - [`Kind::Local`]: within one tile, the in-core streams of [`tt_isa::dataflow`]. Its counters
+//! - [`Kind::Local`]: within one tile, the in-core streams of [`tensix_isa::dataflow`]. Its counters
 //!   are the stream's fixed words, and a credit is a `CB` entry (`dm::op::CB`) of the role that owns
 //!   the action.
 //! - [`Kind::Remote`]: from one tile's L1 to another's. The producer writes a page into the
@@ -19,8 +19,8 @@
 //! ([`Channel::credit`]), so a stream's credits are written in one place. Each op's channels are
 //! checked as a [`Graph`] before its jobs are lowered (`tile_op::channels`).
 
-use tt_isa::dataflow::{Action, Endpoint, Stream};
-use tt_isa::format::TileFormat;
+use tensix_isa::dataflow::{Action, Endpoint, Stream};
+use tensix_isa::format::TileFormat;
 
 /// What one token of a channel carries.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -110,7 +110,7 @@ impl Channel {
     }
 
     /// The mover entry that performs `action` on a local channel: `[CB, stream, action, depth]`.
-    /// Which role may run it is the stream's ([`tt_isa::dataflow::Channel::permits`]).
+    /// Which role may run it is the stream's ([`tensix_isa::dataflow::Channel::permits`]).
     ///
     /// # Panics
     ///
@@ -120,7 +120,7 @@ impl Channel {
             panic!("a {:?} channel's credits are not CB entries", self.kind)
         };
         [
-            tt_isa::dm::op::CB,
+            tensix_isa::dm::op::CB,
             stream.word(),
             action.word(),
             self.depth as u32,
@@ -158,8 +158,8 @@ pub enum Slots {
 /// [`Kind::Gddr`] one ([`Slots::Gddr`]).
 ///
 /// The producer's NC writes page `k` into slot `k % depth` and then credits every consumer's
-/// `received` word ([`tt_isa::dm::op::CREDIT`], which waits for the writes' acknowledgements
-/// first). A consumer waits for `received` to reach `k + 1` ([`tt_isa::dm::op::WAIT_CREDIT`]), uses
+/// `received` word ([`tensix_isa::dm::op::CREDIT`], which waits for the writes' acknowledgements
+/// first). A consumer waits for `received` to reach `k + 1` ([`tensix_isa::dm::op::WAIT_CREDIT`]), uses
 /// the page, and credits the producer's `freed` word. Before it writes page `k >= depth` over page
 /// `k - depth`, the producer waits for `freed` to reach `(k + 1 - depth) x consumers`. Every count
 /// starts at zero, written by the host before either side runs ([`prepare`]), and none is reset
@@ -245,7 +245,7 @@ impl std::fmt::Display for ChannelError {
 
 impl std::error::Error for ChannelError {}
 
-const MAX_REQUEST: u32 = tt_isa::noc::niu::MAX_REQUEST_BYTES;
+const MAX_REQUEST: u32 = tensix_isa::noc::niu::MAX_REQUEST_BYTES;
 
 impl Ring {
     fn validate(&self) -> Result<(), ChannelError> {
@@ -299,7 +299,7 @@ impl Ring {
 
     fn credit_entry(at: (u8, u8), word: u32, value: u32) -> [u32; 8] {
         [
-            tt_isa::dm::op::CREDIT,
+            tensix_isa::dm::op::CREDIT,
             at.0 as u32,
             at.1 as u32,
             word,
@@ -311,14 +311,14 @@ impl Ring {
     }
 
     fn wait_entry(word: u32, target: u32) -> [u32; 8] {
-        [tt_isa::dm::op::WAIT_CREDIT, word, target, 0, 0, 0, 0, 0]
+        [tensix_isa::dm::op::WAIT_CREDIT, word, target, 0, 0, 0, 0, 0]
     }
 
     /// The producer's (NC's) entries that send page `page` from `from` in its own L1: the wait for
     /// its slot to be freed (from the ring's second lap), the page's writes, then a credit to each
     /// consumer.
     pub fn send(&self, page: u32, from: u32) -> Result<Vec<[u32; 8]>, ChannelError> {
-        use tt_isa::dm::op;
+        use tensix_isa::dm::op;
         self.validate()?;
         let mut out = Vec::new();
         let consumers = self.consumers.len() as u32;
@@ -349,7 +349,7 @@ impl Ring {
                 ],
                 (Slots::L1 { .. }, _) => {
                     let (start, end) = self.rectangle();
-                    let corners = tt_isa::dm::mcast_corners(start, end);
+                    let corners = tensix_isa::dm::mcast_corners(start, end);
                     [op::WRITE_L1_MCAST, corners, 0, to, from, len, 0, 0]
                 }
             });
@@ -380,7 +380,7 @@ impl Ring {
         while done < self.page_bytes {
             let len = (self.page_bytes - done).min(MAX_REQUEST);
             out.push([
-                tt_isa::dm::op::READ,
+                tensix_isa::dm::op::READ,
                 channel,
                 port,
                 slot + done,
@@ -404,7 +404,7 @@ impl Ring {
     /// is credited for it, and every byte of a page is written before its first credit. Entries
     /// that neither write the ring nor credit or wait on its words are other work and pass.
     pub fn check_send(&self, entries: &[[u32; 8]]) -> Result<(), ChannelError> {
-        use tt_isa::dm::op;
+        use tensix_isa::dm::op;
         self.validate()?;
         let consumers = self.consumers.len() as u32;
         let depth = self.depth as u32;
@@ -673,7 +673,7 @@ fn repetitions(
     Ok(whole.into_iter().map(|q| q / g.max(1)).collect())
 }
 
-/// A mover held at a credit wait ([`tt_isa::dm::op::WAIT_CREDIT`]): the word's count and the target
+/// A mover held at a credit wait ([`tensix_isa::dm::op::WAIT_CREDIT`]): the word's count and the target
 /// it waits for. Credits that never come stall a consumer; they never let it race.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Stall {
@@ -683,17 +683,17 @@ pub struct Stall {
 }
 
 /// Whether `mover` on `tile` is held at the credit wait `wait` (the entry the host queued), as its
-/// wait reason ([`tt_isa::dataflow::WAIT_REASON`]) and the word say: `Some` with the count it has.
-pub fn stalled<T: tt_device::Transport, N: tt_isa::noc::NocId>(
+/// wait reason ([`tensix_isa::dataflow::WAIT_REASON`]) and the word say: `Some` with the count it has.
+pub fn stalled<T: tt_device::Transport, N: tensix_isa::noc::NocId>(
     d: &mut tt_device::Device<T>,
     w: &tt_device::Window,
-    tile: tt_isa::noc::NocCoord<N>,
-    mover: tt_isa::dm::Mover,
+    tile: tensix_isa::noc::NocCoord<N>,
+    mover: tensix_isa::dm::Mover,
     wait: [u32; 8],
 ) -> Result<Option<Stall>, tt_device::TransportError> {
-    use tt_isa::dataflow::{CREDIT_WAIT, WAIT_REASON};
-    assert_eq!(wait[0], tt_isa::dm::op::WAIT_CREDIT, "not a credit wait");
-    let actor = if mover == tt_isa::dm::Mover::B { 0 } else { 4 };
+    use tensix_isa::dataflow::{CREDIT_WAIT, WAIT_REASON};
+    assert_eq!(wait[0], tensix_isa::dm::op::WAIT_CREDIT, "not a credit wait");
+    let actor = if mover == tensix_isa::dm::Mover::B { 0 } else { 4 };
     let reason = d.read32(w, tile, WAIT_REASON + actor * 4)?;
     let have = d.read32(w, tile, wait[1] as u64)?;
     let reached = (have.wrapping_sub(wait[2]) as i32) >= 0;
@@ -705,31 +705,31 @@ pub fn stalled<T: tt_device::Transport, N: tt_isa::noc::NocId>(
 }
 
 /// Make `tile` ready for a cross-core channel's entries: each of its credit `words` zero, and its
-/// abort word ([`tt_isa::dataflow::ABORT`]) clear, since a credit wait outside a packet reads it and
+/// abort word ([`tensix_isa::dataflow::ABORT`]) clear, since a credit wait outside a packet reads it and
 /// silicon keeps L1 between programs and processes. Before either side of the channel runs.
-pub fn prepare<T: tt_device::Transport, N: tt_isa::noc::NocId>(
+pub fn prepare<T: tt_device::Transport, N: tensix_isa::noc::NocId>(
     d: &mut tt_device::Device<T>,
     w: &tt_device::Window,
-    tile: tt_isa::noc::NocCoord<N>,
+    tile: tensix_isa::noc::NocCoord<N>,
     words: &[u32],
 ) -> Result<(), tt_device::TransportError> {
     for &word in words {
         d.write32(w, tile, word as u64, 0)?;
     }
-    d.write32(w, tile, tt_isa::dataflow::ABORT, 0)
+    d.write32(w, tile, tensix_isa::dataflow::ABORT, 0)
 }
 
-/// Cancel what waits on `tile`'s credits and streams: its abort word ([`tt_isa::dataflow::ABORT`]),
+/// Cancel what waits on `tile`'s credits and streams: its abort word ([`tensix_isa::dataflow::ABORT`]),
 /// which every credit poll reads. The waiting list fails with `code`; a packet that starts later
 /// clears the word.
-pub fn cancel<T: tt_device::Transport, N: tt_isa::noc::NocId>(
+pub fn cancel<T: tt_device::Transport, N: tensix_isa::noc::NocId>(
     d: &mut tt_device::Device<T>,
     w: &tt_device::Window,
-    tile: tt_isa::noc::NocCoord<N>,
+    tile: tensix_isa::noc::NocCoord<N>,
     code: u32,
 ) -> Result<(), tt_device::TransportError> {
     assert_ne!(code, 0, "an abort carries a code");
-    d.write32(w, tile, tt_isa::dataflow::ABORT, code)
+    d.write32(w, tile, tensix_isa::dataflow::ABORT, code)
 }
 
 #[cfg(test)]
@@ -741,13 +741,13 @@ mod tests {
         for stream in [Stream::Input, Stream::Output, Stream::Transfer] {
             for depth in [1u16, 2, MAX_DEPTH] {
                 let channel = Channel::local(3, stream, depth);
-                let rule = tt_isa::dataflow::Channel::of(stream, depth).unwrap();
+                let rule = tensix_isa::dataflow::Channel::of(stream, depth).unwrap();
                 for action in [Action::Reserve, Action::Push, Action::Wait, Action::Pop] {
                     let entry = channel.credit(action);
                     assert_eq!(
                         entry,
                         [
-                            tt_isa::dm::op::CB,
+                            tensix_isa::dm::op::CB,
                             stream.word(),
                             action.word(),
                             depth as u32,
@@ -801,7 +801,7 @@ mod tests {
         let data = requirements.channel("received", &remote, 0..1);
         let freed = requirements.channel("freed", &remote, 0..1);
         requirements.channel("input", &Channel::local(0, Stream::Input, 2), 0..1);
-        let arena = tt_isa::l1::DATA;
+        let arena = tensix_isa::l1::DATA;
         let plan = requirements.plan(arena).unwrap();
         crate::l1::check(&requirements, &plan, arena).unwrap();
         for word in [data, freed] {
@@ -840,13 +840,13 @@ mod tests {
             depth: 2,
             page_bytes: 20 * 1024,
             slots,
-            received: tt_isa::l1::DATA.base as u32,
-            freed: tt_isa::l1::DATA.base as u32 + 16,
+            received: tensix_isa::l1::DATA.base as u32,
+            freed: tensix_isa::l1::DATA.base as u32 + 16,
         }
     }
 
     fn rings() -> [Ring; 3] {
-        let base = tt_isa::l1::DATA.base as u32 + 0x1000;
+        let base = tensix_isa::l1::DATA.base as u32 + 0x1000;
         [
             ring(vec![(3, 4)], Slots::L1 { base }),
             ring(vec![(3, 4), (4, 4), (3, 5), (4, 5)], Slots::L1 { base }),
@@ -863,7 +863,7 @@ mod tests {
 
     /// Five pages over a depth-2 ring: what the producer's NC sends, entry by entry.
     fn producer_list(r: &Ring) -> Vec<[u32; 8]> {
-        let from = tt_isa::l1::DATA.base as u32 + 0x2_0000;
+        let from = tensix_isa::l1::DATA.base as u32 + 0x2_0000;
         (0..5)
             .flat_map(|page| r.send(page, from).unwrap())
             .collect()
@@ -871,7 +871,7 @@ mod tests {
 
     #[test]
     fn a_ring_lowers_to_entries_its_movers_run_and_its_protocol_admits() {
-        use tt_isa::dm::{op, Entry, Mover};
+        use tensix_isa::dm::{op, Entry, Mover};
         for r in rings() {
             let list = producer_list(&r);
             r.check_send(&list).unwrap();
@@ -923,7 +923,7 @@ mod tests {
     /// refused by name.
     #[test]
     fn a_producer_that_breaks_the_protocol_is_refused() {
-        use tt_isa::dm::op;
+        use tensix_isa::dm::op;
         for r in rings() {
             let good = producer_list(&r);
             let at = |kind: u32, nth: usize| {
@@ -988,7 +988,7 @@ mod tests {
 
     #[test]
     fn a_ring_that_cannot_be_lowered_is_refused() {
-        let base = tt_isa::l1::DATA.base as u32;
+        let base = tensix_isa::l1::DATA.base as u32;
         let mut r = ring(vec![(3, 4), (5, 4)], Slots::L1 { base });
         assert!(
             matches!(r.send(0, base), Err(ChannelError::Invalid(_))),

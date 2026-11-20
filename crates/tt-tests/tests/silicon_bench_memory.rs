@@ -19,11 +19,11 @@ use std::time::Instant;
 use tt_device::tlb::WindowKind;
 use tt_device::trace::TraceEvent;
 use tt_device::Window;
-use tt_isa::dm::{self, op};
-use tt_isa::dram::Dram;
-use tt_isa::mailbox::{trace as ev, TRACE_BUFFER, TRACE_BUFFER_BYTES};
-use tt_isa::noc::niu::{self, Niu};
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::dm::{self, op};
+use tensix_isa::dram::Dram;
+use tensix_isa::mailbox::{trace as ev, TRACE_BUFFER, TRACE_BUFFER_BYTES};
+use tensix_isa::noc::niu::{self, Niu};
+use tensix_isa::noc::{Noc0, NocCoord};
 use tt_kernels::dm::{DataMover, WriteNoc};
 use tt_tests::backend::{device_index, tensix_grid};
 use tt_tests::bench::{on_card, pattern, report, report_rate, Conditions, Peak, Stats, REPS};
@@ -157,7 +157,7 @@ fn one_tile(d: &mut Dev<'static>, f: impl FnOnce(&mut One<'_>)) {
 const SIZES: [u32; 7] = [64, 256, 1024, 4096, 16384, 65536, 131072];
 
 /// NoC requests the sweeps put in one list. Not a limit any more -- the mover
-/// keeps its requests in flight under `tt_isa::noc::niu::MAX_IN_FLIGHT`, so a
+/// keeps its requests in flight under `tensix_isa::noc::niu::MAX_IN_FLIGHT`, so a
 /// list of any length completes exactly (`gddr_in_flight` runs 300 a tile) --
 /// but the size of the baseline's lists (`docs/learnings/performance-log.md`), so
 /// the numbers stay comparable.
@@ -316,8 +316,8 @@ fn mover_read_sweep() {
 #[test]
 #[ignore = "benchmark"]
 fn mover_gather_rate() {
-    use tt_isa::dm::record::{self, TensorRef};
-    use tt_isa::tile::L1Format;
+    use tensix_isa::dm::record::{self, TensorRef};
+    use tensix_isa::tile::L1Format;
     if bench_mover().0 != dm::Mover::B {
         println!("MEASURE skipping mover_gather_rate: only B reads GDDR");
         return;
@@ -832,7 +832,7 @@ fn nearest(f: &Fleet, n: usize) -> Vec<(u8, u8)> {
     // The endpoints NoC #0 may use, by channel.
     let owned = |c: u8| -> Vec<u8> {
         let ch = f.dram.channel(c).unwrap();
-        (0..tt_isa::dram::PORTS)
+        (0..tensix_isa::dram::PORTS)
             .filter(|&p| ch.owns(Niu::Noc0, p))
             .collect()
     };
@@ -919,7 +919,7 @@ fn adjacent_tiles(f: &Fleet) -> Vec<usize> {
 fn nearest_port(f: &Fleet, t: usize, ch: u8) -> u8 {
     let c = f.dram.channel(ch).unwrap();
     let gap = |row: u8| (f.raw[t].1 as i32 - row as i32).rem_euclid(12);
-    (0..tt_isa::dram::PORTS)
+    (0..tensix_isa::dram::PORTS)
         .filter(|&p| c.owns(Niu::Noc0, p))
         .min_by_key(|&p| gap(DRAM_RAW_Y[(ch % 4) as usize][p as usize]))
         .unwrap()
@@ -1139,7 +1139,7 @@ impl Mix {
 /// for it, makes the writes and returns it. B finishes the packet once NC's
 /// section is done; a `trailer` (a barrier) then runs on B.
 fn write_packet(writes: &[Entry], trailer: Option<Entry>) -> Vec<Entry> {
-    use tt_isa::dataflow::{Action, Stream};
+    use tensix_isa::dataflow::{Action, Stream};
     let credit = |action: Action| {
         [
             op::CB,
@@ -1997,7 +1997,7 @@ fn gddr_readers_by_channel() {
                 "{units} units, {} tiles",
                 f.movers.len()
             );
-            let len = tt_isa::dm::BF16_TILE_SLOT as u32;
+            let len = tensix_isa::dm::BF16_TILE_SLOT as u32;
             let shape = Shape {
                 entries: (dm::LIST_MAX - 2) / nc * nc,
                 len,
@@ -2086,7 +2086,7 @@ fn gddr_readers_by_channel() {
 }
 
 /// [`gddr_aggregate`]'s writes, and its reads and writes mixed, with the
-/// writes on each NIU (`tt_isa::dm::WRITE_NOC`; reads are always NoC #0's).
+/// writes on each NIU (`tensix_isa::dm::WRITE_NOC`; reads are always NoC #0's).
 /// Each GDDR endpoint is one NoC's (`DramChannel::owns`), so the mixes with
 /// writes on NoC #1 put both NoCs on the card at once without sharing an
 /// endpoint -- the SYS-1419 hang needs one endpoint fed by both. The writes
@@ -2181,7 +2181,7 @@ fn gddr_aggregate_nocs() {
 
 /// More than the NIU's 8-bit counter holds, under the worst contention:
 /// every tile reading 300 x 16 KiB -- 300 requests a list -- from one
-/// channel. The in-flight cap (`tt_isa::noc::niu::InFlight`) must engage,
+/// channel. The in-flight cap (`tensix_isa::noc::niu::InFlight`) must engage,
 /// and the card's total must stay at or under the channel's ceiling: a list
 /// reported done before its data landed would show as more than the channel
 /// can carry. Each checked tile's last entries are then run alone and their
@@ -2304,7 +2304,7 @@ fn copy_entry() -> u32 {
 /// `(k + t) % 8` at the tile's MiB there, through L1 buffer `k % 2`, and goes
 /// to the same place above [`COPY_DST`].
 fn copy_lists(f: &Fleet, t: usize, n: usize, copy: CopyScheme) -> (Vec<Entry>, Vec<Entry>) {
-    use tt_isa::dataflow::{Action, Stream};
+    use tensix_isa::dataflow::{Action, Stream};
     let chans: Vec<u8> = f.dram.channels().map(|c| c.index()).collect();
     let nc_ = chans.len() as u32;
     let coord = f.movers[0].tile();

@@ -20,7 +20,7 @@
 //!
 //! Watched failing: with the face halves swapped, with the source row taken
 //! mod 31, and with `bound` one too large (the last two caught by the
-//! `tt_isa::dm::record` unit tests as well).
+//! `tensix_isa::dm::record` unit tests as well).
 
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::Elem;

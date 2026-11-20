@@ -1,7 +1,7 @@
 //! Moving data between chips over Ethernet.
 //!
 //! A [`Link`] is a pair of cabled Ethernet tiles, one on each of two chips. A
-//! [`Mover`] is the `eth_e1` image (`tt_isa::eth::mover`) running on E1 at both
+//! [`Mover`] is the `eth_e1` image (`tensix_isa::eth::mover`) running on E1 at both
 //! ends of it. With one, a buffer in a Tensix tile of one chip reaches a Tensix
 //! tile of the other with no host access to the second chip: the sender pulls
 //! it over the NoC, TT-link carries it, the receiver checks it against the
@@ -12,9 +12,9 @@ use std::time::{Duration, Instant};
 
 use tt_device::core_control::CYCLES_PER_POLL;
 use tt_device::{Device, Transport, TransportError, Window};
-use tt_isa::eth::{mover, EthTile, Ethernet};
-use tt_isa::mailbox::status;
-use tt_isa::noc::{Noc0, NocCoord};
+use tensix_isa::eth::{mover, EthTile, Ethernet};
+use tensix_isa::mailbox::status;
+use tensix_isa::noc::{Noc0, NocCoord};
 
 /// Why a link operation did not complete.
 #[derive(Debug)]
@@ -124,7 +124,7 @@ pub enum Source {
     /// A Tensix tile's L1.
     Tensix(NocCoord<Noc0>, u32),
     /// A checked DRAM range; NoC pulls it directly into E1's send buffer.
-    Dram(tt_isa::dram::DramRange),
+    Dram(tensix_isa::dram::DramRange),
     /// The sender's staging buffer, as the host left it ([`Mover::stage`]).
     Staged,
 }
@@ -134,7 +134,7 @@ pub enum Source {
 pub enum Dest {
     Tensix(NocCoord<Noc0>, u32),
     /// A checked DRAM range on the receiving chip.
-    Dram(tt_isa::dram::DramRange),
+    Dram(tensix_isa::dram::DramRange),
     /// Left in the receiver's landing buffer ([`mover::RX_LAND`]).
     Landed,
 }
@@ -155,13 +155,13 @@ pub struct Mover {
 
 /// The bytes of the mover's mailbox the host zeroes before start, so a record
 /// or sequence number from a previous run cannot be mistaken for a new one.
-const MAILBOX_SPAN: usize = (mover::ACK_STAGE + 16 - tt_isa::eth::MAILBOX_BASE) as usize;
+const MAILBOX_SPAN: usize = (mover::ACK_STAGE + 16 - tensix_isa::eth::MAILBOX_BASE) as usize;
 
 fn start_end<T: Transport>(d: &mut Device<T>, w: &Window, t: EthTile, image: &[u8]) -> Result<()> {
     d.park_e1(w, t)?;
     let mut mb = vec![0u8; MAILBOX_SPAN];
     let put = |mb: &mut Vec<u8>, addr: u64, v: u32| {
-        let i = (addr - tt_isa::eth::MAILBOX_BASE) as usize;
+        let i = (addr - tensix_isa::eth::MAILBOX_BASE) as usize;
         mb[i..i + 4].copy_from_slice(&v.to_le_bytes());
     };
     let c = t.coord();
@@ -172,7 +172,7 @@ fn start_end<T: Transport>(d: &mut Device<T>, w: &Window, t: EthTile, image: &[u
         mover::LANDING_WAIT,
         u32::from(!d.transport().is_simulated()),
     );
-    d.eth_write(w, t, tt_isa::eth::MAILBOX_BASE, &mb)?;
+    d.eth_write(w, t, tensix_isa::eth::MAILBOX_BASE, &mb)?;
     d.load_and_start_e1(w, t, image)?;
     match d.wait_for_e1_status(w, t, 400_000, |s| s == status::RUNNING)? {
         Ok(_) => Ok(()),
@@ -300,8 +300,8 @@ impl Mover {
                 if range.len() != u64::from(len) || range.offset() % 64 != 0 {
                     return Err(LinkError::Invalid("DRAM source length/alignment"));
                 }
-                let c = (0..tt_isa::dram::PORTS)
-                    .find_map(|port| range.channel().endpoint(tt_isa::noc::niu::Niu::Noc0, port))
+                let c = (0..tensix_isa::dram::PORTS)
+                    .find_map(|port| range.channel().endpoint(tensix_isa::noc::niu::Niu::Noc0, port))
                     .expect("NoC0 DRAM endpoint");
                 (c.x() as u32, c.y() as u32, range.offset() as u32)
             }
@@ -313,8 +313,8 @@ impl Mover {
                 if range.len() != u64::from(len) {
                     return Err(LinkError::Invalid("DRAM destination length"));
                 }
-                let c = (0..tt_isa::dram::PORTS)
-                    .find_map(|port| range.channel().endpoint(tt_isa::noc::niu::Niu::Noc0, port))
+                let c = (0..tensix_isa::dram::PORTS)
+                    .find_map(|port| range.channel().endpoint(tensix_isa::noc::niu::Niu::Noc0, port))
                     .expect("NoC0 DRAM endpoint");
                 (c.x() as u32, c.y() as u32, range.offset() as u32)
             }

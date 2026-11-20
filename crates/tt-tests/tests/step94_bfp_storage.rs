@@ -139,7 +139,7 @@ fn expected(
     cols: usize,
     format: BfpFormat,
 ) -> (Vec<Vec<u8>>, Vec<u32>) {
-    use tt_isa::tile::{bfp2_to_bf16, bfp4_to_bf16, bfp8_to_bf16};
+    use tensix_isa::tile::{bfp2_to_bf16, bfp4_to_bf16, bfp8_to_bf16};
     let image = format.tile_image();
     let bits = format.l1_format().datum_bits();
     let mut raw = Vec::new();

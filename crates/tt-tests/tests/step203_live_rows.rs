@@ -16,7 +16,7 @@
 
 use tt_device::tlb::WindowKind;
 use tt_device::Window;
-use tt_isa::dm::{face_index, TILE_DATA, TILE_SLOT};
+use tensix_isa::dm::{face_index, TILE_DATA, TILE_SLOT};
 use tt_kernels::matmul::{set_trim_rows, Fidelity, LiveRows, SrcRoute};
 use tt_kernels::session::{Session, TileChoice};
 use tt_kernels::tensor::{DramTensor, Pad};

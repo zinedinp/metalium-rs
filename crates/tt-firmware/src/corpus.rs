@@ -12,12 +12,12 @@
 use crate::cfg::write_config_field;
 use crate::tensix::{load_mop_config, push_word, read_dst32, wait_for_coprocessor};
 use crate::{fail, finish, l1_read32, l1_write32, publish, spin};
-use tt_isa::cfg::ConfigBank;
-use tt_isa::mailbox::guard::{self, Guard};
-use tt_isa::mailbox::role::Mailbox;
-use tt_isa::mailbox::{self, panic_code, status};
-use tt_isa::sfpu::dst32_address;
-use tt_isa::tensix::{PushesTo, TensixThread};
+use tensix_isa::cfg::ConfigBank;
+use tensix_isa::mailbox::guard::{self, Guard};
+use tensix_isa::mailbox::role::Mailbox;
+use tensix_isa::mailbox::{self, panic_code, status};
+use tensix_isa::sfpu::dst32_address;
+use tensix_isa::tensix::{PushesTo, TensixThread};
 
 /// The hooks the `.ttinsn` experiment image (`bin/ttinsn_t1.rs`) installs
 /// (`docs/completed-plans/ttinsn-push-experiment.md`). Single-threaded: one core runs
@@ -68,10 +68,10 @@ where
 }
 
 /// The same runner, reporting through a role mailbox: one of three cores each
-/// running its own part of a kernel (`tt_isa::mailbox::role`). The production
+/// running its own part of a kernel (`tensix_isa::mailbox::role`). The production
 /// role images: no guarded runs, whose machinery (`guard_wait` and its helpers,
 /// about 1.9 KB an image) is compiled out, so the role slots stay small and their
-/// room goes to B's mover (`tt_isa::l1::roles`).
+/// room goes to B's mover (`tensix_isa::l1::roles`).
 pub fn run_role<Riscv, Thread>() -> !
 where
     Thread: TensixThread,
@@ -80,7 +80,7 @@ where
     run_in::<Riscv, Thread, false>(Mailbox::of(Thread::INDEX))
 }
 
-/// The role runner with **guarded runs** (`tt_isa::mailbox::guard`): the probe
+/// The role runner with **guarded runs** (`tensix_isa::mailbox::guard`): the probe
 /// images `guarded_t0..2`, at their cores' default reset PCs, which
 /// `tt_kernels::atomics` loads for the Sync Unit and L1 atomics gates. Never
 /// loaded beside the mover.
@@ -111,14 +111,14 @@ fn fail_in(mb: Mailbox, code: u32) -> ! {
 /// whether ttsim models the timestamper is a question with its own probe, and
 /// a register it does not model is fatal there.
 fn trace(on: bool, thread: u32, event: u32) {
-    // Compiled out without the `profile` feature (`tt_isa::dm::caps::STAMPS`).
+    // Compiled out without the `profile` feature (`tensix_isa::dm::caps::STAMPS`).
     if cfg!(feature = "profile") && on {
         // SAFETY: a documented, aligned timestamper register; a store has no
         // effect beyond appending the event.
         unsafe {
             l1_write32(
-                tt_isa::tensix::timestamper::TIMESTAMP,
-                tt_isa::tensix::timestamper::event_128(mailbox::trace::token(thread, event)),
+                tensix_isa::tensix::timestamper::TIMESTAMP,
+                tensix_isa::tensix::timestamper::event_128(mailbox::trace::token(thread, event)),
             )
         };
     }
@@ -130,7 +130,7 @@ fn trace(on: bool, thread: u32, event: u32) {
 /// in what it had queued behind it. The reset program the runner then pushes
 /// initialises every semaphore afresh, so the posts leave nothing behind.
 fn unwedge() {
-    use tt_isa::tensix::SEMAPHORE_ACCESS;
+    use tensix_isa::tensix::SEMAPHORE_ACCESS;
     // Until nothing has consumed a post for 64 rounds running: whatever the
     // thread had queued behind its first wait has run (each later wait taking
     // the next round's post), or it waits on something no post can release.
@@ -160,7 +160,7 @@ fn unwedge() {
     }
 }
 
-/// What a guarded run was armed with (`tt_isa::mailbox::guard`).
+/// What a guarded run was armed with (`tensix_isa::mailbox::guard`).
 struct GuardRun {
     deadline: u32,
     grace: u32,
@@ -183,7 +183,7 @@ fn crumb(g: Guard, stage: u32) {
 fn semaphore_load(i: u64) -> u32 {
     // SAFETY: the documented semaphore window of this core; a load reads the
     // value and has no side effect.
-    let mut v = unsafe { l1_read32(tt_isa::tensix::SEMAPHORE_ACCESS + 4 * i) };
+    let mut v = unsafe { l1_read32(tensix_isa::tensix::SEMAPHORE_ACCESS + 4 * i) };
     // SAFETY: an ALU instruction on a register.
     unsafe { core::arch::asm!("andi {v}, {v}, 15", v = inout(reg) v, options(nomem, nostack)) };
     v
@@ -200,7 +200,7 @@ fn semaphore_snapshot(g: Guard, raw: bool, first: bool) -> u32 {
         }
         let v = if raw {
             // SAFETY: as `semaphore_load`, without consuming the result.
-            unsafe { l1_read32(tt_isa::tensix::SEMAPHORE_ACCESS + 4 * i) & 0xf }
+            unsafe { l1_read32(tensix_isa::tensix::SEMAPHORE_ACCESS + 4 * i) & 0xf }
         } else {
             semaphore_load(i)
         };
@@ -209,7 +209,7 @@ fn semaphore_snapshot(g: Guard, raw: bool, first: bool) -> u32 {
     snapshot
 }
 
-/// Whether the host armed this run as **guarded** (`tt_isa::mailbox::guard`),
+/// Whether the host armed this run as **guarded** (`tensix_isa::mailbox::guard`),
 /// consuming the arming word so a stale one cannot guard a later, unrelated run.
 ///
 /// A guarded program may park its Tensix thread in a Wait Gate (a held mutex, a
@@ -269,7 +269,7 @@ fn guard_begin(
     } else {
         // A post left over from an earlier run would read as this program's
         // completion: take every one down first (an odd store is a `SEMGET`).
-        let at = tt_isa::tensix::SEMAPHORE_ACCESS + 4 * run.complete as u64;
+        let at = tensix_isa::tensix::SEMAPHORE_ACCESS + 4 * run.complete as u64;
         for _ in 0..16 {
             if semaphore_load(run.complete as u64) == 0 {
                 break;
@@ -316,7 +316,7 @@ fn show(g: Guard, snapshot: u32, shown: &mut u32) {
 /// 16 polls, so a host that sees it frozen knows the loop is not turning.
 fn guard_wait(mb: Mailbox, run: &GuardRun) {
     use guard::{stage, PollMode};
-    use tt_isa::tensix::SEMAPHORE_ACCESS;
+    use tensix_isa::tensix::SEMAPHORE_ACCESS;
     let g = Guard::of(mb);
     crumb(g, stage::POLL_ENTERED);
     let complete = run.complete as u64;
@@ -373,7 +373,7 @@ fn guard_wait(mb: Mailbox, run: &GuardRun) {
                 // firmware, a mailbox or a program.
                 // SAFETY: fixed aligned words of the guard block.
                 let (at, value) = unsafe { (l1_read32(g.poke_addr()), l1_read32(g.poke_value())) };
-                if at % 4 != 0 || !tt_isa::l1::DATA.contains(at as u64, 4) {
+                if at % 4 != 0 || !tensix_isa::l1::DATA.contains(at as u64, 4) {
                     fail_in(mb, guard::REFUSED);
                 }
                 // SAFETY: inside the data arena, checked above.
@@ -505,11 +505,11 @@ where
     // A loop header leads the program where its length says so
     // (`mailbox::loops::LOOPED`).
     let program_len_word = unsafe { l1_read32(mb.program_len()) };
-    let streamed = program_len_word & tt_isa::dataflow::STREAMED != 0;
+    let streamed = program_len_word & tensix_isa::dataflow::STREAMED != 0;
     let looped = program_len_word & mailbox::loops::LOOPED != 0;
     // Fused `.ttinsn` code (`crate::fused`): the math role's only, its loops in the code.
-    let fused_code = program_len_word & tt_isa::ttinsn::FUSED != 0;
-    let program_len = program_len_word & tt_isa::dataflow::LENGTH_MASK;
+    let fused_code = program_len_word & tensix_isa::ttinsn::FUSED != 0;
+    let program_len = program_len_word & tensix_isa::dataflow::LENGTH_MASK;
     let dump_first = unsafe { l1_read32(mb.dump_row_first()) };
     let dump_rows = unsafe { l1_read32(mb.dump_row_count()) };
     let trace_word = if cfg!(feature = "profile") {
@@ -560,7 +560,7 @@ where
         mb.program()
     } else {
         if program_addr % 16 != 0
-            || !tt_isa::l1::PROGRAM_CACHE.contains(program_addr, program_len as u64 * 4)
+            || !tensix_isa::l1::PROGRAM_CACHE.contains(program_addr, program_len as u64 * 4)
         {
             fail_in(mb, panic_code::EXPLICIT);
         }
@@ -588,7 +588,7 @@ where
     // before pushing anything that depends on the new value.
     publish();
 
-    // This run's MOP Expander configuration (`tt_isa::frontend::mop`), loaded
+    // This run's MOP Expander configuration (`tensix_isa::frontend::mop`), loaded
     // once the expander is idle and before anything is pushed that could use
     // it.
     // SAFETY: fixed mailbox words, written by the host before the generation.
@@ -682,7 +682,7 @@ where
     let since = totals.now();
     if fused_code {
         // SAFETY: the host validated the code and ran it against the program's expansion
-        // (`tt_isa::ttinsn`); it lies in the program region or cache, checked above, ending in
+        // (`tensix_isa::ttinsn`); it lies in the program region or cache, checked above, ending in
         // a return; this core's cache is invalidated after the host's writes.
         unsafe {
             crate::fused::invalidate_icache(code, 1 << (1 + Thread::INDEX));
@@ -746,7 +746,7 @@ where
     Thread: TensixThread,
     Riscv: PushesTo<Thread>,
 {
-    use tt_isa::{dataflow, dm};
+    use tensix_isa::{dataflow, dm};
     if address == 0 && length == 0 {
         trace(last_traced, Thread::INDEX, mailbox::trace::PUSHED);
         return Ok(());
@@ -754,7 +754,7 @@ where
     if !dataflow::program(address, length) {
         return Err(dm::error::PROGRAM);
     }
-    if length & tt_isa::ttinsn::FUSED != 0 {
+    if length & tensix_isa::ttinsn::FUSED != 0 {
         // Fused `.ttinsn` code (`crate::fused`), the math role's only; the run invalidated this
         // core's instruction cache before its first batch (`run_stream`).
         if Thread::INDEX != 1 {
@@ -762,7 +762,7 @@ where
         }
         let since = totals.now();
         // SAFETY: the host validated the code and ran it against the program's expansion
-        // (`tt_isa::ttinsn`); `dataflow::program` checked it lies in the program cache, aligned.
+        // (`tensix_isa::ttinsn`); `dataflow::program` checked it lies in the program cache, aligned.
         unsafe { crate::fused::call(address as u64) };
         let since = totals.pushed(since);
         trace(last_traced, Thread::INDEX, mailbox::trace::PUSHED);
@@ -851,7 +851,7 @@ where
     Riscv: PushesTo<Thread>,
 {
     use dataflow::{Action, Endpoint, Stream};
-    use tt_isa::{dataflow, dm};
+    use tensix_isa::{dataflow, dm};
     let read = |index| unsafe { l1_read32(program + index * 4) };
     if words < 4 || read(0) != dataflow::VERSION || read(3) != Thread::INDEX {
         return Err(dm::error::PROGRAM);
@@ -876,7 +876,7 @@ where
         {
             return Err(dm::error::PROGRAM);
         }
-        if length & tt_isa::ttinsn::FUSED != 0 {
+        if length & tensix_isa::ttinsn::FUSED != 0 {
             fused = address;
         }
     }
@@ -953,7 +953,7 @@ impl Totals {
         if self.on {
             // SAFETY: the timestamper's counter, a documented aligned
             // register; ttsim models it (divergence row 54).
-            unsafe { l1_read32(tt_isa::tensix::timestamper::WALL_CLOCK_L) }
+            unsafe { l1_read32(tensix_isa::tensix::timestamper::WALL_CLOCK_L) }
         } else {
             0
         }
@@ -1015,7 +1015,7 @@ impl Batches {
                 // SAFETY: the timestamper's counter, a documented aligned register (ttsim models
                 // it, divergence row 54); a word of this runner's own table.
                 unsafe {
-                    let now = l1_read32(tt_isa::tensix::timestamper::WALL_CLOCK_L);
+                    let now = l1_read32(tensix_isa::tensix::timestamper::WALL_CLOCK_L);
                     l1_write32(mb.batch_time(index, k), now);
                 }
             }
@@ -1048,7 +1048,7 @@ where
     Thread: TensixThread,
     Riscv: PushesTo<Thread>,
 {
-    /// Honour a seed directive (`tt_isa::dataflow::seed_directive`)
+    /// Honour a seed directive (`tensix_isa::dataflow::seed_directive`)
     /// at the head of the program, and return the first word to push (past it).
     /// The coprocessor is drained, the seed goes to the PRNG seed register by a
     /// full-width RISC-V store, a fence publishes it, and the settling interval
@@ -1056,7 +1056,7 @@ where
     /// procedure `step91_seeded_prng` validates on both cards (a `WRCFG` seed
     /// write does not restart silicon's stream).
     fn start(&self, code_len: u32) -> u32 {
-        use tt_isa::dataflow::{SEED_DIRECTIVE, SEED_SETTLE_NOPS, SEED_WORDS};
+        use tensix_isa::dataflow::{SEED_DIRECTIVE, SEED_SETTLE_NOPS, SEED_WORDS};
         // SAFETY: the first words of the staged program, whose length the
         // caller checked.
         if code_len < SEED_WORDS || unsafe { l1_read32(self.program) } != SEED_DIRECTIVE {
@@ -1070,7 +1070,7 @@ where
         // dependent on it is pushed.
         unsafe {
             core::ptr::write_volatile(
-                tt_isa::cfg::generated::global::PRNG_SEED_Seed_Val.riscv_address(ConfigBank::Bank0)
+                tensix_isa::cfg::generated::global::PRNG_SEED_Seed_Val.riscv_address(ConfigBank::Bank0)
                     as *mut u32,
                 seed,
             );

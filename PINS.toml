@@ -55,16 +55,6 @@ sha256 = "e1ffbaf39c7d071a2f64d7072a586da5f9a7bef55907459edbdb185189d23108"
 name   = "libttsim_bh_x4.so"
 sha256 = "942a7a2a210259b77d1c44a7b13ac98fe672aec28d28e4385fcd30f6967756c1"
 
-[tt-metal]
-# Source of cfg_defines.h -- the 820 backend-configuration fields. Fetched and
-# parsed by `cargo xtask gen-cfg` into crates/tt-isa/src/cfg/generated.rs, which
-# IS committed; the header itself is not. This is the commit the specification
-# cites (BackendConfiguration.md:17).
-repo   = "https://github.com/tenstorrent/tt-metal"
-rev    = "81989dcdb8f9b340c932ae7a71a346f4f08703eb"
-path   = "tt_metal/hw/inc/blackhole/cfg_defines.h"
-sha256 = "bc2636abc3ea04e6ca322923e6f2713b242857d021d8ef39b9180a14bcb1a5b8"
-
 [burn]
 # The tensor-level differential oracle. ttsim is the ISA-level one; this is what
 # says which elements pair with which, which a bit-exact scalar model cannot.

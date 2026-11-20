@@ -42,11 +42,11 @@ pub mod select;
 pub mod softmax;
 pub mod sort;
 
-use tt_isa::frontend;
-use tt_isa::isa::generated::{defs, encode};
-use tt_isa::isa::Instruction;
-use tt_isa::sfpu::{self as enc, mad_mod1, mod0_fmt};
-pub use tt_isa::sfpu::{ConfigLReg, LReg};
+use tensix_isa::frontend;
+use tensix_isa::isa::generated::{defs, encode};
+use tensix_isa::isa::Instruction;
+use tensix_isa::sfpu::{self as enc, mad_mod1, mod0_fmt};
+pub use tensix_isa::sfpu::{ConfigLReg, LReg};
 
 use crate::datapath::thread_entry;
 
@@ -343,8 +343,8 @@ impl Program {
         &mut self,
         s: LReg,
         d: LReg,
-        precision: tt_isa::numerics::stochastic::Precision,
-        rounding: tt_isa::numerics::stochastic::Rounding,
+        precision: tensix_isa::numerics::stochastic::Precision,
+        rounding: tensix_isa::numerics::stochastic::Rounding,
     ) {
         self.push(
             encode::Sfpstochrnd::ZERO
@@ -598,7 +598,7 @@ impl Program {
 
     /// `d = Lut8(c >> 8) * |L3| + Lut8(c)`, `c` being `L0` where `|L3| < 1`,
     /// `L1` where `< 2` and `L2` otherwise, each holding two
-    /// [`tt_isa::numerics::sfpu::lut8_to_fp32`] codes; `L3`'s sign kept if
+    /// [`tensix_isa::numerics::sfpu::lut8_to_fp32`] codes; `L3`'s sign kept if
     /// `retain_sign` (`SFPLUT`). The four registers are implied operands.
     pub fn lut(&mut self, retain_sign: bool, d: LReg) {
         let mod0 = if retain_sign { 4 } else { 0 };
@@ -618,7 +618,7 @@ impl Program {
     /// clear it would assume `L7` is not read, so it would miss the `L7` just
     /// written.
     pub fn lut_fp32(&mut self, table: LutTable, retain_sign: bool, d: LReg) {
-        use tt_isa::numerics::sfpu::lutfp32_mod1 as m;
+        use tensix_isa::numerics::sfpu::lutfp32_mod1 as m;
         let vd = Self::dst(d);
         let mut mod1 = match table {
             LutTable::Fp32 => m::FP32_3ENTRY_TABLE,
@@ -644,7 +644,7 @@ impl Program {
     /// within 0.56% of `1/x` for `2^-126 <= |x| < 2^126`, infinite below and
     /// zero above.
     pub fn approx_recip(&mut self, x: LReg, d: LReg) {
-        let mod1 = tt_isa::numerics::sfpu::arecip_mod1::RECIP;
+        let mod1 = tensix_isa::numerics::sfpu::arecip_mod1::RECIP;
         self.push(encode::sfparecip(0, x.index(), Self::dst(d), mod1).unwrap());
     }
 

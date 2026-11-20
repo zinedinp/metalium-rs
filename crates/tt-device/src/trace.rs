@@ -9,8 +9,8 @@
 //! strictly better than per-core `mcycle` for lining up what three cores did:
 //! every event is stamped by the same counter.
 
-use tt_isa::noc::{NocCoord, NocId};
-use tt_isa::tensix::timestamper as ts;
+use tensix_isa::noc::{NocCoord, NocId};
+use tensix_isa::tensix::timestamper as ts;
 
 use crate::{Device, Result, Transport, TransportError, Window};
 

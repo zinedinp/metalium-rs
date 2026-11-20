@@ -1,4 +1,4 @@
-//! Is `tt_isa::numerics::fma_bh` really the specification's model?
+//! Is `tensix_isa::numerics::fma_bh` really the specification's model?
 //!
 //! `fma_bh` is a hand port of `Miscellaneous/FMA/fma.c:102`, and hand ports drift.
 //! This links the **actual C** — compiled by `build.rs` from the tree `PINS.toml`
@@ -12,7 +12,7 @@
 
 #![cfg(have_fma_oracle)]
 
-use tt_isa::numerics::fma_bh;
+use tensix_isa::numerics::fma_bh;
 
 // Named explicitly rather than relying on `build.rs`'s `cargo:rustc-link-lib` to
 // reach this target: that directive is emitted for the package, and an integration
@@ -198,10 +198,10 @@ fn the_model_diverges_from_the_host_where_the_readme_says_it_does() {
     );
 
     // And the sign of a zero result: `-1.0 * 0.0` is `+0` unless the addend is
-    // `-0`, which is why `tt_isa::sfpu::mul` passes `-0` (divergence row C).
+    // `-0`, which is why `tensix_isa::sfpu::mul` passes `-0` (divergence row C).
     assert_eq!(fma_bh(0xbf80_0000, 0x0000_0000, 0x0000_0000), 0x0000_0000);
     assert_eq!(
-        tt_isa::numerics::mul_bh(0xbf80_0000, 0x0000_0000),
+        tensix_isa::numerics::mul_bh(0xbf80_0000, 0x0000_0000),
         0x8000_0000,
         "mul_bh passes -0 as the addend, which is what preserves the sign"
     );

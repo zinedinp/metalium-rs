@@ -6,7 +6,7 @@
 //! A read ahead is recognised by the mover's record alone (`record::GATHER` and its four
 //! reference words); which reads may go ahead, and where the list goes, is the schedule's.
 
-use tt_isa::dm::record;
+use tensix_isa::dm::record;
 
 use crate::tensor::{Job, Step};
 
@@ -51,8 +51,8 @@ pub fn take_reads_pumped(job: &mut Job, n: usize) -> Vec<[u32; 8]> {
     }
     if let Some(Step::List { entries, .. }) = first.map(|i| &mut job[i]) {
         entries.push([
-            tt_isa::dm::op::WAIT,
-            tt_isa::dm::WAIT_PREFETCH,
+            tensix_isa::dm::op::WAIT,
+            tensix_isa::dm::WAIT_PREFETCH,
             0,
             0,
             0,
@@ -89,7 +89,7 @@ mod tests {
     /// A list: a packed operand's read, then a `GATHER` whose `B` reference's word 4 is `b_marks`.
     fn list(b_marks: u32) -> Vec<[u32; 8]> {
         let mut e = vec![[0u32; 8]; 1 + GATHER_ENTRIES];
-        e[0][0] = tt_isa::dm::op::READ;
+        e[0][0] = tensix_isa::dm::op::READ;
         e[1][0] = record::GATHER;
         e[1][1] = record::GATHER_STREAM;
         e[4][4] = b_marks;

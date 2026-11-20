@@ -39,10 +39,10 @@ path = "src/bin/ttinsn_t1.rs"
 required-features = ["ttinsn-experiment"]
 
 [dependencies]
-tt-isa = { path = "../tt-isa" }
+tensix-isa = { path = "../../../tensix-isa/crates/tensix-isa" }
 
 [build-dependencies]
-tt-isa = { path = "../tt-isa" }
+tensix-isa = { path = "../../../tensix-isa/crates/tensix-isa" }
 
 [profile.release]
 opt-level = 3

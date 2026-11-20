@@ -3,8 +3,8 @@
 //! Split from the gates themselves so the assertions read as arithmetic rather than
 //! as address arithmetic.
 
-use tt_isa::isa::Instruction;
-use tt_isa::tile::TileDescriptor;
+use tensix_isa::isa::Instruction;
+use tensix_isa::tile::TileDescriptor;
 use tt_tests::datapath::{dst_round_trip_roles, OUT, STAGE};
 use tt_tests::harness::{self, Roles, Run};
 
